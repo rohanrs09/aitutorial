@@ -1,0 +1,378 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  BookOpen, 
+  Lightbulb, 
+  Target, 
+  CheckCircle, 
+  RefreshCw,
+  AlertCircle,
+  Sparkles
+} from 'lucide-react';
+import MermaidDiagram from './MermaidDiagram';
+
+export interface LearningSlide {
+  id: string;
+  title: string;
+  type: 'concept' | 'example' | 'tip' | 'practice' | 'diagram' | 'summary';
+  content: string;
+  keyPoints?: string[];
+  example?: string;
+  visualAid?: {
+    type: 'mermaid' | 'illustration' | 'flowchart';
+    data: string;
+  };
+  quiz?: {
+    question: string;
+    options: string[];
+    correctAnswer: number;
+    explanation: string;
+  };
+  isSimplified?: boolean;
+  simplificationLevel?: 'basic' | 'intermediate' | 'advanced';
+}
+
+interface LearningSlidePanelProps {
+  slides: LearningSlide[];
+  currentSlideIndex: number;
+  onSlideChange: (index: number) => void;
+  onRequestSimplification?: () => void;
+  emotion?: string;
+  emotionConfidence?: number;
+  isLoading?: boolean;
+  tutorMessage?: string;
+}
+
+const slideTypeIcons = {
+  concept: BookOpen,
+  example: Target,
+  tip: Lightbulb,
+  practice: CheckCircle,
+  diagram: Sparkles,
+  summary: BookOpen,
+};
+
+const slideTypeColors = {
+  concept: 'bg-blue-100 text-blue-700 border-blue-200',
+  example: 'bg-green-100 text-green-700 border-green-200',
+  tip: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+  practice: 'bg-purple-100 text-purple-700 border-purple-200',
+  diagram: 'bg-pink-100 text-pink-700 border-pink-200',
+  summary: 'bg-gray-100 text-gray-700 border-gray-200',
+};
+
+export default function LearningSlidePanel({
+  slides,
+  currentSlideIndex,
+  onSlideChange,
+  onRequestSimplification,
+  emotion = 'neutral',
+  emotionConfidence = 0,
+  isLoading = false,
+  tutorMessage = ''
+}: LearningSlidePanelProps) {
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [showQuizResult, setShowQuizResult] = useState(false);
+  const [showSimplifyHint, setShowSimplifyHint] = useState(false);
+
+  const currentSlide = slides[currentSlideIndex];
+
+  // Show simplify hint when user is confused
+  useEffect(() => {
+    if ((emotion === 'confused' || emotion === 'frustrated') && emotionConfidence > 0.5) {
+      setShowSimplifyHint(true);
+      const timer = setTimeout(() => setShowSimplifyHint(false), 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [emotion, emotionConfidence]);
+
+  // Reset quiz state when slide changes
+  useEffect(() => {
+    setSelectedAnswer(null);
+    setShowQuizResult(false);
+  }, [currentSlideIndex]);
+
+  const handlePrevSlide = () => {
+    if (currentSlideIndex > 0) {
+      onSlideChange(currentSlideIndex - 1);
+    }
+  };
+
+  const handleNextSlide = () => {
+    if (currentSlideIndex < slides.length - 1) {
+      onSlideChange(currentSlideIndex + 1);
+    }
+  };
+
+  const handleQuizAnswer = (answerIndex: number) => {
+    setSelectedAnswer(answerIndex);
+    setShowQuizResult(true);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gradient-to-br from-[#f5f0e8] to-[#e8e0d8] rounded-2xl">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full"
+        />
+        <p className="ml-4 text-gray-600">Generating learning content...</p>
+      </div>
+    );
+  }
+
+  if (slides.length === 0) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#f5f0e8] to-[#e8e0d8] rounded-2xl p-8 text-center">
+        <BookOpen size={48} className="text-purple-400 mb-4" />
+        <h3 className="text-xl font-semibold text-gray-700 mb-2">Ready to Learn!</h3>
+        <p className="text-gray-500 max-w-md">
+          Ask a question or select a topic to generate interactive learning slides. 
+          The slides will be tailored to your current understanding level.
+        </p>
+        {tutorMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6 p-4 bg-white/80 rounded-xl max-w-lg"
+          >
+            <p className="text-gray-700 italic">&ldquo;{tutorMessage}&rdquo;</p>
+          </motion.div>
+        )}
+      </div>
+    );
+  }
+
+  const SlideIcon = slideTypeIcons[currentSlide?.type || 'concept'];
+
+  return (
+    <div className="h-full flex flex-col bg-gradient-to-br from-[#f5f0e8] to-[#e8e0d8] rounded-2xl overflow-hidden">
+      {/* Header with slide type and navigation */}
+      <div className="flex items-center justify-between p-4 border-b border-gray-200/50">
+        <div className="flex items-center gap-3">
+          <span className={`px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 border ${slideTypeColors[currentSlide?.type || 'concept']}`}>
+            <SlideIcon size={16} />
+            {currentSlide?.type?.charAt(0).toUpperCase() + currentSlide?.type?.slice(1)}
+          </span>
+          {currentSlide?.isSimplified && (
+            <span className="px-2 py-1 bg-orange-100 text-orange-600 text-xs font-medium rounded-full">
+              Simplified
+            </span>
+          )}
+        </div>
+        
+        {/* Simplify button when confused */}
+        <AnimatePresence>
+          {showSimplifyHint && onRequestSimplification && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              onClick={onRequestSimplification}
+              className="flex items-center gap-2 px-3 py-1.5 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 transition-colors"
+            >
+              <RefreshCw size={14} />
+              Simplify for me
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Slide content */}
+      <div className="flex-1 overflow-y-auto p-6">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentSlide?.id}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            {/* Title */}
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">
+              {currentSlide?.title}
+            </h2>
+
+            {/* Main content */}
+            <p className="text-gray-700 text-lg leading-relaxed mb-6">
+              {currentSlide?.content}
+            </p>
+
+            {/* Key points */}
+            {currentSlide?.keyPoints && currentSlide.keyPoints.length > 0 && (
+              <div className="mb-6">
+                <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <Target size={18} className="text-purple-500" />
+                  Key Points
+                </h4>
+                <ul className="space-y-2">
+                  {currentSlide.keyPoints.map((point, index) => (
+                    <motion.li
+                      key={index}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="flex items-start gap-2 text-gray-600"
+                    >
+                      <CheckCircle size={16} className="text-green-500 mt-1 flex-shrink-0" />
+                      {point}
+                    </motion.li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Example */}
+            {currentSlide?.example && (
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+                <h4 className="font-semibold text-green-700 mb-2 flex items-center gap-2">
+                  <Lightbulb size={18} />
+                  Example
+                </h4>
+                <p className="text-green-800">{currentSlide.example}</p>
+              </div>
+            )}
+
+            {/* Visual Aid / Diagram */}
+            {currentSlide?.visualAid && (
+              <div className="mb-6 p-4 bg-white rounded-xl border border-gray-200">
+                {currentSlide.visualAid.type === 'mermaid' || currentSlide.visualAid.type === 'flowchart' ? (
+                  <MermaidDiagram code={currentSlide.visualAid.data} />
+                ) : (
+                  <div className="text-center text-6xl">
+                    {currentSlide.visualAid.data}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Quiz */}
+            {currentSlide?.quiz && (
+              <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                <h4 className="font-semibold text-purple-700 mb-4 flex items-center gap-2">
+                  <CheckCircle size={18} />
+                  Quick Check
+                </h4>
+                <p className="text-gray-700 mb-4">{currentSlide.quiz.question}</p>
+                
+                <div className="space-y-2">
+                  {currentSlide.quiz.options.map((option, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleQuizAnswer(index)}
+                      disabled={showQuizResult}
+                      className={`w-full text-left px-4 py-3 rounded-lg transition-all flex items-center gap-3
+                        ${selectedAnswer === index
+                          ? showQuizResult
+                            ? index === currentSlide.quiz!.correctAnswer
+                              ? 'bg-green-100 border-2 border-green-500'
+                              : 'bg-red-100 border-2 border-red-500'
+                            : 'bg-purple-100 border-2 border-purple-500'
+                          : showQuizResult && index === currentSlide.quiz!.correctAnswer
+                            ? 'bg-green-100 border-2 border-green-500'
+                            : 'bg-white border border-gray-200 hover:bg-gray-50'
+                        }
+                        ${showQuizResult ? 'cursor-default' : 'cursor-pointer'}
+                      `}
+                    >
+                      <span className="font-semibold text-gray-500">{index + 1}.</span>
+                      <span className="flex-1">{option}</span>
+                      {showQuizResult && index === currentSlide.quiz!.correctAnswer && (
+                        <CheckCircle className="text-green-500" size={18} />
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Quiz explanation */}
+                <AnimatePresence>
+                  {showQuizResult && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`mt-4 p-3 rounded-lg ${
+                        selectedAnswer === currentSlide.quiz!.correctAnswer
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-orange-100 text-orange-800'
+                      }`}
+                    >
+                      <p className="text-sm">{currentSlide.quiz!.explanation}</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Footer with navigation */}
+      <div className="flex items-center justify-between p-4 border-t border-gray-200/50 bg-white/30">
+        <button
+          onClick={handlePrevSlide}
+          disabled={currentSlideIndex === 0}
+          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          <ChevronLeft size={20} />
+          Previous
+        </button>
+        
+        <div className="flex items-center gap-2">
+          {slides.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => onSlideChange(index)}
+              className={`w-2 h-2 rounded-full transition-all ${
+                index === currentSlideIndex
+                  ? 'w-6 bg-purple-500'
+                  : 'bg-gray-300 hover:bg-gray-400'
+              }`}
+            />
+          ))}
+        </div>
+        
+        <button
+          onClick={handleNextSlide}
+          disabled={currentSlideIndex === slides.length - 1}
+          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          Next
+          <ChevronRight size={20} />
+        </button>
+      </div>
+
+      {/* Confusion assistance popup */}
+      <AnimatePresence>
+        {(emotion === 'confused' || emotion === 'frustrated') && emotionConfidence > 0.7 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="absolute bottom-20 left-4 right-4 p-4 bg-orange-500 text-white rounded-xl shadow-lg"
+          >
+            <div className="flex items-center gap-3">
+              <AlertCircle size={24} />
+              <div className="flex-1">
+                <p className="font-medium">Need help understanding?</p>
+                <p className="text-sm opacity-90">I can explain this in a simpler way.</p>
+              </div>
+              {onRequestSimplification && (
+                <button
+                  onClick={onRequestSimplification}
+                  className="px-4 py-2 bg-white text-orange-600 rounded-lg font-medium hover:bg-orange-50 transition-colors"
+                >
+                  Simplify
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

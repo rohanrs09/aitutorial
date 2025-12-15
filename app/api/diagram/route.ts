@@ -1,0 +1,95 @@
+import { NextRequest, NextResponse } from 'next/server';
+import OpenAI from 'openai';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || '',
+});
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { topic, type = 'mermaid', description = '' } = body;
+
+    if (!topic) {
+      return NextResponse.json(
+        { error: 'No topic provided' },
+        { status: 400 }
+      );
+    }
+
+    // Generate Mermaid diagram code using GPT-4
+    const mermaidCode = await generateMermaidDiagram(topic, description);
+
+    // Fallback: Generate image if Mermaid fails
+    let imageUrl = null;
+    if (type === 'image') {
+      imageUrl = await generateDiagramImage(topic, description);
+    }
+
+    return NextResponse.json({
+      mermaid: mermaidCode,
+      imageUrl: imageUrl,
+      success: true,
+    });
+  } catch (error: any) {
+    console.error('Diagram Generation Error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Diagram generation failed' },
+      { status: 500 }
+    );
+  }
+}
+
+// Generate Mermaid diagram code
+async function generateMermaidDiagram(topic: string, description: string): Promise<string> {
+  const prompt = `Generate a Mermaid diagram for the following topic: "${topic}".
+${description ? `Additional context: ${description}` : ''}
+
+Requirements:
+- Use Mermaid version 10.x syntax
+- Keep it simple and educational
+- Use flowchart, class diagram, or graph as appropriate
+- Avoid complex styling
+- Make it clear for students
+
+Return ONLY the Mermaid code, no explanations.`;
+
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    messages: [
+      {
+        role: 'system',
+        content: 'You are an expert at creating educational diagrams using Mermaid syntax. Always use Mermaid 10.x compatible syntax.',
+      },
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
+    temperature: 0.5,
+    max_tokens: 800,
+  });
+
+  let mermaidCode = completion.choices[0].message.content || '';
+  
+  // Clean up the response
+  mermaidCode = mermaidCode.replace(/```mermaid\n?/g, '').replace(/```/g, '').trim();
+  
+  return mermaidCode;
+}
+
+// Generate diagram as image using DALL-E (fallback)
+async function generateDiagramImage(topic: string, description: string): Promise<string> {
+  const prompt = `Create a simple, clear educational diagram about "${topic}". ${description}. 
+Style: Clean, minimalist, suitable for students. Use arrows, boxes, and labels.`;
+
+  const response = await openai.images.generate({
+    model: 'dall-e-3',
+    prompt: prompt,
+    n: 1,
+    size: '1024x1024',
+    quality: 'standard',
+  });
+
+  return response.data?.[0]?.url || '';
+}
