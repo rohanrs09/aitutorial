@@ -15,6 +15,7 @@ import TopicSelector from '@/components/TopicSelector';
 import MermaidDiagram from '@/components/MermaidDiagram';
 import CustomTopicBuilder from '@/components/CustomTopicBuilder';
 import LearningSlidePanel, { LearningSlide } from '@/components/LearningSlidePanel';
+import LearningProgressTracker from '@/components/LearningProgressTracker';
 
 // Utils
 import { getTopicById, learningTopics } from '@/lib/tutor-prompts';
@@ -79,6 +80,31 @@ export default function TutorSession() {
   const [consecutiveNegativeEmotions, setConsecutiveNegativeEmotions] = useState(0);
   const [lastSimplificationTime, setLastSimplificationTime] = useState<number>(0);
   
+  // Audio sync state
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
+  const [sessionStartTime] = useState<number>(Date.now());
+  const [showProgressTracker, setShowProgressTracker] = useState(true);
+  
+  // Session stats for progress tracking
+  const [sessionStats, setSessionStats] = useState({
+    questionsAsked: 0,
+    correctAnswers: 0,
+    slidesViewed: 0,
+    timeSpent: 0,
+    emotionHistory: [] as { emotion: string; timestamp: Date }[],
+    conceptsCovered: [] as string[]
+  });
+  
+  // Concept mastery tracking
+  const [conceptMastery, setConceptMastery] = useState<Array<{
+    id: string;
+    name: string;
+    masteryLevel: number;
+    timesReviewed: number;
+    lastReviewed: Date;
+    status: 'new' | 'learning' | 'reviewing' | 'mastered';
+  }>>([]);
+  
   // Emotion state
   const [currentEmotion, setCurrentEmotion] = useState<string>('neutral');
   const [emotionConfidence, setEmotionConfidence] = useState(0);
@@ -90,6 +116,72 @@ export default function TutorSession() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
+
+  // Update session time
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSessionStats(prev => ({
+        ...prev,
+        timeSpent: Math.floor((Date.now() - sessionStartTime) / 1000)
+      }));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [sessionStartTime]);
+
+  // Track emotion history
+  useEffect(() => {
+    if (currentEmotion && currentEmotion !== 'neutral') {
+      setSessionStats(prev => ({
+        ...prev,
+        emotionHistory: [...prev.emotionHistory.slice(-20), { emotion: currentEmotion, timestamp: new Date() }]
+      }));
+    }
+  }, [currentEmotion]);
+
+  // Update concept mastery based on new concepts covered
+  const updateConceptMastery = useCallback((newConcepts: string[]) => {
+    setConceptMastery(prev => {
+      const updated = [...prev];
+      
+      newConcepts.forEach(conceptName => {
+        const existingIndex = updated.findIndex(c => c.name === conceptName);
+        
+        if (existingIndex >= 0) {
+          // Update existing concept
+          const concept = updated[existingIndex];
+          const newMastery = Math.min(100, concept.masteryLevel + 15);
+          const newStatus = newMastery >= 80 ? 'mastered' : 
+                           newMastery >= 50 ? 'reviewing' : 'learning';
+          
+          updated[existingIndex] = {
+            ...concept,
+            masteryLevel: newMastery,
+            timesReviewed: concept.timesReviewed + 1,
+            lastReviewed: new Date(),
+            status: newStatus
+          };
+        } else {
+          // Add new concept
+          updated.push({
+            id: `concept-${Date.now()}-${conceptName.replace(/\s+/g, '-').toLowerCase()}`,
+            name: conceptName,
+            masteryLevel: 25,
+            timesReviewed: 1,
+            lastReviewed: new Date(),
+            status: 'learning'
+          });
+        }
+      });
+      
+      return updated;
+    });
+    
+    // Also update concepts covered in session stats
+    setSessionStats(prev => ({
+      ...prev,
+      conceptsCovered: [...new Set([...prev.conceptsCovered, ...newConcepts])]
+    }));
+  }, []);
 
   // Sample scenarios for demonstration
   const sampleScenarios: ScenarioQuestion[] = [
@@ -191,6 +283,22 @@ export default function TutorSession() {
           setLearningSlides(data.slides);
           setCurrentSlideIndex(0);
           setViewMode('slides');
+          
+          // Update session stats
+          setSessionStats(prev => ({
+            ...prev,
+            questionsAsked: prev.questionsAsked + 1,
+            slidesViewed: prev.slidesViewed + data.slides.length
+          }));
+
+          // Extract and track concepts from slides
+          const newConcepts = data.slides
+            .filter((s: any) => s.type === 'concept' || s.type === 'diagram')
+            .map((s: any) => s.title || 'Concept');
+          
+          if (newConcepts.length > 0) {
+            updateConceptMastery(newConcepts);
+          }
         }
 
         // Show guidance message if user needs help
@@ -270,6 +378,12 @@ export default function TutorSession() {
 
   // Handle scenario answer
   const handleScenarioAnswer = (selectedIndex: number, isCorrect: boolean) => {
+    // Update session stats
+    setSessionStats(prev => ({
+      ...prev,
+      correctAnswers: prev.correctAnswers + (isCorrect ? 1 : 0)
+    }));
+
     // Add note about the answer
     const note: Note = {
       id: `note-${Date.now()}`,
@@ -529,15 +643,17 @@ export default function TutorSession() {
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] flex flex-col">
-      {/* Hidden Audio Element */}
+      {/* Hidden Audio Element with time tracking */}
       <audio
         ref={audioRef}
         src={audioUrl || undefined}
         autoPlay
         onPlay={() => setIsSpeaking(true)}
+        onTimeUpdate={(e) => setAudioCurrentTime((e.target as HTMLAudioElement).currentTime)}
         onEnded={() => {
           setIsSpeaking(false);
           setCurrentTranscript('');
+          setAudioCurrentTime(0);
         }}
         onPause={() => setIsSpeaking(false)}
       />
@@ -639,6 +755,9 @@ export default function TutorSession() {
                         emotionConfidence={emotionConfidence}
                         isLoading={isGeneratingSlides}
                         tutorMessage={currentTranscript}
+                        audioCurrentTime={audioCurrentTime}
+                        isAudioPlaying={isSpeaking}
+                        autoAdvance={true}
                       />
                     ) : (
                       // Welcome/Guidance View
@@ -768,6 +887,19 @@ export default function TutorSession() {
 
         {/* Camera Widget & Chat - Right Side */}
         <div className="hidden xl:flex flex-col w-80 bg-[#2a2a2a]/50 p-4 gap-4">
+          {/* Learning Progress Tracker */}
+          <LearningProgressTracker
+            concepts={conceptMastery}
+            sessionStats={sessionStats}
+            currentTopic={getCurrentTopicInfo().name}
+            isExpanded={showProgressTracker}
+            onToggleExpand={() => setShowProgressTracker(!showProgressTracker)}
+            onConceptClick={(conceptId) => {
+              // Could navigate to concept or show details
+              console.log('Concept clicked:', conceptId);
+            }}
+          />
+
           <EmotionCameraWidget
             onEmotionDetected={handleEmotionDetected}
             isEnabled={cameraEnabled}

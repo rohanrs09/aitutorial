@@ -34,6 +34,10 @@ export interface LearningSlide {
   };
   isSimplified?: boolean;
   simplificationLevel?: 'basic' | 'intermediate' | 'advanced';
+  // Audio sync timing
+  audioStartTime?: number;
+  audioDuration?: number;
+  spokenContent?: string;
 }
 
 interface LearningSlidePanelProps {
@@ -45,6 +49,10 @@ interface LearningSlidePanelProps {
   emotionConfidence?: number;
   isLoading?: boolean;
   tutorMessage?: string;
+  // Audio sync props
+  audioCurrentTime?: number;
+  isAudioPlaying?: boolean;
+  autoAdvance?: boolean;
 }
 
 const slideTypeIcons = {
@@ -73,13 +81,44 @@ export default function LearningSlidePanel({
   emotion = 'neutral',
   emotionConfidence = 0,
   isLoading = false,
-  tutorMessage = ''
+  tutorMessage = '',
+  audioCurrentTime = 0,
+  isAudioPlaying = false,
+  autoAdvance = true
 }: LearningSlidePanelProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showQuizResult, setShowQuizResult] = useState(false);
   const [showSimplifyHint, setShowSimplifyHint] = useState(false);
+  const [audioProgress, setAudioProgress] = useState(0);
 
   const currentSlide = slides[currentSlideIndex];
+
+  // Auto-advance slides based on audio timing
+  useEffect(() => {
+    if (!autoAdvance || !isAudioPlaying || slides.length === 0) return;
+
+    // Find which slide should be shown based on audio time
+    const targetSlideIndex = slides.findIndex((slide, index) => {
+      const startTime = slide.audioStartTime || 0;
+      const duration = slide.audioDuration || 10;
+      const endTime = startTime + duration;
+      
+      // Check if current audio time falls within this slide's range
+      return audioCurrentTime >= startTime && audioCurrentTime < endTime;
+    });
+
+    if (targetSlideIndex !== -1 && targetSlideIndex !== currentSlideIndex) {
+      onSlideChange(targetSlideIndex);
+    }
+
+    // Calculate progress within current slide
+    if (currentSlide) {
+      const startTime = currentSlide.audioStartTime || 0;
+      const duration = currentSlide.audioDuration || 10;
+      const progress = Math.min(((audioCurrentTime - startTime) / duration) * 100, 100);
+      setAudioProgress(Math.max(0, progress));
+    }
+  }, [audioCurrentTime, isAudioPlaying, slides, currentSlideIndex, autoAdvance, onSlideChange, currentSlide]);
 
   // Show simplify hint when user is confused
   useEffect(() => {
@@ -162,6 +201,16 @@ export default function LearningSlidePanel({
           {currentSlide?.isSimplified && (
             <span className="px-2 py-1 bg-orange-100 text-orange-600 text-xs font-medium rounded-full">
               Simplified
+            </span>
+          )}
+          {isAudioPlaying && (
+            <span className="px-2 py-1 bg-green-100 text-green-600 text-xs font-medium rounded-full flex items-center gap-1">
+              <motion.span
+                animate={{ opacity: [1, 0.5, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                className="w-2 h-2 bg-green-500 rounded-full"
+              />
+              Synced with audio
             </span>
           )}
         </div>
@@ -311,8 +360,21 @@ export default function LearningSlidePanel({
         </AnimatePresence>
       </div>
 
-      {/* Footer with navigation */}
-      <div className="flex items-center justify-between p-4 border-t border-gray-200/50 bg-white/30">
+      {/* Footer with navigation and audio progress */}
+      <div className="flex flex-col border-t border-gray-200/50 bg-white/30">
+        {/* Audio sync progress bar */}
+        {isAudioPlaying && currentSlide?.audioDuration && (
+          <div className="h-1 bg-gray-200">
+            <motion.div
+              className="h-full bg-purple-500"
+              initial={{ width: 0 }}
+              animate={{ width: `${audioProgress}%` }}
+              transition={{ duration: 0.3 }}
+            />
+          </div>
+        )}
+        
+        <div className="flex items-center justify-between p-4">
         <button
           onClick={handlePrevSlide}
           disabled={currentSlideIndex === 0}
@@ -344,6 +406,7 @@ export default function LearningSlidePanel({
           Next
           <ChevronRight size={20} />
         </button>
+        </div>
       </div>
 
       {/* Confusion assistance popup */}

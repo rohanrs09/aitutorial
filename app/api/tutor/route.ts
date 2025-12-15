@@ -23,6 +23,10 @@ interface GeneratedSlide {
   };
   isSimplified?: boolean;
   simplificationLevel?: 'basic' | 'intermediate' | 'advanced';
+  // Audio sync timing
+  audioStartTime?: number; // Seconds into audio when this slide should appear
+  audioDuration?: number;  // How long this slide content takes to explain
+  spokenContent?: string;  // The portion of audio that corresponds to this slide
 }
 
 const openai = new OpenAI({
@@ -190,7 +194,7 @@ function extractKeyPoints(text: string): string[] {
   return notes.slice(0, 5);
 }
 
-// Generate learning slides based on tutor response
+// Generate learning slides based on tutor response with audio sync and diagrams
 async function generateLearningSlides(
   tutorResponse: string,
   topic: string,
@@ -201,41 +205,58 @@ async function generateLearningSlides(
   const isSimplified = simplificationLevel === 'basic';
   const needsSimplification = (emotion === 'confused' || emotion === 'frustrated') && emotionConfidence > 0.5;
 
+  // Calculate approximate word count and timing
+  const wordCount = tutorResponse.split(/\s+/).length;
+  const wordsPerMinute = 150; // Average TTS speed
+  const totalDuration = (wordCount / wordsPerMinute) * 60; // Total seconds
+  const slideCount = Math.min(Math.max(Math.ceil(wordCount / 100), 2), 5); // 2-5 slides based on content
+  const avgSlideDuration = totalDuration / slideCount;
+
   try {
     const slidePrompt = needsSimplification
-      ? `Generate EXTREMELY SIMPLIFIED learning slides. The student is ${emotion}.
+      ? `Generate EXTREMELY SIMPLIFIED learning slides with diagrams. The student is ${emotion}.
          Use: super simple language, everyday analogies, short sentences, encouraging tone.
-         Each key point should be ONE simple sentence max.`
-      : `Generate clear, educational learning slides for the topic.`;
+         Include simple flowchart diagrams using Mermaid syntax.`
+      : `Generate clear, educational learning slides with visual diagrams for the topic.`;
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
         {
           role: 'system',
-          content: `You are an educational slide generator. ${slidePrompt}
+          content: `You are an educational slide generator that creates synchronized learning content. ${slidePrompt}
           
-Create 3 slides based on this tutor response. Return ONLY a JSON object with a "slides" array.
-Each slide should have:
-- id: unique string
-- title: clear title
-- type: one of [concept, example, tip, summary]
-- content: ${isSimplified ? '1-2 simple sentences' : '2-3 sentences'}
+Create ${slideCount} slides that correspond to different parts of the tutor's explanation.
+Return ONLY a JSON object with a "slides" array.
+
+Each slide MUST have:
+- id: unique string like "slide-1", "slide-2"
+- title: clear, descriptive title
+- type: one of [concept, example, tip, diagram, summary]
+- content: ${isSimplified ? '1-2 simple sentences' : '2-3 sentences'} matching the audio explanation
 - keyPoints: array of ${isSimplified ? '2-3 very simple points' : '3-4 key points'}
-${isSimplified ? '- Use everyday analogies and simple words' : ''}`
+- spokenContent: the EXACT portion of the tutor response this slide covers (for audio sync)
+- visualAid: { type: "mermaid", data: "<mermaid diagram code>" } - REQUIRED for concept and diagram types
+
+For visualAid diagrams, use simple Mermaid syntax like:
+- Flowcharts: graph TD\n  A[Step 1] --> B[Step 2]
+- Sequences: sequenceDiagram\n  A->>B: message
+- Simple graphs work best. Avoid complex syntax.
+
+IMPORTANT: The "spokenContent" field should contain the actual words from the tutor response that this slide illustrates.`
         },
         {
           role: 'user',
           content: `Topic: ${topic}
 
-Tutor Response:
-${tutorResponse}
+Tutor Response to split into synchronized slides:
+"${tutorResponse}"
 
-Generate slides now.`
+Generate ${slideCount} slides with diagrams and audio sync markers.`
         }
       ],
       temperature: 0.7,
-      max_tokens: 1200,
+      max_tokens: 2500,
       response_format: { type: "json_object" }
     });
 
@@ -243,19 +264,83 @@ Generate slides now.`
     const parsed = JSON.parse(content);
     const slides = parsed.slides || [];
 
-    // Add simplification metadata
-    return slides.map((slide: any, index: number) => ({
-      ...slide,
-      id: slide.id || `slide-${Date.now()}-${index}`,
-      isSimplified: isSimplified,
-      simplificationLevel: simplificationLevel
-    }));
+    // Calculate timing for each slide based on spoken content
+    let accumulatedTime = 0;
+    const processedSlides = slides.map((slide: any, index: number) => {
+      const slideWordCount = (slide.spokenContent || slide.content || '').split(/\s+/).length;
+      const slideDuration = Math.max((slideWordCount / wordsPerMinute) * 60, avgSlideDuration * 0.5);
+      
+      const processedSlide = {
+        ...slide,
+        id: slide.id || `slide-${Date.now()}-${index}`,
+        isSimplified: isSimplified,
+        simplificationLevel: simplificationLevel,
+        audioStartTime: accumulatedTime,
+        audioDuration: slideDuration,
+        // Ensure visualAid is properly formatted
+        visualAid: slide.visualAid || generateDiagramForSlide(slide, topic, isSimplified)
+      };
+      
+      accumulatedTime += slideDuration;
+      return processedSlide;
+    });
+
+    return processedSlides;
 
   } catch (error) {
     console.error('Slide generation error:', error);
-    // Return fallback slides
     return generateFallbackSlides(tutorResponse, topic, isSimplified);
   }
+}
+
+// Generate a diagram for a slide based on its content
+function generateDiagramForSlide(
+  slide: any,
+  topic: string,
+  isSimplified: boolean
+): { type: 'mermaid' | 'illustration'; data: string } | undefined {
+  const slideType = slide.type || 'concept';
+  const content = slide.content || '';
+  const title = slide.title || topic;
+
+  // Only generate diagrams for certain slide types
+  if (slideType !== 'concept' && slideType !== 'diagram' && slideType !== 'example') {
+    return undefined;
+  }
+
+  // Generate simple mermaid diagram based on content
+  const keyPoints = slide.keyPoints || [];
+  
+  if (keyPoints.length >= 2) {
+    // Create a simple flowchart from key points
+    const nodes = keyPoints.slice(0, 4).map((point: string, i: number) => {
+      const shortPoint = point.substring(0, 30).replace(/["'`]/g, '');
+      return `    P${i}["${shortPoint}${point.length > 30 ? '...' : ''}"]`;
+    });
+    
+    const connections = nodes.map((_: string, i: number) => 
+      i < nodes.length - 1 ? `    P${i} --> P${i + 1}` : ''
+    ).filter(Boolean);
+
+    const diagramData = [
+      'graph TD',
+      `    T["${title.substring(0, 25)}"]`,
+      ...nodes,
+      '    T --> P0',
+      ...connections
+    ].join('\n');
+
+    return {
+      type: 'mermaid',
+      data: diagramData
+    };
+  }
+
+  // Fallback: simple concept diagram
+  return {
+    type: 'mermaid',
+    data: `graph TD\n    A["${title.substring(0, 25)}"] --> B["Key Concept"]\n    B --> C["Understanding"]`
+  };
 }
 
 function generateFallbackSlides(
