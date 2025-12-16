@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Square, Subtitles, FileText, Settings, ChevronLeft, ChevronRight, Send, MessageSquare, Mic, X, Plus, HelpCircle, RefreshCw, Sparkles, Pause, Play, Download } from 'lucide-react';
+import { Square, Subtitles, FileText, Settings, ChevronLeft, ChevronRight, Send, MessageSquare, Mic, X, Plus, HelpCircle, RefreshCw, Sparkles, Pause, Play, Download, Video, VideoOff, MoreVertical, ChevronUp } from 'lucide-react';
 
 // Components
 import AnimatedTutorOrb from '@/components/AnimatedTutorOrb';
@@ -69,6 +69,7 @@ export default function TutorSession() {
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [viewMode, setViewMode] = useState<'slides' | 'quiz'>('slides');
   const [isLargeScreen, setIsLargeScreen] = useState(true);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   
   // Learning slides state
   const [learningSlides, setLearningSlides] = useState<LearningSlide[]>([]);
@@ -137,7 +138,7 @@ export default function TutorSession() {
   // Track screen size for responsive layout
   useEffect(() => {
     const checkScreenSize = () => {
-      setIsLargeScreen(window.innerWidth >= 1280);
+      setIsLargeScreen(window.innerWidth >= 1280); // xl breakpoint
     };
     checkScreenSize();
     window.addEventListener('resize', checkScreenSize);
@@ -902,7 +903,7 @@ export default function TutorSession() {
   };
 
   return (
-    <div className="min-h-screen bg-[#1a1a1a] flex flex-col">
+    <div className="min-h-screen bg-surface flex flex-col safe-area-inset">
       {/* Hidden Audio Element with time tracking */}
       <audio
         ref={audioRef}
@@ -919,15 +920,15 @@ export default function TutorSession() {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Notes Sidebar - Left */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        {/* Notes Sidebar - Hidden on mobile, shown on lg+ */}
         <AnimatePresence>
           {showNotes && (
             <motion.div
               initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 256, opacity: 1 }}
+              animate={{ width: 280, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
-              className="bg-[#2a2a2a]/80 backdrop-blur-sm border-r border-white/5 overflow-hidden hidden lg:block"
+              className="bg-surface-light/80 backdrop-blur-sm border-r border-white/5 overflow-hidden hidden lg:block flex-shrink-0"
             >
               <NotesPanel
                 notes={notes}
@@ -940,19 +941,39 @@ export default function TutorSession() {
         </AnimatePresence>
 
         {/* Center - Main Teaching Area */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-w-0">
           {/* Content Card */}
-          <div className="flex-1 p-4 md:p-8 overflow-y-auto">
+          <div className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto">
             <div className="max-w-4xl mx-auto">
-              {/* Main Content Card (Cream/Beige like reference) */}
-              <div className="bg-[#f5f0e8] rounded-2xl shadow-2xl min-h-[500px] relative p-8">
-                {/* Topic Selector Button */}
-                <button
-                  onClick={() => setShowTopicSelector(!showTopicSelector)}
-                  className="absolute top-4 left-4 px-3 py-1.5 bg-[#5c4d9a] text-white text-sm font-medium rounded-lg hover:bg-[#4a3d7a] transition-colors z-10 flex items-center gap-2"
-                >
-                  <span>{getCurrentTopicInfo().name}</span>
-                </button>
+              {/* Main Content Card */}
+              <div className="bg-[#f5f0e8] rounded-xl sm:rounded-2xl shadow-2xl min-h-[400px] sm:min-h-[500px] relative p-4 sm:p-6 md:p-8">
+                {/* Mobile Header Row */}
+                <div className="flex items-center justify-between gap-2 mb-4 sm:mb-0">
+                  {/* Topic Selector Button */}
+                  <button
+                    onClick={() => setShowTopicSelector(!showTopicSelector)}
+                    className="px-3 py-2 bg-primary-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-primary-700 active:scale-95 transition-all flex items-center gap-1.5 min-h-touch truncate max-w-[200px]"
+                  >
+                    <span className="truncate">{getCurrentTopicInfo().name}</span>
+                  </button>
+
+                  {/* View Mode Toggle - Mobile optimized */}
+                  <div className="flex bg-white/50 rounded-lg p-1">
+                    <button
+                      onClick={() => setViewMode('slides')}
+                      className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all min-h-touch flex items-center gap-1 ${viewMode === 'slides' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:text-gray-900'}`}
+                    >
+                      <Sparkles size={14} />
+                      <span className="hidden sm:inline">Slides</span>
+                    </button>
+                    <button
+                      onClick={() => setViewMode('quiz')}
+                      className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all min-h-touch ${viewMode === 'quiz' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:text-gray-900'}`}
+                    >
+                      <span>Quiz</span>
+                    </button>
+                  </div>
+                </div>
 
                 {/* Topic Selector Dropdown */}
                 <AnimatePresence>
@@ -961,7 +982,7 @@ export default function TutorSession() {
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="absolute top-14 left-4 z-20 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden max-h-96 overflow-y-auto"
+                      className="absolute top-16 sm:top-14 left-3 sm:left-4 z-20 w-[calc(100%-1.5rem)] sm:w-80 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden max-h-[60vh] overflow-y-auto"
                     >
                       <TopicSelector
                         selectedTopic={selectedTopic}
@@ -976,8 +997,8 @@ export default function TutorSession() {
                   )}
                 </AnimatePresence>
 
-                {/* Tutor Orb - Top Right */}
-                <div className="absolute top-6 right-6 w-40 h-28 bg-[#5a5a5a] rounded-xl flex items-center justify-center shadow-lg">
+                {/* Tutor Orb - Responsive positioning */}
+                <div className="hidden sm:flex absolute top-4 sm:top-6 right-4 sm:right-6 w-28 sm:w-40 h-20 sm:h-28 bg-gray-600 rounded-xl items-center justify-center shadow-lg">
                   <AnimatedTutorOrb
                     isSpeaking={isSpeaking}
                     isListening={isListening}
@@ -986,27 +1007,9 @@ export default function TutorSession() {
                   />
                 </div>
 
-                {/* View Mode Toggle */}
-                <div className="absolute top-4 right-48 flex bg-white/50 rounded-lg p-1 z-10">
-                  <button
-                    onClick={() => setViewMode('slides')}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === 'slides' ? 'bg-[#5c4d9a] text-white' : 'text-gray-600 hover:text-gray-900'}`}
-                  >
-                    <Sparkles size={14} className="inline mr-1" />
-                    Slides
-                  </button>
-                  <button
-                    onClick={() => setViewMode('quiz')}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === 'quiz' ? 'bg-[#5c4d9a] text-white' : 'text-gray-600 hover:text-gray-900'}`}
-                  >
-                    Quiz
-                  </button>
-                </div>
-
                 {/* Main Content Area */}
-                <div className="mt-16 pr-48 h-[calc(100%-8rem)]">
+                <div className="mt-4 sm:mt-16 sm:pr-36 md:pr-48 min-h-[300px] sm:min-h-[calc(100%-8rem)]">
                   {viewMode === 'slides' ? (
-                    // Learning Slides View
                     learningSlides.length > 0 || isGeneratingSlides ? (
                       <LearningSlidePanel
                         slides={learningSlides}
@@ -1022,34 +1025,33 @@ export default function TutorSession() {
                         autoAdvance={true}
                       />
                     ) : (
-                      // Welcome/Guidance View
-                      <div className="h-full flex flex-col items-center justify-center text-gray-700">
+                      <div className="h-full flex flex-col items-center justify-center text-gray-700 px-4">
                         <motion.div
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           className="text-center max-w-lg"
                         >
-                          <h2 className="text-2xl font-bold mb-4">Welcome to AI Voice Tutor</h2>
+                          <h2 className="text-xl sm:text-2xl font-bold mb-4">Welcome to AI Voice Tutor</h2>
                           
                           {showGuidance && (
-                            <div className="space-y-4 mb-8">
-                              <div className="flex items-center gap-3 text-left bg-purple-50 p-4 rounded-xl">
-                                <div className="w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold">1</div>
-                                <p>Hold <kbd className="px-2 py-1 bg-gray-200 rounded text-sm font-mono">Space</kbd> to ask a question</p>
+                            <div className="space-y-3 mb-6">
+                              <div className="flex items-center gap-3 text-left bg-purple-50 p-3 sm:p-4 rounded-xl">
+                                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold text-sm">1</div>
+                                <p className="text-sm sm:text-base">Hold <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-xs font-mono">Space</kbd> or tap mic to speak</p>
                               </div>
-                              <div className="flex items-center gap-3 text-left bg-blue-50 p-4 rounded-xl">
-                                <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">2</div>
-                                <p>Learning slides will appear as I explain</p>
+                              <div className="flex items-center gap-3 text-left bg-blue-50 p-3 sm:p-4 rounded-xl">
+                                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm">2</div>
+                                <p className="text-sm sm:text-base">Learning slides appear as I explain</p>
                               </div>
-                              <div className="flex items-center gap-3 text-left bg-green-50 p-4 rounded-xl">
-                                <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold">3</div>
-                                <p>If confused, I&apos;ll automatically simplify!</p>
+                              <div className="flex items-center gap-3 text-left bg-green-50 p-3 sm:p-4 rounded-xl">
+                                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-sm">3</div>
+                                <p className="text-sm sm:text-base">If confused, I&apos;ll automatically simplify!</p>
                               </div>
                             </div>
                           )}
 
-                          <p className="text-gray-500">
-                            Select a topic above or just start speaking.
+                          <p className="text-gray-500 text-sm sm:text-base">
+                            Select a topic above or start speaking.
                           </p>
 
                           {currentDiagram && (
@@ -1061,7 +1063,6 @@ export default function TutorSession() {
                       </div>
                     )
                   ) : (
-                    // Quiz View
                     currentScenario ? (
                       <ScenarioSlide
                         scenario={currentScenario}
@@ -1070,8 +1071,8 @@ export default function TutorSession() {
                       />
                     ) : (
                       <div className="h-full flex flex-col items-center justify-center text-gray-500">
-                        <HelpCircle size={48} className="mb-4 text-gray-300" />
-                        <p>Complete a learning session to unlock practice questions.</p>
+                        <HelpCircle size={40} className="mb-4 text-gray-300" />
+                        <p className="text-sm sm:text-base text-center px-4">Complete a learning session to unlock practice questions.</p>
                       </div>
                     )
                   )}
@@ -1079,25 +1080,25 @@ export default function TutorSession() {
 
                 {/* Navigation for Quiz mode */}
                 {viewMode === 'quiz' && currentScenario && (
-                  <div className="absolute bottom-6 left-8 right-8 flex justify-between">
+                  <div className="absolute bottom-4 sm:bottom-6 left-4 sm:left-8 right-4 sm:right-8 flex justify-between items-center">
                     <button
                       onClick={prevScenario}
                       disabled={scenarioIndex === 0}
-                      className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="flex items-center gap-1 sm:gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed min-h-touch text-sm"
                     >
-                      <ChevronLeft size={20} />
-                      Previous
+                      <ChevronLeft size={18} />
+                      <span className="hidden sm:inline">Previous</span>
                     </button>
-                    <span className="text-gray-500">
+                    <span className="text-gray-500 text-sm">
                       {scenarioIndex + 1} / {sampleScenarios.length}
                     </span>
                     <button
                       onClick={nextScenario}
                       disabled={scenarioIndex === sampleScenarios.length - 1}
-                      className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="flex items-center gap-1 sm:gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed min-h-touch text-sm"
                     >
-                      Next
-                      <ChevronRight size={20} />
+                      <span className="hidden sm:inline">Next</span>
+                      <ChevronRight size={18} />
                     </button>
                   </div>
                 )}
@@ -1112,23 +1113,23 @@ export default function TutorSession() {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="mx-4 mb-2 p-3 bg-orange-500 text-white rounded-xl flex items-center justify-between"
+                className="mx-3 sm:mx-4 mb-2 p-3 bg-orange-500 text-white rounded-xl flex items-center justify-between gap-2"
               >
-                <div className="flex items-center gap-3">
-                  <HelpCircle size={20} />
-                  <p className="text-sm">{guidanceMessage}</p>
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                  <HelpCircle size={18} className="flex-shrink-0" />
+                  <p className="text-xs sm:text-sm truncate">{guidanceMessage}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                   <button
                     onClick={handleRequestSimplification}
-                    className="px-3 py-1 bg-white text-orange-600 rounded-lg text-sm font-medium hover:bg-orange-50 transition-colors"
+                    className="px-2 sm:px-3 py-1.5 bg-white text-orange-600 rounded-lg text-xs sm:text-sm font-medium hover:bg-orange-50 active:scale-95 transition-all min-h-touch flex items-center gap-1"
                   >
-                    <RefreshCw size={14} className="inline mr-1" />
-                    Simplify
+                    <RefreshCw size={12} />
+                    <span className="hidden sm:inline">Simplify</span>
                   </button>
                   <button
                     onClick={() => setGuidanceMessage('')}
-                    className="p-1 hover:bg-white/20 rounded"
+                    className="p-1.5 hover:bg-white/20 rounded min-h-touch min-w-touch flex items-center justify-center"
                   >
                     <X size={16} />
                   </button>
@@ -1145,10 +1146,88 @@ export default function TutorSession() {
               wordsPerMinute={150}
             />
           )}
+
+          {/* Mobile Camera Panel - Shows when camera enabled on mobile/tablet */}
+          <AnimatePresence>
+            {cameraEnabled && !isLargeScreen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="xl:hidden px-3 sm:px-4 pb-2"
+              >
+                <div className="max-w-sm mx-auto">
+                  <EmotionCameraWidget
+                    onEmotionDetected={handleEmotionDetected}
+                    isEnabled={cameraEnabled}
+                    onToggle={() => setCameraEnabled(!cameraEnabled)}
+                    position="corner"
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Mobile Chat History Panel */}
+          <AnimatePresence>
+            {showChatHistory && !isLargeScreen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="xl:hidden px-3 sm:px-4 pb-2"
+              >
+                <div className="bg-surface-light rounded-xl p-3 max-w-lg mx-auto">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-medium text-gray-400">Chat History</h4>
+                    <button
+                      onClick={() => setShowChatHistory(false)}
+                      className="p-1 hover:bg-white/10 rounded"
+                    >
+                      <X size={14} className="text-gray-500" />
+                    </button>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto space-y-2 scrollbar-hide">
+                    {messages.length === 0 ? (
+                      <p className="text-xs text-gray-500 text-center py-4">No messages yet</p>
+                    ) : (
+                      messages.slice(-8).map((msg) => (
+                        <div
+                          key={msg.id}
+                          className={`text-xs p-2 rounded-lg whitespace-pre-wrap break-words ${msg.role === 'user' ? 'bg-primary-500/20 text-primary-200 ml-4' : 'bg-gray-700/50 text-gray-300 mr-4'}`}
+                        >
+                          <span className="font-medium">{msg.role === 'user' ? 'You: ' : 'Tutor: '}</span>
+                          {msg.content.length > 150 ? msg.content.substring(0, 150) + '...' : msg.content}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  {/* Mobile text input */}
+                  <form onSubmit={handleTextSubmit} className="flex gap-2 mt-2 pt-2 border-t border-white/10">
+                    <input
+                      type="text"
+                      value={textInput}
+                      onChange={(e) => setTextInput(e.target.value)}
+                      placeholder="Type a message..."
+                      disabled={isProcessing}
+                      className="flex-1 px-3 py-2 min-h-touch bg-surface-lighter border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!textInput.trim() || isProcessing}
+                      className="btn-primary px-3 py-2 rounded-lg"
+                    >
+                      <Send size={16} />
+                    </button>
+                  </form>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* Camera Widget & Chat - Right Side */}
-        <div className="hidden xl:flex flex-col w-80 bg-[#2a2a2a]/50 p-4 gap-4">
+        {/* Right Sidebar - Hidden on mobile/tablet */}
+        <div className="hidden xl:flex flex-col w-72 2xl:w-80 bg-surface-light/50 p-3 gap-3 flex-shrink-0">
           {/* Learning Progress Tracker */}
           <LearningProgressTracker
             concepts={conceptMastery}
@@ -1157,7 +1236,6 @@ export default function TutorSession() {
             isExpanded={showProgressTracker}
             onToggleExpand={() => setShowProgressTracker(!showProgressTracker)}
             onConceptClick={(conceptId) => {
-              // Could navigate to concept or show details
               console.log('Concept clicked:', conceptId);
             }}
           />
@@ -1170,20 +1248,20 @@ export default function TutorSession() {
           />
           
           {/* Quick Stats */}
-          <div className="bg-[#2a2a2a] rounded-xl p-4">
+          <div className="card">
             <h4 className="text-sm font-medium text-gray-400 mb-3">Session Stats</h4>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Messages</span>
-                <span className="text-white">{messages.length}</span>
+                <span className="text-white font-medium">{messages.length}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Notes</span>
-                <span className="text-white">{notes.length}</span>
+                <span className="text-white font-medium">{notes.length}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Emotion</span>
-                <span className="text-white capitalize">{currentEmotion}</span>
+                <span className="text-white capitalize font-medium">{currentEmotion}</span>
               </div>
             </div>
           </div>
@@ -1191,7 +1269,7 @@ export default function TutorSession() {
           {/* Chat History Toggle */}
           <button
             onClick={() => setShowChatHistory(!showChatHistory)}
-            className="flex items-center gap-2 px-4 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] rounded-lg text-sm text-white transition-colors"
+            className="btn-secondary text-sm"
           >
             <MessageSquare size={16} />
             {showChatHistory ? 'Hide Chat' : 'Show Chat'}
@@ -1204,19 +1282,19 @@ export default function TutorSession() {
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                className="flex-1 bg-[#2a2a2a] rounded-xl overflow-hidden"
+                className="flex-1 card overflow-hidden p-0"
               >
-                <div className="h-48 overflow-y-auto p-3 space-y-2">
+                <div className="h-48 overflow-y-auto p-3 space-y-2 scrollbar-hide">
                   {messages.length === 0 ? (
-                    <p className="text-xs text-gray-500 text-center py-4">No messages yet. Start a conversation!</p>
+                    <p className="text-xs text-gray-500 text-center py-4">No messages yet</p>
                   ) : (
                     messages.slice(-10).map((msg) => (
                       <div
                         key={msg.id}
-                        className={`text-xs p-2 rounded-lg ${msg.role === 'user' ? 'bg-purple-500/20 text-purple-200 ml-4' : 'bg-gray-700/50 text-gray-300 mr-4'}`}
+                        className={`text-xs p-2 rounded-lg whitespace-pre-wrap break-words ${msg.role === 'user' ? 'bg-primary-500/20 text-primary-200 ml-4' : 'bg-gray-700/50 text-gray-300 mr-4'}`}
                       >
                         <span className="font-medium">{msg.role === 'user' ? 'You: ' : 'Tutor: '}</span>
-                        {msg.content.substring(0, 100)}{msg.content.length > 100 ? '...' : ''}
+                        {msg.content.length > 100 ? msg.content.substring(0, 100) + '...' : msg.content}
                       </div>
                     ))
                   )}
@@ -1234,57 +1312,73 @@ export default function TutorSession() {
               onChange={(e) => setTextInput(e.target.value)}
               placeholder="Type a message..."
               disabled={isProcessing}
-              className="flex-1 px-3 py-2 bg-[#3a3a3a] border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 disabled:opacity-50"
+              className="input text-sm py-2"
             />
             <button
               type="submit"
               disabled={!textInput.trim() || isProcessing}
-              className="p-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg transition-colors"
+              className="btn-primary px-3"
             >
-              <Send size={16} className="text-white" />
+              <Send size={16} />
             </button>
           </form>
         </div>
       </div>
 
-      {/* Bottom Control Bar */}
-      <div className="bg-[#1a1a1a] border-t border-white/10 py-4 px-6">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+      {/* Bottom Control Bar - Mobile optimized */}
+      <div className="bg-surface border-t border-white/10 py-3 px-3 sm:px-4 md:px-6 safe-area-inset">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
           {/* Left Controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <button
               onClick={() => setShowSubtitles(!showSubtitles)}
-              className={`p-2 rounded-lg transition-colors ${showSubtitles ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-white'}`}
+              className={`btn-ghost p-2.5 ${showSubtitles ? 'bg-white/10 text-white' : ''}`}
               title="Toggle subtitles"
             >
               <Subtitles size={18} />
             </button>
             <button
               onClick={() => setShowNotes(!showNotes)}
-              className={`p-2 rounded-lg transition-colors hidden lg:block ${showNotes ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-white'}`}
+              className={`btn-ghost p-2.5 hidden lg:flex ${showNotes ? 'bg-white/10 text-white' : ''}`}
               title="Toggle notes"
             >
               <FileText size={18} />
             </button>
-            {/* Input Mode Toggle */}
-            <div className="flex items-center bg-[#2a2a2a] rounded-lg p-1 xl:hidden">
+            {/* Camera Toggle - Visible on all screens */}
+            <button
+              onClick={() => setCameraEnabled(!cameraEnabled)}
+              className={`btn-ghost p-2.5 xl:hidden ${cameraEnabled ? 'bg-green-600/50 text-green-400' : ''}`}
+              title="Toggle camera"
+            >
+              {cameraEnabled ? <VideoOff size={18} /> : <Video size={18} />}
+            </button>
+            {/* Chat Toggle - Visible on mobile/tablet */}
+            <button
+              onClick={() => setShowChatHistory(!showChatHistory)}
+              className={`btn-ghost p-2.5 xl:hidden ${showChatHistory ? 'bg-white/10 text-white' : ''}`}
+              title="Toggle chat"
+            >
+              <MessageSquare size={18} />
+            </button>
+            {/* Input Mode Toggle - Mobile only */}
+            <div className="flex items-center bg-surface-light rounded-lg p-1 xl:hidden">
               <button
                 onClick={() => setInputMode('voice')}
-                className={`p-1.5 rounded-md transition-colors ${inputMode === 'voice' ? 'bg-purple-500 text-white' : 'text-gray-400'}`}
+                className={`p-2 rounded-md transition-all ${inputMode === 'voice' ? 'bg-primary-500 text-white' : 'text-gray-400'}`}
               >
                 <Mic size={16} />
               </button>
               <button
                 onClick={() => setInputMode('text')}
-                className={`p-1.5 rounded-md transition-colors ${inputMode === 'text' ? 'bg-purple-500 text-white' : 'text-gray-400'}`}
+                className={`p-2 rounded-md transition-all ${inputMode === 'text' ? 'bg-primary-500 text-white' : 'text-gray-400'}`}
               >
-                <MessageSquare size={16} />
+                <Send size={16} />
               </button>
             </div>
           </div>
 
           {/* Center - Input Area */}
-          <div className="flex-1 max-w-md">
+          <div className="flex-1 max-w-sm sm:max-w-md">
             {inputMode === 'voice' || isLargeScreen ? (
               <SpacebarVoiceInput
                 onTranscript={handleTranscript}
@@ -1299,61 +1393,68 @@ export default function TutorSession() {
                   onChange={(e) => setTextInput(e.target.value)}
                   placeholder="Type your question..."
                   disabled={isProcessing}
-                  className="flex-1 px-4 py-2.5 bg-[#2a2a2a] border border-white/10 rounded-full text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 disabled:opacity-50"
+                  className="input rounded-full text-sm py-2.5"
                 />
                 <button
                   type="submit"
                   disabled={!textInput.trim() || isProcessing}
-                  className="p-2.5 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full transition-colors"
+                  className="btn-primary rounded-full p-2.5"
                 >
-                  <Send size={18} className="text-white" />
+                  <Send size={18} />
                 </button>
               </form>
             )}
           </div>
 
           {/* Right Controls */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Mobile Emotion Indicator */}
+            {cameraEnabled && currentEmotion !== 'neutral' && (
+              <div className="xl:hidden flex items-center gap-1 px-2 py-1 bg-surface-light rounded-lg text-xs">
+                <span className={`w-2 h-2 rounded-full ${
+                  currentEmotion === 'confused' || currentEmotion === 'frustrated' ? 'bg-yellow-500' :
+                  currentEmotion === 'happy' || currentEmotion === 'excited' ? 'bg-green-500' : 'bg-purple-500'
+                }`}></span>
+                <span className="text-gray-400 capitalize hidden xs:inline">{currentEmotion}</span>
+              </div>
+            )}
+            
             {/* Pause/Resume Button */}
             <button
               onClick={toggleSessionPause}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                isSessionPaused 
-                  ? 'bg-green-600 hover:bg-green-700 text-white' 
-                  : 'bg-[#3a3a3a] hover:bg-[#4a4a4a] text-white'
-              }`}
+              className={`btn text-xs sm:text-sm px-2 sm:px-3 py-2 ${isSessionPaused ? 'bg-green-600 hover:bg-green-700 text-white' : 'btn-secondary'}`}
               title={isSessionPaused ? 'Resume session' : 'Pause session'}
             >
               {isSessionPaused ? <Play size={16} /> : <Pause size={16} />}
-              {isSessionPaused ? 'Resume' : 'Pause'}
+              <span className="hidden sm:inline ml-1">{isSessionPaused ? 'Resume' : 'Pause'}</span>
             </button>
 
             {/* Download Notes Button */}
             {notes.length > 0 && (
               <button
                 onClick={handleDownloadNotes}
-                className="flex items-center gap-2 px-4 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] text-white rounded-lg transition-colors"
+                className="btn-secondary text-xs sm:text-sm px-2 sm:px-3 py-2"
                 title="Download session notes"
               >
                 <Download size={16} />
-                <span className="hidden md:inline">Notes</span>
+                <span className="hidden md:inline ml-1">Notes</span>
               </button>
             )}
 
             {isSpeaking && (
               <button
                 onClick={interruptTutor}
-                className="flex items-center gap-2 px-4 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] text-white rounded-lg transition-colors"
+                className="btn-secondary text-xs sm:text-sm px-2 sm:px-3 py-2"
               >
                 <Square size={16} />
-                Interrupt tutor
+                <span className="hidden sm:inline ml-1">Stop</span>
               </button>
             )}
             <button
-              className="p-2 rounded-lg text-gray-400 hover:bg-white/10 transition-colors"
+              className="btn-ghost p-2.5"
               title="Settings"
             >
-              <Settings size={20} />
+              <Settings size={18} />
             </button>
           </div>
         </div>

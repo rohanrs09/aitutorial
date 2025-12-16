@@ -155,12 +155,12 @@ export default function EmotionCameraWidget({
 
   const sizeClasses = position === 'corner' 
     ? isExpanded 
-      ? 'w-80 h-60' 
-      : 'w-64 h-48'
-    : 'w-full aspect-video';
+      ? 'w-full sm:w-80 h-48 sm:h-60' 
+      : 'w-full sm:w-64 h-36 sm:h-48'
+    : 'w-full aspect-video max-h-48 sm:max-h-60';
 
   return (
-    <div className={`relative ${sizeClasses} rounded-xl overflow-hidden bg-[#2a2a2a] shadow-2xl`}>
+    <div className={`relative ${sizeClasses} rounded-lg sm:rounded-xl overflow-hidden bg-[#2a2a2a] shadow-2xl`}>
       {isEnabled ? (
         <>
           {/* Video Feed */}
@@ -176,58 +176,58 @@ export default function EmotionCameraWidget({
           <canvas ref={canvasRef} className="hidden" />
 
           {/* Emotion Label */}
-          <div className="absolute top-3 left-3 flex items-center gap-2 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-lg">
+          <div className="absolute top-2 sm:top-3 left-2 sm:left-3 flex items-center gap-1.5 sm:gap-2 bg-black/70 backdrop-blur-sm px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg">
             <motion.div
-              className={`w-2.5 h-2.5 rounded-full ${emotionColors[currentEmotion] || 'bg-gray-500'}`}
+              className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${emotionColors[currentEmotion] || 'bg-gray-500'}`}
               animate={{ scale: isAnalyzing ? [1, 0.8, 1] : [1, 1.2, 1] }}
               transition={{ duration: isAnalyzing ? 0.5 : 1.5, repeat: Infinity }}
             />
-            <span className="text-white text-sm font-medium">
+            <span className="text-white text-xs sm:text-sm font-medium">
               {isAnalyzing ? 'Analyzing...' : currentEmotion}
             </span>
             {confidence > 0 && !isAnalyzing && (
-              <span className="text-xs text-gray-400">
+              <span className="text-[10px] sm:text-xs text-gray-400">
                 {Math.round(confidence * 100)}%
               </span>
             )}
           </div>
 
           {/* Controls */}
-          <div className="absolute top-3 right-3 flex gap-2">
+          <div className="absolute top-2 sm:top-3 right-2 sm:right-3 flex gap-1.5 sm:gap-2">
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="p-1.5 bg-black/50 hover:bg-black/70 rounded-lg transition-colors"
+              className="p-1.5 sm:p-2 min-h-touch min-w-touch flex items-center justify-center bg-black/50 hover:bg-black/70 active:bg-black/80 rounded-md sm:rounded-lg transition-colors"
             >
               {isExpanded ? (
-                <Minimize2 size={16} className="text-white" />
+                <Minimize2 size={14} className="sm:w-4 sm:h-4 text-white" />
               ) : (
-                <Maximize2 size={16} className="text-white" />
+                <Maximize2 size={14} className="sm:w-4 sm:h-4 text-white" />
               )}
             </button>
             <button
               onClick={onToggle}
-              className="p-1.5 bg-red-500/80 hover:bg-red-500 rounded-lg transition-colors"
+              className="p-1.5 sm:p-2 min-h-touch min-w-touch flex items-center justify-center bg-red-500/80 hover:bg-red-500 active:bg-red-600 rounded-md sm:rounded-lg transition-colors"
             >
-              <VideoOff size={16} className="text-white" />
+              <VideoOff size={14} className="sm:w-4 sm:h-4 text-white" />
             </button>
           </div>
         </>
       ) : (
         <button
           onClick={onToggle}
-          className="w-full h-full flex flex-col items-center justify-center gap-3 text-gray-400 hover:text-white hover:bg-[#3a3a3a] transition-all"
+          className="w-full h-full flex flex-col items-center justify-center gap-2 sm:gap-3 text-gray-400 hover:text-white hover:bg-[#3a3a3a] active:bg-[#4a4a4a] transition-all min-h-[120px] sm:min-h-[160px]"
         >
           {error ? (
             <>
-              <AlertCircle size={32} className="text-red-400" />
-              <span className="text-sm text-red-400 text-center px-4">{error}</span>
-              <span className="text-xs text-gray-500">Click to retry</span>
+              <AlertCircle size={24} className="sm:w-8 sm:h-8 text-red-400" />
+              <span className="text-xs sm:text-sm text-red-400 text-center px-3 sm:px-4">{error}</span>
+              <span className="text-[10px] sm:text-xs text-gray-500">Tap to retry</span>
             </>
           ) : (
             <>
-              <Video size={32} />
-              <span className="text-sm">Enable Camera</span>
-              <span className="text-xs text-gray-500">For emotion detection</span>
+              <Video size={24} className="sm:w-8 sm:h-8" />
+              <span className="text-xs sm:text-sm">Enable Camera</span>
+              <span className="text-[10px] sm:text-xs text-gray-500">For emotion detection</span>
             </>
           )}
         </button>

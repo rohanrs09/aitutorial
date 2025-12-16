@@ -147,20 +147,25 @@ export default function SpacebarVoiceInput({
   };
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      {/* Main Button */}
+    <div className="flex flex-col items-center gap-2 sm:gap-3 w-full px-2 sm:px-0">
+      {/* Main Button - Touch-friendly with responsive sizing */}
       <motion.button
         className={`
-          flex items-center gap-3 px-6 py-3 rounded-full font-medium transition-all
+          flex items-center justify-center gap-2 sm:gap-3
+          px-4 sm:px-6 py-3 sm:py-4 rounded-full font-medium
+          min-h-touch w-full sm:w-auto max-w-sm
+          transition-all duration-200
           ${isRecording
             ? 'bg-red-500 text-white shadow-lg shadow-red-500/30'
             : isProcessing
             ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
-            : 'bg-[#8b7355] hover:bg-[#7a6349] text-white shadow-lg'
+            : 'bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white shadow-lg'
           }
+          focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-surface
+          active:scale-95
         `}
         whileHover={{ scale: isProcessing ? 1 : 1.02 }}
-        whileTap={{ scale: isProcessing ? 1 : 0.98 }}
+        whileTap={{ scale: isProcessing ? 1 : 0.95 }}
         onMouseDown={() => {
           if (!disabled && !isProcessing) {
             setIsHolding(true);
@@ -181,28 +186,44 @@ export default function SpacebarVoiceInput({
             }
           }
         }}
+        // Touch event handlers for mobile
+        onTouchStart={() => {
+          if (!disabled && !isProcessing) {
+            setIsHolding(true);
+            startRecording();
+          }
+        }}
+        onTouchEnd={() => {
+          setIsHolding(false);
+          if (isRecording) {
+            stopRecording();
+          }
+        }}
         disabled={disabled || isProcessing}
       >
         {isProcessing ? (
           <>
-            <Loader2 size={20} className="animate-spin" />
-            <span>Processing...</span>
+            <Loader2 size={18} className="animate-spin sm:w-5 sm:h-5" />
+            <span className="text-sm sm:text-base">Processing...</span>
           </>
         ) : isRecording ? (
           <>
-            <div className="w-3 h-3 bg-white rounded-full animate-pulse" />
-            <span>Recording {formatDuration(recordingDuration)}...</span>
-            <span className="text-sm opacity-75">Release to send</span>
+            <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-white rounded-full animate-pulse" />
+            <span className="text-sm sm:text-base">Recording {formatDuration(recordingDuration)}...</span>
+            <span className="hidden sm:inline text-xs sm:text-sm opacity-75">Release to send</span>
           </>
         ) : (
           <>
-            <Mic size={20} />
-            <span>Press & hold [Spacebar] to speak</span>
+            <Mic size={18} className="sm:w-5 sm:h-5" />
+            <span className="text-sm sm:text-base">
+              <span className="sm:hidden">Hold to speak</span>
+              <span className="hidden sm:inline">Press & hold [Spacebar] to speak</span>
+            </span>
           </>
         )}
       </motion.button>
 
-      {/* Visual feedback for spacebar holding */}
+      {/* Visual feedback for recording */}
       <AnimatePresence>
         {isRecording && (
           <motion.div
@@ -212,13 +233,13 @@ export default function SpacebarVoiceInput({
             className="flex items-center gap-2"
           >
             {/* Audio waveform visualization */}
-            <div className="flex items-center gap-1 h-8">
+            <div className="flex items-center gap-0.5 sm:gap-1 h-6 sm:h-8">
               {[...Array(5)].map((_, i) => (
                 <motion.div
                   key={i}
-                  className="w-1 bg-red-400 rounded-full"
+                  className="w-0.5 sm:w-1 bg-red-400 rounded-full"
                   animate={{
-                    height: [8, 24, 8],
+                    height: [6, 18, 6],
                   }}
                   transition={{
                     duration: 0.5,
@@ -229,7 +250,7 @@ export default function SpacebarVoiceInput({
                 />
               ))}
             </div>
-            <span className="text-sm text-gray-400">Listening...</span>
+            <span className="text-xs sm:text-sm text-gray-400">Listening...</span>
           </motion.div>
         )}
       </AnimatePresence>
