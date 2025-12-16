@@ -112,4 +112,4 @@ ai-voice-tutor/
 
 ## License
 
-MIT
+Layfirto
