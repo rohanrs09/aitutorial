@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Square, Subtitles, FileText, Settings, ChevronLeft, ChevronRight, Send, MessageSquare, Mic, X, Plus, HelpCircle, RefreshCw, Sparkles } from 'lucide-react';
+import { Square, Subtitles, FileText, Settings, ChevronLeft, ChevronRight, Send, MessageSquare, Mic, X, Plus, HelpCircle, RefreshCw, Sparkles, Pause, Play, Download } from 'lucide-react';
 
 // Components
 import AnimatedTutorOrb from '@/components/AnimatedTutorOrb';
@@ -68,6 +68,7 @@ export default function TutorSession() {
   const [textInput, setTextInput] = useState('');
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [viewMode, setViewMode] = useState<'slides' | 'quiz'>('slides');
+  const [isLargeScreen, setIsLargeScreen] = useState(true);
   
   // Learning slides state
   const [learningSlides, setLearningSlides] = useState<LearningSlide[]>([]);
@@ -84,6 +85,11 @@ export default function TutorSession() {
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const [sessionStartTime] = useState<number>(Date.now());
   const [showProgressTracker, setShowProgressTracker] = useState(true);
+  const [isSessionPaused, setIsSessionPaused] = useState(false);
+  
+  // Emotion smoothing state
+  const [emotionHistory, setEmotionHistory] = useState<{emotion: string; confidence: number; time: number}[]>([]);
+  const lastConfusionActionRef = useRef<number>(0);
   
   // Session stats for progress tracking
   const [sessionStats, setSessionStats] = useState({
@@ -127,6 +133,16 @@ export default function TutorSession() {
     }, 1000);
     return () => clearInterval(timer);
   }, [sessionStartTime]);
+
+  // Track screen size for responsive layout
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsLargeScreen(window.innerWidth >= 1280);
+    };
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   // Track emotion history
   useEffect(() => {
@@ -182,6 +198,131 @@ export default function TutorSession() {
       conceptsCovered: [...new Set([...prev.conceptsCovered, ...newConcepts])]
     }));
   }, []);
+
+  // Download notes as text file
+  const handleDownloadNotes = useCallback(() => {
+    if (notes.length === 0) return;
+
+    const topicName = getCurrentTopicInfo().name;
+    const dateStr = new Date().toLocaleDateString();
+    
+    // Format notes content
+    let content = `AI Voice Tutor - Session Notes\n`;
+    content += `Topic: ${topicName}\n`;
+    content += `Date: ${dateStr}\n`;
+    content += `Duration: ${Math.floor(sessionStats.timeSpent / 60)}m ${sessionStats.timeSpent % 60}s\n`;
+    content += `\n${'='.repeat(50)}\n\n`;
+
+    // Group notes by type
+    const groupedNotes = {
+      concept: notes.filter(n => n.type === 'concept'),
+      example: notes.filter(n => n.type === 'example'),
+      tip: notes.filter(n => n.type === 'tip'),
+      summary: notes.filter(n => n.type === 'summary')
+    };
+
+    if (groupedNotes.concept.length > 0) {
+      content += `KEY CONCEPTS:\n`;
+      groupedNotes.concept.forEach((n, i) => {
+        content += `  ${i + 1}. ${n.content}\n`;
+      });
+      content += `\n`;
+    }
+
+    if (groupedNotes.example.length > 0) {
+      content += `EXAMPLES:\n`;
+      groupedNotes.example.forEach((n, i) => {
+        content += `  ${i + 1}. ${n.content}\n`;
+      });
+      content += `\n`;
+    }
+
+    if (groupedNotes.tip.length > 0) {
+      content += `TIPS & TRICKS:\n`;
+      groupedNotes.tip.forEach((n, i) => {
+        content += `  ${i + 1}. ${n.content}\n`;
+      });
+      content += `\n`;
+    }
+
+    if (groupedNotes.summary.length > 0) {
+      content += `SUMMARIES:\n`;
+      groupedNotes.summary.forEach((n, i) => {
+        content += `  ${i + 1}. ${n.content}\n`;
+      });
+      content += `\n`;
+    }
+
+    // Add conversation history
+    if (messages.length > 0) {
+      content += `${'='.repeat(50)}\n`;
+      content += `CONVERSATION HISTORY:\n\n`;
+      messages.forEach(msg => {
+        const role = msg.role === 'user' ? 'You' : 'AI Tutor';
+        content += `[${role}]:\n${msg.content}\n\n`;
+      });
+    }
+
+    // Create and download file
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${topicName.replace(/\s+/g, '_')}_notes_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [notes, messages, sessionStats.timeSpent]);
+
+  // Email notes handler
+  const handleEmailNotes = useCallback(async () => {
+    const email = prompt('Enter your email address:');
+    if (!email || !email.includes('@')) {
+      alert('Please enter a valid email address');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/email-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          topic: getCurrentTopicInfo().name,
+          notes,
+          messages
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert('Notes have been prepared for email. Check server logs for the HTML output.');
+      } else {
+        alert('Failed to send email: ' + (data.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Email error:', error);
+      alert('Failed to send email. Please try downloading instead.');
+    }
+  }, [notes, messages]);
+
+  // Pause/Resume session controls
+  const toggleSessionPause = useCallback(() => {
+    if (isSessionPaused) {
+      // Resume
+      setIsSessionPaused(false);
+      if (audioRef.current && audioRef.current.paused && audioUrl) {
+        audioRef.current.play();
+      }
+    } else {
+      // Pause
+      setIsSessionPaused(true);
+      if (audioRef.current && !audioRef.current.paused) {
+        audioRef.current.pause();
+      }
+    }
+  }, [isSessionPaused, audioUrl]);
 
   // Sample scenarios for demonstration
   const sampleScenarios: ScenarioQuestion[] = [
@@ -419,36 +560,155 @@ export default function TutorSession() {
     }
   };
 
-  // Handle emotion detection with proactive confusion resolution
+  // Handle emotion detection with enhanced smoothing and proactive confusion resolution
   const handleEmotionDetected = useCallback((emotion: string, confidence: number) => {
-    setCurrentEmotion(emotion);
-    setEmotionConfidence(confidence);
+    const now = Date.now();
+    
+    // Add to emotion history for smoothing
+    setEmotionHistory(prev => {
+      const updated = [...prev, { emotion, confidence, time: now }]
+        .filter(e => now - e.time < 15000) // Keep last 15 seconds
+        .slice(-10); // Keep max 10 entries
+      return updated;
+    });
+
+    // Calculate smoothed emotion (weighted average of recent detections)
+    const recentEmotions = emotionHistory.filter(e => now - e.time < 10000);
+    const emotionCounts: Record<string, { count: number; totalConfidence: number }> = {};
+    
+    [...recentEmotions, { emotion, confidence, time: now }].forEach(e => {
+      if (!emotionCounts[e.emotion]) {
+        emotionCounts[e.emotion] = { count: 0, totalConfidence: 0 };
+      }
+      emotionCounts[e.emotion].count++;
+      emotionCounts[e.emotion].totalConfidence += e.confidence;
+    });
+
+    // Find dominant emotion
+    let dominantEmotion = emotion;
+    let maxScore = 0;
+    Object.entries(emotionCounts).forEach(([em, data]) => {
+      const score = data.count * (data.totalConfidence / data.count);
+      if (score > maxScore) {
+        maxScore = score;
+        dominantEmotion = em;
+      }
+    });
+
+    const smoothedConfidence = emotionCounts[dominantEmotion] 
+      ? emotionCounts[dominantEmotion].totalConfidence / emotionCounts[dominantEmotion].count 
+      : confidence;
+
+    setCurrentEmotion(dominantEmotion);
+    setEmotionConfidence(smoothedConfidence);
 
     // Track consecutive negative emotions
-    if ((emotion === 'confused' || emotion === 'frustrated') && confidence > 0.5) {
+    if ((dominantEmotion === 'confused' || dominantEmotion === 'frustrated') && smoothedConfidence > 0.5) {
       setConsecutiveNegativeEmotions(prev => prev + 1);
-    } else if (emotion === 'happy' || emotion === 'engaged' || emotion === 'confident') {
+    } else if (dominantEmotion === 'happy' || dominantEmotion === 'engaged' || dominantEmotion === 'confident') {
       setConsecutiveNegativeEmotions(0);
     }
 
-    // Proactive help for negative emotions - auto-trigger simplification
-    const timeSinceLastSimplification = Date.now() - lastSimplificationTime;
-    const canTriggerSimplification = timeSinceLastSimplification > 30000; // 30 second cooldown
+    // PROACTIVE CONFUSION RESOLUTION
+    const timeSinceLastAction = now - lastConfusionActionRef.current;
+    const canTakeAction = timeSinceLastAction > 20000; // 20 second cooldown
 
-    if ((emotion === 'confused' || emotion === 'frustrated') && confidence > 0.7 && !isProcessing && canTriggerSimplification) {
-      // Auto-regenerate simplified content
-      handleRequestSimplification();
-      setLastSimplificationTime(Date.now());
-    } else if ((emotion === 'confused' || emotion === 'frustrated') && confidence > 0.5 && !isProcessing) {
-      // Show guidance message
-      const helpMessage = emotion === 'confused'
-        ? "I can see you might be finding this tricky. Would you like me to explain it differently? Just say 'simplify' or click the simplify button."
-        : "This topic can be challenging. I'm here to help - ask me to break it down further or check the slides for a simpler explanation.";
+    // Auto-trigger simplification for persistent confusion (3+ detections)
+    if (consecutiveNegativeEmotions >= 3 && canTakeAction && !isProcessing && !isSessionPaused) {
+      lastConfusionActionRef.current = now;
+      setConsecutiveNegativeEmotions(0);
+      
+      // Auto-simplify without requiring user action
+      handleAutoSimplify(dominantEmotion);
+      return;
+    }
+
+    // High confidence single detection
+    if ((dominantEmotion === 'confused' || dominantEmotion === 'frustrated') && 
+        smoothedConfidence > 0.75 && canTakeAction && !isProcessing && !isSessionPaused) {
+      lastConfusionActionRef.current = now;
+      
+      // Show proactive offer
+      const helpMessage = dominantEmotion === 'confused'
+        ? "I noticed you might be finding this tricky. Let me explain it in a simpler way..."
+        : "This can be challenging. Let me try a different approach...";
       
       setGuidanceMessage(helpMessage);
-      setTimeout(() => setGuidanceMessage(''), 10000);
+      
+      // Auto-simplify after brief pause to let user see the message
+      setTimeout(() => {
+        if (!isProcessing && !isSessionPaused) {
+          handleAutoSimplify(dominantEmotion);
+        }
+      }, 2000);
+    } else if ((dominantEmotion === 'confused' || dominantEmotion === 'frustrated') && 
+               smoothedConfidence > 0.5 && !isProcessing) {
+      // Lower confidence - just show guidance
+      setGuidanceMessage(
+        dominantEmotion === 'confused'
+          ? "Need help? Say 'simplify' or click the simplify button."
+          : "Feeling stuck? I can explain this differently."
+      );
+      setTimeout(() => setGuidanceMessage(''), 8000);
     }
-  }, [isProcessing, lastSimplificationTime]);
+  }, [isProcessing, isSessionPaused, emotionHistory, consecutiveNegativeEmotions]);
+
+  // Auto-simplify content when confusion is detected
+  const handleAutoSimplify = async (detectedEmotion: string) => {
+    if (isProcessing || learningSlides.length === 0) return;
+
+    setIsGeneratingSlides(true);
+    setGuidanceMessage('');
+    const currentTopic = getCurrentTopicInfo();
+    
+    try {
+      const lastAssistantMessage = messages.filter(m => m.role === 'assistant').pop();
+      const contentToSimplify = lastAssistantMessage?.content || currentTopic.name;
+
+      // Speak acknowledgment
+      const ackMessage = detectedEmotion === 'confused'
+        ? "I can see this is confusing. Let me break it down more simply."
+        : "Let me try explaining this in a different, easier way.";
+      setCurrentTranscript(ackMessage);
+      await speakText(ackMessage);
+
+      // Get simplified response
+      const response = await fetch('/api/tutor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: `The student is ${detectedEmotion} and needs a much simpler explanation. Explain this concept as if teaching a complete beginner: ${contentToSimplify.substring(0, 300)}`,
+          topic: currentTopic.name,
+          emotion: detectedEmotion,
+          emotionConfidence: 0.95,
+          history: messages.slice(-3)
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const assistantMessage: Message = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: data.message
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        setCurrentTranscript(data.message);
+
+        if (data.slides && data.slides.length > 0) {
+          setLearningSlides(data.slides);
+          setCurrentSlideIndex(0);
+        }
+
+        await speakText(data.message);
+      }
+    } catch (error) {
+      console.error('Auto-simplification error:', error);
+    } finally {
+      setIsGeneratingSlides(false);
+    }
+  };
 
   // Request simplified content
   const handleRequestSimplification = async () => {
@@ -672,6 +932,8 @@ export default function TutorSession() {
               <NotesPanel
                 notes={notes}
                 topic={getCurrentTopicInfo().name}
+                onDownloadNotes={handleDownloadNotes}
+                onEmailNotes={handleEmailNotes}
               />
             </motion.div>
           )}
@@ -1023,7 +1285,7 @@ export default function TutorSession() {
 
           {/* Center - Input Area */}
           <div className="flex-1 max-w-md">
-            {inputMode === 'voice' || window.innerWidth >= 1280 ? (
+            {inputMode === 'voice' || isLargeScreen ? (
               <SpacebarVoiceInput
                 onTranscript={handleTranscript}
                 isProcessing={isProcessing}
@@ -1052,6 +1314,32 @@ export default function TutorSession() {
 
           {/* Right Controls */}
           <div className="flex items-center gap-3">
+            {/* Pause/Resume Button */}
+            <button
+              onClick={toggleSessionPause}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                isSessionPaused 
+                  ? 'bg-green-600 hover:bg-green-700 text-white' 
+                  : 'bg-[#3a3a3a] hover:bg-[#4a4a4a] text-white'
+              }`}
+              title={isSessionPaused ? 'Resume session' : 'Pause session'}
+            >
+              {isSessionPaused ? <Play size={16} /> : <Pause size={16} />}
+              {isSessionPaused ? 'Resume' : 'Pause'}
+            </button>
+
+            {/* Download Notes Button */}
+            {notes.length > 0 && (
+              <button
+                onClick={handleDownloadNotes}
+                className="flex items-center gap-2 px-4 py-2 bg-[#3a3a3a] hover:bg-[#4a4a4a] text-white rounded-lg transition-colors"
+                title="Download session notes"
+              >
+                <Download size={16} />
+                <span className="hidden md:inline">Notes</span>
+              </button>
+            )}
+
             {isSpeaking && (
               <button
                 onClick={interruptTutor}

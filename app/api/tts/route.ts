@@ -5,12 +5,28 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
 });
 
+// Check if OpenAI API key is configured
+const isOpenAIConfigured = () => {
+  return !!process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'sk-your-openai-api-key-here';
+};
+
 // Optional: ElevenLabs for better voice quality
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const ELEVENLABS_VOICE_ID = '21m00Tcm4TlvDq8ikWAM'; // Default voice
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate API key configuration
+    if (!isOpenAIConfigured()) {
+      return NextResponse.json(
+        { 
+          error: 'OpenAI API key not configured. Text-to-speech is unavailable.',
+          code: 'API_KEY_MISSING'
+        },
+        { status: 503 }
+      );
+    }
+
     const body = await request.json();
     const { text, useElevenLabs = false } = body;
 

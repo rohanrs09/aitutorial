@@ -5,8 +5,24 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Check if OpenAI API key is configured
+const isOpenAIConfigured = () => {
+  return !!process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'sk-your-openai-api-key-here';
+};
+
 export async function POST(request: NextRequest) {
   try {
+    // If API key not configured, return neutral emotion fallback
+    if (!isOpenAIConfigured()) {
+      return NextResponse.json({
+        success: true,
+        emotion: 'neutral',
+        confidence: 0.5,
+        fallback: true,
+        message: 'Emotion detection unavailable - API key not configured'
+      });
+    }
+
     const body = await request.json();
     const { image } = body;
 
