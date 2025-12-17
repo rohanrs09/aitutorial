@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Square, Subtitles, FileText, Settings, ChevronLeft, ChevronRight, Send, MessageSquare, Mic, X, Plus, HelpCircle, RefreshCw, Sparkles, Pause, Play, Download, Video, VideoOff, MoreVertical, ChevronUp } from 'lucide-react';
+import { Square, Subtitles, FileText, Settings, ChevronLeft, ChevronRight, Send, MessageSquare, Mic, X, Plus, HelpCircle, RefreshCw, Sparkles, Pause, Play, Download, Video, VideoOff, MoreVertical, ChevronUp, Home, LogOut, ArrowLeft, BookOpen } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 // Components
 import AnimatedTutorOrb from '@/components/AnimatedTutorOrb';
@@ -17,9 +18,10 @@ import CustomTopicBuilder from '@/components/CustomTopicBuilder';
 import LearningSlidePanel, { LearningSlide } from '@/components/LearningSlidePanel';
 import LearningProgressTracker from '@/components/LearningProgressTracker';
 
-// Utils
+// Utils & Data
 import { getTopicById, learningTopics } from '@/lib/tutor-prompts';
 import { EmotionType } from '@/lib/utils';
+import { createSession, endSession, updateSession, generateSessionId, saveMessage, type SessionMessage } from '@/lib/user-data';
 
 interface Note {
   id: string;
@@ -44,6 +46,13 @@ interface CustomTopic {
 }
 
 export default function TutorSession() {
+  const router = useRouter();
+  
+  // Session management
+  const [sessionId, setSessionId] = useState<string>('');
+  const [showEndSessionModal, setShowEndSessionModal] = useState(false);
+  const [isEndingSession, setIsEndingSession] = useState(false);
+  
   // Core state
   const [messages, setMessages] = useState<Message[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -70,6 +79,7 @@ export default function TutorSession() {
   const [viewMode, setViewMode] = useState<'slides' | 'quiz'>('slides');
   const [isLargeScreen, setIsLargeScreen] = useState(true);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(true); // Show welcome on first load
   
   // Learning slides state
   const [learningSlides, setLearningSlides] = useState<LearningSlide[]>([]);
@@ -134,6 +144,39 @@ export default function TutorSession() {
     }, 1000);
     return () => clearInterval(timer);
   }, [sessionStartTime]);
+
+  // Initialize session on mount
+  useEffect(() => {
+    const initSession = async () => {
+      const topic = getTopicById(selectedTopic);
+      const newSessionId = await createSession(topic?.name || 'General Learning');
+      setSessionId(newSessionId);
+    };
+    initSession();
+  }, []);
+
+  // Handle end session
+  const handleEndSession = async () => {
+    setIsEndingSession(true);
+    try {
+      if (sessionId) {
+        await endSession(sessionId);
+      }
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Error ending session:', error);
+      router.push('/');
+    }
+  };
+
+  // Handle go back (with confirmation if session in progress)
+  const handleGoBack = () => {
+    if (messages.length > 0 || sessionStats.timeSpent > 60) {
+      setShowEndSessionModal(true);
+    } else {
+      router.push('/');
+    }
+  };
 
   // Track screen size for responsive layout
   useEffect(() => {
@@ -371,6 +414,11 @@ export default function TutorSession() {
     };
     setMessages(prev => [...prev, userMessage]);
 
+    // Save user message to session
+    if (sessionId) {
+      saveMessage(sessionId, { role: 'user', content: text, emotion: currentEmotion });
+    }
+
     try {
       // Get topic info (handles both standard and custom topics)
       const customTopic = customTopics.find(t => t.id === selectedTopic);
@@ -465,6 +513,24 @@ export default function TutorSession() {
           generateDiagram(data.message);
         }
 
+        // Save assistant message to session
+        if (sessionId) {
+          saveMessage(sessionId, { role: 'assistant', content: data.message });
+          
+          // Update session with message count and emotions
+          const updatedMessages = [...messages, userMessage, assistantMessage];
+          updateSession(sessionId, {
+            messages: updatedMessages.map(m => ({
+              id: m.id,
+              role: m.role,
+              content: m.content,
+              emotion: null,
+              timestamp: new Date()
+            })),
+            emotionsDetected: [...new Set(sessionStats.emotionHistory.map(e => e.emotion))]
+          });
+        }
+
         // Speak the response
         await speakText(data.message);
       }
@@ -525,6 +591,14 @@ export default function TutorSession() {
       ...prev,
       correctAnswers: prev.correctAnswers + (isCorrect ? 1 : 0)
     }));
+
+    // Update session with quiz score
+    if (sessionId) {
+      const totalQuestions = sessionStats.questionsAsked + 1;
+      const totalCorrect = sessionStats.correctAnswers + (isCorrect ? 1 : 0);
+      const score = Math.round((totalCorrect / totalQuestions) * 100);
+      updateSession(sessionId, { quizScore: score });
+    }
 
     // Add note about the answer
     const note: Note = {
@@ -904,6 +978,218 @@ export default function TutorSession() {
 
   return (
     <div className="min-h-screen bg-surface flex flex-col safe-area-inset">
+      {/* End Session Confirmation Modal */}
+      <AnimatePresence>
+        {showEndSessionModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowEndSessionModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-surface-light rounded-2xl p-6 max-w-md w-full border border-white/10 shadow-2xl"
+            >
+              <h3 className="text-xl font-bold text-white mb-2">End Learning Session?</h3>
+              <p className="text-gray-400 mb-6">
+                You&apos;ve been learning for {Math.floor(sessionStats.timeSpent / 60)} minutes. 
+                Your progress will be saved.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowEndSessionModal(false)}
+                  className="flex-1 px-4 py-3 bg-surface-lighter text-white rounded-xl hover:bg-surface transition-colors"
+                >
+                  Continue Learning
+                </button>
+                <button
+                  onClick={handleEndSession}
+                  disabled={isEndingSession}
+                  className="flex-1 px-4 py-3 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isEndingSession ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>End Session</>                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Welcome Modal - Topic Selection Guide */}
+      <AnimatePresence>
+        {showWelcomeModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-surface-light rounded-2xl p-6 sm:p-8 max-w-lg w-full border border-white/10 shadow-2xl"
+            >
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary-500 to-pink-500 flex items-center justify-center">
+                  <Mic size={32} className="text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-2">Welcome to AI Voice Tutor</h2>
+                <p className="text-gray-400">Choose how you{"'"}d like to learn today</p>
+              </div>
+              
+              <div className="space-y-3 mb-6">
+                {/* Quick Start Option */}
+                <button
+                  onClick={() => {
+                    setShowWelcomeModal(false);
+                    const topic = getTopicById('dsa-binary-search');
+                    const welcomeMsg = `Let's learn about ${topic?.name}! ${topic?.description} What would you like to know?`;
+                    setCurrentTranscript(welcomeMsg);
+                    speakText(welcomeMsg);
+                  }}
+                  className="w-full p-4 bg-gradient-to-r from-primary-500/20 to-pink-500/20 border border-primary-500/30 rounded-xl text-left hover:border-primary-500/50 transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary-500/20 flex items-center justify-center group-hover:bg-primary-500/30 transition-colors">
+                      <Play size={20} className="text-primary-400" />
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">Quick Start</p>
+                      <p className="text-gray-400 text-sm">Start with Binary Search (recommended)</p>
+                    </div>
+                  </div>
+                </button>
+                
+                {/* Browse Topics Option */}
+                <button
+                  onClick={() => {
+                    setShowWelcomeModal(false);
+                    setShowTopicSelector(true);
+                  }}
+                  className="w-full p-4 bg-surface border border-white/10 rounded-xl text-left hover:border-primary-500/30 transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-surface-lighter flex items-center justify-center group-hover:bg-primary-500/20 transition-colors">
+                      <BookOpen size={20} className="text-gray-400 group-hover:text-primary-400" />
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">Browse Topics</p>
+                      <p className="text-gray-400 text-sm">Choose from economics, algorithms, GRE &amp; more</p>
+                    </div>
+                  </div>
+                </button>
+                
+                {/* Custom Topic Option */}
+                <button
+                  onClick={() => {
+                    setShowWelcomeModal(false);
+                    setShowCustomTopicBuilder(true);
+                  }}
+                  className="w-full p-4 bg-surface border border-white/10 rounded-xl text-left hover:border-green-500/30 transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-surface-lighter flex items-center justify-center group-hover:bg-green-500/20 transition-colors">
+                      <Plus size={20} className="text-gray-400 group-hover:text-green-400" />
+                    </div>
+                    <div>
+                      <p className="text-white font-medium">Create Custom Topic</p>
+                      <p className="text-gray-400 text-sm">Build your own personalized learning path</p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+              
+              <p className="text-center text-gray-500 text-xs">
+                Tip: Hold <kbd className="px-1.5 py-0.5 bg-surface rounded text-gray-400">Spacebar</kbd> or tap the mic to speak anytime
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Navigation Header */}
+      <header className="bg-surface/95 backdrop-blur-lg border-b border-white/5 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            {/* Left: Back Button & Logo */}
+            <div className="flex items-center gap-2 sm:gap-4">
+              <button
+                onClick={handleGoBack}
+                className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5 min-h-touch min-w-touch flex items-center justify-center"
+                title="Go back"
+              >
+                <ArrowLeft size={20} />
+              </button>
+              <div className="hidden sm:flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-pink-500 flex items-center justify-center">
+                  <Mic size={16} className="text-white" />
+                </div>
+                <span className="font-semibold text-white">AI Tutor</span>
+              </div>
+            </div>
+
+            {/* Center: Topic & Timer */}
+            <div className="flex items-center gap-2 sm:gap-4">
+              <div className="hidden md:block text-center">
+                <p className="text-sm font-medium text-white truncate max-w-[200px]">
+                  {getCurrentTopicInfo().name}
+                </p>
+                <p className="text-xs text-gray-500">{getCurrentTopicInfo().category}</p>
+              </div>
+              <div className="px-3 py-1.5 bg-surface-lighter rounded-lg">
+                <span className="text-sm font-mono text-gray-300">
+                  {Math.floor(sessionStats.timeSpent / 60).toString().padStart(2, '0')}:
+                  {(sessionStats.timeSpent % 60).toString().padStart(2, '0')}
+                </span>
+              </div>
+            </div>
+
+            {/* Right: Controls */}
+            <div className="flex items-center gap-1 sm:gap-2">
+              {/* Progress Tracker Toggle */}
+              <button
+                onClick={() => setShowProgressTracker(!showProgressTracker)}
+                className={`p-2 rounded-lg transition-colors min-h-touch min-w-touch flex items-center justify-center ${
+                  showProgressTracker ? 'bg-primary-500/20 text-primary-400' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+                title="Toggle progress"
+              >
+                <Sparkles size={18} />
+              </button>
+              
+              {/* Notes Toggle */}
+              <button
+                onClick={() => setShowNotes(!showNotes)}
+                className={`p-2 rounded-lg transition-colors min-h-touch min-w-touch hidden lg:flex items-center justify-center ${
+                  showNotes ? 'bg-primary-500/20 text-primary-400' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+                title="Toggle notes"
+              >
+                <FileText size={18} />
+              </button>
+
+              {/* End Session */}
+              <button
+                onClick={() => setShowEndSessionModal(true)}
+                className="px-3 sm:px-4 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors text-sm font-medium flex items-center gap-1.5 min-h-touch"
+              >
+                <LogOut size={16} />
+                <span className="hidden sm:inline">End</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
       {/* Hidden Audio Element with time tracking */}
       <audio
         ref={audioRef}
