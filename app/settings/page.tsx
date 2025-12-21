@@ -34,35 +34,6 @@ const SignOutButton = dynamic(
   { ssr: false }
 );
 
-// Helper to get user data from Clerk client-side
-async function getClerkUserData(): Promise<{
-  id?: string;
-  firstName?: string;
-  lastName?: string;
-  emailAddresses?: { emailAddress: string }[];
-  imageUrl?: string;
-} | null> {
-  if (!isClerkConfigured) return null;
-  
-  try {
-    const clerk = await import('@clerk/nextjs');
-    // Access clerk from the window object after it's loaded
-    if (typeof window !== 'undefined' && (window as Window & { Clerk?: { user?: { id: string; firstName?: string; lastName?: string; emailAddresses?: Array<{ emailAddress: string }>; imageUrl?: string } } }).Clerk?.user) {
-      const user = (window as Window & { Clerk?: { user?: { id: string; firstName?: string; lastName?: string; emailAddresses?: Array<{ emailAddress: string }>; imageUrl?: string } } }).Clerk?.user;
-      return {
-        id: user?.id,
-        firstName: user?.firstName || undefined,
-        lastName: user?.lastName || undefined,
-        emailAddresses: user?.emailAddresses,
-        imageUrl: user?.imageUrl,
-      };
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 interface SettingToggleProps {
   label: string;
   description: string;
@@ -130,8 +101,8 @@ function UserButton(props: { afterSignOutUrl?: string }) {
 }
 
 export default function SettingsPage() {
-  // User data state
-  const [user, setUser] = useState<{
+  // Clerk authentication hook
+  const [clerkUser, setClerkUser] = useState<{
     id?: string;
     firstName?: string;
     lastName?: string;
@@ -139,6 +110,7 @@ export default function SettingsPage() {
     imageUrl?: string;
   } | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   // Settings state
   const [settings, setSettings] = useState({
@@ -152,35 +124,81 @@ export default function SettingsPage() {
   // UI state
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
-  // Load Clerk user data
+  // Load Clerk user data with proper hook
   useEffect(() => {
-    const loadUser = async () => {
-      if (isClerkConfigured) {
-        // Try to get user from Clerk
-        const clerkUser = await getClerkUserData();
-        if (clerkUser) {
-          setUser(clerkUser);
-          // Cache user for other pages
-          localStorage.setItem('clerk_user_cache', JSON.stringify(clerkUser));
-        } else {
-          // Try localStorage cache
-          const cachedUser = localStorage.getItem('clerk_user_cache');
-          if (cachedUser) {
-            setUser(JSON.parse(cachedUser));
-          }
-        }
-      } else {
-        // Demo mode
-        setUser({
-          firstName: 'Demo',
-          lastName: 'User',
-          emailAddresses: [{ emailAddress: 'demo@example.com' }]
-        });
-      }
+    if (!isClerkConfigured) {
+      // Demo mode
+      setClerkUser({
+        firstName: 'Demo',
+        lastName: 'User',
+        emailAddresses: [{ emailAddress: 'demo@example.com' }]
+      });
       setIsLoaded(true);
+      setIsAuthenticated(false);
+      return;
+    }
+
+    // Use Clerk hooks for authenticated state
+    const loadClerkUser = async () => {
+      try {
+        const { useUser } = await import('@clerk/nextjs');
+        // We'll use a workaround since we can't call hooks conditionally
+        // Check if user is available via Clerk's window object
+        const checkAuth = setInterval(() => {
+          if (typeof window !== 'undefined') {
+            const clerk = (window as Window & { Clerk?: { user?: unknown; loaded?: boolean } }).Clerk;
+            if (clerk?.loaded !== undefined) {
+              clearInterval(checkAuth);
+              if (clerk.user) {
+                const user = clerk.user as {
+                  id: string;
+                  firstName?: string;
+                  lastName?: string;
+                  emailAddresses?: Array<{ emailAddress: string }>;
+                  imageUrl?: string;
+                };
+                setClerkUser(user);
+                setIsAuthenticated(true);
+              } else {
+                setClerkUser({
+                  firstName: 'Guest',
+                  lastName: '',
+                  emailAddresses: [{ emailAddress: '' }]
+                });
+                setIsAuthenticated(false);
+              }
+              setIsLoaded(true);
+            }
+          }
+        }, 100);
+
+        // Timeout after 3 seconds
+        setTimeout(() => {
+          clearInterval(checkAuth);
+          if (!isLoaded) {
+            setClerkUser({
+              firstName: 'Guest',
+              lastName: '',
+              emailAddresses: [{ emailAddress: '' }]
+            });
+            setIsLoaded(true);
+            setIsAuthenticated(false);
+          }
+        }, 3000);
+      } catch (error) {
+        console.error('Failed to load Clerk:', error);
+        setClerkUser({
+          firstName: 'Guest',
+          lastName: '',
+          emailAddresses: [{ emailAddress: '' }]
+        });
+        setIsLoaded(true);
+        setIsAuthenticated(false);
+      }
     };
-    loadUser();
-  }, []);
+
+    loadClerkUser();
+  }, [isLoaded]);
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -271,37 +289,31 @@ export default function SettingsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="card mb-6"
         >
-          <div className="flex items-center gap-4 pb-4 border-b border-white/5">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-pink-500 flex items-center justify-center text-white text-2xl font-bold overflow-hidden">
-              {user?.imageUrl ? (
-                <img src={user.imageUrl} alt="Profile" className="w-full h-full object-cover" />
+          <div className="flex items-center gap-4 pb-6 border-b border-white/5">
+            <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-500 to-pink-500 flex items-center justify-center text-white text-3xl font-bold overflow-hidden shadow-lg">
+              {clerkUser?.imageUrl ? (
+                <img src={clerkUser.imageUrl} alt="Profile" className="w-full h-full object-cover" />
               ) : (
-                user?.firstName?.[0] || user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || 'U'
+                clerkUser?.firstName?.[0] || clerkUser?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || 'U'
               )}
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-white">
-                {user?.firstName || 'User'} {user?.lastName || ''}
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-white mb-1">
+                {clerkUser?.firstName || 'User'} {clerkUser?.lastName || ''}
               </h2>
-              <p className="text-gray-400">{user?.emailAddresses?.[0]?.emailAddress || 'No email'}</p>
+              <p className="text-gray-400 text-sm">{clerkUser?.emailAddresses?.[0]?.emailAddress || 'No email'}</p>
+              {isAuthenticated && (
+                <div className="mt-2">
+                  <span className="px-2 py-1 bg-green-500/10 text-green-400 text-xs rounded-full border border-green-500/20">Authenticated</span>
+                </div>
+              )}
             </div>
           </div>
 
           <SettingLink 
-            icon={User} 
-            label="Edit Profile" 
-            description="Update your name and photo"
-            href="/user-profile"
-          />
-          <SettingLink 
             icon={Mail} 
-            label="Email Settings" 
-            description="Manage email preferences"
-          />
-          <SettingLink 
-            icon={Smartphone} 
-            label="Connected Devices" 
-            description="Manage your devices"
+            label="Manage Email"
+            description="Update notification preferences"
           />
         </motion.section>
 
@@ -328,14 +340,9 @@ export default function SettingsPage() {
           />
           
           <SettingLink 
-            icon={Globe} 
-            label="Language" 
-            description="English (US)"
-          />
-          <SettingLink 
             icon={Volume2} 
-            label="Voice Settings" 
-            description="Choose tutor voice and speed"
+            label="Audio Settings" 
+            description="Voice speed and quality"
           />
         </motion.section>
 

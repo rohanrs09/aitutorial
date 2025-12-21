@@ -461,10 +461,10 @@ export default function LandingPage() {
                 </ul>
                 <Link 
                   href={hasClerk ? "/sign-up" : "/learn"}
-                  className={`w-full text-center py-3 rounded-xl font-medium transition-all ${
+                  className={`w-full text-center py-3 rounded-xl font-medium transition-all inline-block ${
                     plan.highlighted
-                      ? 'bg-primary-500 hover:bg-primary-600 text-white'
-                      : 'bg-surface-lighter hover:bg-surface text-white'
+                      ? 'bg-primary-500 hover:bg-primary-600 text-white shadow-lg shadow-primary-500/25'
+                      : 'bg-surface-lighter hover:bg-surface text-white border border-white/10'
                   }`}
                 >
                   {hasClerk ? plan.cta : 'Try Demo'}

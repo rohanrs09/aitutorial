@@ -36,12 +36,18 @@ async function getClerkUserData(): Promise<{
   
   try {
     // Access clerk from the window object after it's loaded
-    if (typeof window !== 'undefined' && (window as Window & { Clerk?: { user?: { id: string; firstName?: string } } }).Clerk?.user) {
-      const user = (window as Window & { Clerk?: { user?: { id: string; firstName?: string } } }).Clerk?.user;
-      return {
-        id: user?.id,
-        firstName: user?.firstName || undefined,
-      };
+    if (typeof window !== 'undefined') {
+      const clerk = (window as Window & { Clerk?: { user?: unknown; loaded?: boolean } }).Clerk;
+      if (clerk?.loaded && clerk.user) {
+        const user = clerk.user as {
+          id: string;
+          firstName?: string;
+        };
+        return {
+          id: user?.id,
+          firstName: user?.firstName || undefined,
+        };
+      }
     }
     return null;
   } catch {
@@ -96,32 +102,46 @@ export default function DashboardPage() {
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Load user from Clerk or demo mode
+  // Load user from Clerk or demo mode with retry logic
   useEffect(() => {
+    let checkInterval: NodeJS.Timeout;
+    let timeoutId: NodeJS.Timeout;
+    
     const loadUser = async () => {
-      if (isClerkConfigured) {
-        // Try to get user from Clerk
+      if (!isClerkConfigured) {
+        setUser({ firstName: 'Learner' });
+        setIsLoaded(true);
+        return;
+      }
+
+      // Poll for Clerk user data with timeout
+      checkInterval = setInterval(async () => {
         const clerkUser = await getClerkUserData();
         if (clerkUser) {
           setUser(clerkUser);
-          // Cache user for other pages
-          localStorage.setItem('clerk_user_cache', JSON.stringify(clerkUser));
-        } else {
-          // Try localStorage cache
-          const cachedUser = localStorage.getItem('clerk_user_cache');
-          if (cachedUser) {
-            setUser(JSON.parse(cachedUser));
-          } else {
-            setUser({ firstName: 'Learner' });
-          }
+          setIsLoaded(true);
+          clearInterval(checkInterval);
+          clearTimeout(timeoutId);
         }
-      } else {
-        setUser({ firstName: 'Learner' });
-      }
-      setIsLoaded(true);
+      }, 200);
+
+      // Fallback after 3 seconds
+      timeoutId = setTimeout(() => {
+        clearInterval(checkInterval);
+        if (!isLoaded) {
+          setUser({ firstName: 'Learner' });
+          setIsLoaded(true);
+        }
+      }, 3000);
     };
+    
     loadUser();
-  }, []);
+    
+    return () => {
+      clearInterval(checkInterval);
+      clearTimeout(timeoutId);
+    };
+  }, [isLoaded]);
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -207,10 +227,14 @@ export default function DashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-            {greeting}, {user?.firstName || 'Learner'}!
-          </h1>
-          <p className="text-gray-400">Ready to continue your learning journey?</p>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
+                {greeting}, {user?.firstName || 'Learner'}!
+              </h1>
+              <p className="text-gray-400 text-lg">Ready to continue your learning journey?</p>
+            </div>
+          </div>
         </motion.div>
 
         {/* Quick Action - Start Learning */}
@@ -221,18 +245,18 @@ export default function DashboardPage() {
           className="mb-8"
         >
           <Link href="/learn">
-            <div className="card bg-gradient-to-br from-primary-500/20 to-pink-500/20 border-primary-500/30 hover:border-primary-500/50 transition-all cursor-pointer group">
+            <div className="card bg-gradient-to-br from-primary-500/20 via-pink-500/10 to-purple-500/20 border-primary-500/30 hover:border-primary-500/50 hover:shadow-xl hover:shadow-primary-500/20 transition-all cursor-pointer group">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-primary-500/20 flex items-center justify-center group-hover:bg-primary-500/30 transition-colors">
-                    <Play size={28} className="text-primary-400" />
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-pink-500 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
+                    <Play size={28} className="text-white" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-white">Start Learning Session</h3>
+                    <h3 className="text-xl font-semibold text-white mb-1">Start Learning Session</h3>
                     <p className="text-gray-400 text-sm">Pick up where you left off or explore new topics</p>
                   </div>
                 </div>
-                <ChevronRight className="text-gray-400 group-hover:text-primary-400 transition-colors" />
+                <ChevronRight className="text-gray-400 group-hover:text-primary-400 group-hover:translate-x-1 transition-all" size={24} />
               </div>
             </div>
           </Link>
