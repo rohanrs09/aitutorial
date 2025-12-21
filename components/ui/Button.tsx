@@ -7,23 +7,27 @@ import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center font-medium transition-all duration-200 min-h-touch focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface disabled:opacity-50 disabled:pointer-events-none active:scale-95',
+  'inline-flex items-center justify-center font-medium transition-all duration-200 ease-out-expo min-h-touch focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed select-none',
   {
     variants: {
       variant: {
-        primary: 'bg-primary-500 text-white hover:bg-primary-600 active:bg-primary-700 focus:ring-primary-500',
-        secondary: 'bg-surface-lighter text-white hover:bg-surface-light active:bg-surface focus:ring-white/20',
-        ghost: 'bg-transparent text-gray-400 hover:bg-white/10 hover:text-white active:bg-white/5 focus:ring-white/20',
-        danger: 'bg-red-500 text-white hover:bg-red-600 active:bg-red-700 focus:ring-red-500',
-        outline: 'border border-white/20 text-white hover:bg-white/10 active:bg-white/5 focus:ring-white/20',
-        gradient: 'bg-gradient-to-r from-primary-500 to-pink-500 text-white hover:opacity-90 active:opacity-80 focus:ring-primary-500',
+        primary: 'bg-primary-500 text-white hover:bg-primary-600 active:bg-primary-700 active:scale-[0.98] focus-visible:ring-primary-500 shadow-md hover:shadow-lg hover:shadow-primary-500/20',
+        secondary: 'bg-surface-lighter text-white hover:bg-surface-light active:bg-surface active:scale-[0.98] focus-visible:ring-white/20 border border-white/10 hover:border-white/20',
+        ghost: 'bg-transparent text-gray-400 hover:bg-white/10 hover:text-white active:bg-white/5 active:scale-[0.98] focus-visible:ring-white/20',
+        danger: 'bg-red-500 text-white hover:bg-red-600 active:bg-red-700 active:scale-[0.98] focus-visible:ring-red-500 shadow-md hover:shadow-lg hover:shadow-red-500/20',
+        outline: 'border border-white/20 text-white hover:bg-white/10 hover:border-white/30 active:bg-white/5 active:scale-[0.98] focus-visible:ring-white/20',
+        gradient: 'bg-gradient-to-r from-primary-500 to-pink-500 text-white hover:opacity-90 active:opacity-80 active:scale-[0.98] focus-visible:ring-primary-500 shadow-md hover:shadow-lg hover:shadow-primary-500/25',
+        success: 'bg-green-500 text-white hover:bg-green-600 active:bg-green-700 active:scale-[0.98] focus-visible:ring-green-500 shadow-md hover:shadow-lg hover:shadow-green-500/20',
       },
       size: {
-        sm: 'text-sm px-3 py-1.5 rounded-lg',
-        md: 'text-sm px-4 py-2 rounded-xl',
-        lg: 'text-base px-6 py-3 rounded-xl',
-        xl: 'text-lg px-8 py-4 rounded-2xl',
-        icon: 'w-10 h-10 rounded-xl',
+        xs: 'text-xs px-2.5 py-1 rounded-lg gap-1',
+        sm: 'text-sm px-3 py-1.5 rounded-lg gap-1.5',
+        md: 'text-sm px-4 py-2 rounded-xl gap-2',
+        lg: 'text-base px-6 py-3 rounded-xl gap-2',
+        xl: 'text-lg px-8 py-4 rounded-2xl gap-2.5',
+        icon: 'w-10 h-10 rounded-xl p-0',
+        'icon-sm': 'w-8 h-8 rounded-lg p-0',
+        'icon-lg': 'w-12 h-12 rounded-xl p-0',
       },
       fullWidth: {
         true: 'w-full',

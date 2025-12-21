@@ -5,13 +5,13 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const inputVariants = cva(
-  'w-full transition-colors duration-200 min-h-touch focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed',
+  'w-full transition-all duration-200 ease-out-expo min-h-touch focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed',
   {
     variants: {
       variant: {
-        default: 'px-4 py-3 rounded-xl bg-surface-lighter border border-white/10 text-white placeholder-gray-500 focus:border-primary-500 focus:ring-1 focus:ring-primary-500',
-        ghost: 'px-3 py-2 bg-transparent border-b border-white/10 text-white placeholder-gray-500 focus:border-primary-500',
-        filled: 'px-4 py-3 rounded-xl bg-surface border-0 text-white placeholder-gray-500 focus:ring-2 focus:ring-primary-500',
+        default: 'px-4 py-3 rounded-xl bg-surface-lighter border border-white/10 text-white placeholder-gray-500 focus:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-500/50 hover:border-white/20',
+        ghost: 'px-3 py-2 bg-transparent border-b border-white/10 text-white placeholder-gray-500 focus:border-primary-500 hover:border-white/20',
+        filled: 'px-4 py-3 rounded-xl bg-surface border-0 text-white placeholder-gray-500 focus-visible:ring-2 focus-visible:ring-primary-500',
       },
       inputSize: {
         sm: 'text-sm py-2',

@@ -1,17 +1,40 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from '@clerk/nextjs';
 import { dark } from '@clerk/themes';
 import "./globals.css";
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: '#0a0e27',
+  colorScheme: 'dark',
+};
 
 export const metadata: Metadata = {
   title: "AI Voice Tutor - Learn Smarter with AI",
   description: "Transform your learning with AI-powered voice tutoring. Adaptive teaching that understands your emotions and adjusts to your pace.",
   keywords: "AI tutor, voice learning, adaptive education, online learning, GRE prep, programming, economics",
   authors: [{ name: "AI Voice Tutor" }],
+  creator: "AI Voice Tutor",
+  publisher: "AI Voice Tutor",
+  robots: "index, follow",
   openGraph: {
     title: "AI Voice Tutor - Learn Smarter with AI",
     description: "Transform your learning with AI-powered voice tutoring.",
     type: "website",
+    locale: "en_US",
+    siteName: "AI Voice Tutor",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AI Voice Tutor - Learn Smarter with AI",
+    description: "Transform your learning with AI-powered voice tutoring.",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "AI Voice Tutor",
   },
 };
 
@@ -26,8 +49,16 @@ export default function RootLayout({
   // If Clerk is not configured, render without authentication
   if (!clerkPubKey) {
     return (
-      <html lang="en">
-        <body className="antialiased">
+      <html lang="en" className="dark" suppressHydrationWarning>
+        <head>
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+          <link 
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" 
+            rel="stylesheet" 
+          />
+        </head>
+        <body className="antialiased bg-surface min-h-screen">
           {children}
         </body>
       </html>
@@ -52,8 +83,16 @@ export default function RootLayout({
         }
       }}
     >
-      <html lang="en">
-        <body className="antialiased">
+      <html lang="en" className="dark" suppressHydrationWarning>
+        <head>
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+          <link 
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" 
+            rel="stylesheet" 
+          />
+        </head>
+        <body className="antialiased bg-surface min-h-screen">
           {children}
         </body>
       </html>

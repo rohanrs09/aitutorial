@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { sanitizeMermaidCode, validateMermaidCode } from '@/lib/utils';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
@@ -51,15 +52,18 @@ Requirements:
 - Use flowchart, class diagram, or graph as appropriate
 - Avoid complex styling
 - Make it clear for students
+- Do NOT use HTML tags, special characters, or brackets inside node labels
+- Use simple alphanumeric text for node labels
+- Avoid using symbols like <, >, {, }, $, @, or #
 
-Return ONLY the Mermaid code, no explanations.`;
+Return ONLY the Mermaid code, no explanations or markdown code blocks.`;
 
   const completion = await openai.chat.completions.create({
     model: 'gpt-4o',
     messages: [
       {
         role: 'system',
-        content: 'You are an expert at creating educational diagrams using Mermaid syntax. Always use Mermaid 10.x compatible syntax.',
+        content: 'You are an expert at creating educational diagrams using Mermaid syntax. Always use Mermaid 10.x compatible syntax. Never include HTML tags or special characters that might break parsing. Return only raw Mermaid code without markdown wrappers.',
       },
       {
         role: 'user',
@@ -72,10 +76,25 @@ Return ONLY the Mermaid code, no explanations.`;
 
   let mermaidCode = completion.choices[0].message.content || '';
   
-  // Clean up the response
+  // Clean up the response and sanitize
   mermaidCode = mermaidCode.replace(/```mermaid\n?/g, '').replace(/```/g, '').trim();
   
-  return mermaidCode;
+  // Apply sanitization to fix any remaining issues
+  const sanitizedCode = sanitizeMermaidCode(mermaidCode);
+  
+  // Validate the code
+  const validation = validateMermaidCode(sanitizedCode);
+  if (!validation.valid) {
+    console.warn('Generated Mermaid code validation warning:', validation.error);
+    // Return a simple fallback diagram
+    return `flowchart TD
+    A[${topic}] --> B[Key Concept 1]
+    A --> C[Key Concept 2]
+    B --> D[Detail]
+    C --> E[Detail]`;
+  }
+  
+  return sanitizedCode;
 }
 
 // Generate diagram as image using DALL-E (fallback)

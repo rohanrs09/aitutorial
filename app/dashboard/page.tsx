@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { 
   Mic, Brain, Clock, Target, BookOpen, TrendingUp, 
@@ -9,6 +9,9 @@ import {
 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import { SkeletonStats, SkeletonSessionList } from '@/components/ui/Skeleton';
+import { NoSessionsEmpty } from '@/components/ui/EmptyState';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 // Check if Clerk is configured
 const isClerkConfigured = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
@@ -179,7 +182,14 @@ export default function DashboardPage() {
   if (!isLoaded) {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center gap-4"
+        >
+          <div className="w-10 h-10 border-3 border-primary-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-400 text-sm">Loading your dashboard...</p>
+        </motion.div>
       </div>
     );
   }
@@ -200,20 +210,23 @@ export default function DashboardPage() {
             </div>
             
             <div className="flex items-center gap-4">
-              <Link 
-                href="/settings"
-                className="p-2 text-gray-400 hover:text-white transition-colors"
-              >
-                <Settings size={20} />
-              </Link>
-              <button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className={`p-2 text-gray-400 hover:text-white transition-colors ${refreshing ? 'animate-spin' : ''}`}
-                title="Refresh data"
-              >
-                <RefreshCw size={20} />
-              </button>
+              <Tooltip content="Settings" position="bottom">
+                <Link 
+                  href="/settings"
+                  className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200"
+                >
+                  <Settings size={20} />
+                </Link>
+              </Tooltip>
+              <Tooltip content="Refresh data" position="bottom">
+                <button
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className={`p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200 ${refreshing ? 'animate-spin' : ''}`}
+                >
+                  <RefreshCw size={20} />
+                </button>
+              </Tooltip>
               <UserButton afterSignOutUrl="/" />
             </div>
           </div>
@@ -267,47 +280,65 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+          className="mb-8"
         >
-          <div className="card">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                <MessageSquare size={20} className="text-blue-400" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-white">{stats.totalSessions}</p>
-            <p className="text-gray-500 text-sm">Total Sessions</p>
-          </div>
+          {isLoadingData ? (
+            <SkeletonStats count={4} />
+          ) : (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <motion.div 
+                whileHover={{ y: -2, transition: { duration: 0.2 } }}
+                className="card hover:border-blue-500/30 transition-all duration-300"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                    <MessageSquare size={20} className="text-blue-400" />
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-white">{stats.totalSessions}</p>
+                <p className="text-gray-500 text-sm">Total Sessions</p>
+              </motion.div>
 
-          <div className="card">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-                <Clock size={20} className="text-green-400" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-white">{Math.floor(stats.totalMinutes / 60)}h {stats.totalMinutes % 60}m</p>
-            <p className="text-gray-500 text-sm">Time Learned</p>
-          </div>
+              <motion.div 
+                whileHover={{ y: -2, transition: { duration: 0.2 } }}
+                className="card hover:border-green-500/30 transition-all duration-300"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
+                    <Clock size={20} className="text-green-400" />
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-white">{Math.floor(stats.totalMinutes / 60)}h {stats.totalMinutes % 60}m</p>
+                <p className="text-gray-500 text-sm">Time Learned</p>
+              </motion.div>
 
-          <div className="card">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
-                <Flame size={20} className="text-orange-400" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-white">{stats.currentStreak}</p>
-            <p className="text-gray-500 text-sm">Day Streak</p>
-          </div>
+              <motion.div 
+                whileHover={{ y: -2, transition: { duration: 0.2 } }}
+                className="card hover:border-orange-500/30 transition-all duration-300"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                    <Flame size={20} className="text-orange-400" />
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-white">{stats.currentStreak}</p>
+                <p className="text-gray-500 text-sm">Day Streak</p>
+              </motion.div>
 
-          <div className="card">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                <Target size={20} className="text-purple-400" />
-              </div>
+              <motion.div 
+                whileHover={{ y: -2, transition: { duration: 0.2 } }}
+                className="card hover:border-purple-500/30 transition-all duration-300"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                    <Target size={20} className="text-purple-400" />
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-white">{stats.averageScore}%</p>
+                <p className="text-gray-500 text-sm">Avg. Score</p>
+              </motion.div>
             </div>
-            <p className="text-2xl font-bold text-white">{stats.averageScore}%</p>
-            <p className="text-gray-500 text-sm">Avg. Score</p>
-          </div>
+          )}
         </motion.div>
 
         <div className="grid lg:grid-cols-3 gap-6">
@@ -329,54 +360,46 @@ export default function DashboardPage() {
               </div>
               <div className="space-y-3">
                 {isLoadingData ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="w-6 h-6 border-2 border-primary-500/30 border-t-primary-500 rounded-full animate-spin" />
-                  </div>
+                  <SkeletonSessionList count={3} />
                 ) : recentSessions.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-gray-400 mb-4">No learning sessions yet</p>
-                    <Link 
-                      href="/learn" 
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors text-sm"
-                    >
-                      <Play size={16} />
-                      Start Your First Session
-                    </Link>
-                  </div>
+                  <NoSessionsEmpty onStartSession={() => window.location.href = '/learn'} />
                 ) : (
-                  recentSessions.map((session, index) => (
-                    <motion.div
-                      key={session.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.4 + index * 0.1 }}
-                      className="flex items-center justify-between p-3 bg-surface rounded-xl hover:bg-surface-lighter transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center">
-                          <BookOpen size={18} className="text-primary-400" />
-                        </div>
-                        <div>
-                          <p className="text-white font-medium text-sm">{session.topic}</p>
-                          <div className="flex items-center gap-2 text-gray-500 text-xs">
-                            <Calendar size={12} />
-                            <span>{new Date(session.date).toLocaleDateString()}</span>
-                            <span>•</span>
-                            <span>{session.duration} min</span>
+                  <AnimatePresence>
+                    {recentSessions.map((session, index) => (
+                      <motion.div
+                        key={session.id}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        whileHover={{ x: 4, backgroundColor: 'rgba(255,255,255,0.05)' }}
+                        transition={{ delay: 0.4 + index * 0.1 }}
+                        className="flex items-center justify-between p-3 bg-surface rounded-xl hover:bg-surface-lighter transition-all duration-200 cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center">
+                            <BookOpen size={18} className="text-primary-400" />
+                          </div>
+                          <div>
+                            <p className="text-white font-medium text-sm">{session.topic}</p>
+                            <div className="flex items-center gap-2 text-gray-500 text-xs">
+                              <Calendar size={12} />
+                              <span>{new Date(session.date).toLocaleDateString()}</span>
+                              <span>•</span>
+                              <span>{session.duration} min</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <p className={`font-medium text-sm ${
-                          (session.score ?? 0) >= 90 ? 'text-green-400' : 
-                          (session.score ?? 0) >= 70 ? 'text-yellow-400' : 'text-red-400'
-                        }`}>
-                          {session.score !== null ? `${session.score}%` : '-'}
-                        </p>
-                        <p className="text-gray-500 text-xs capitalize">{session.emotion}</p>
-                      </div>
-                    </motion.div>
-                  ))
+                        <div className="text-right">
+                          <p className={`font-medium text-sm ${
+                            (session.score ?? 0) >= 90 ? 'text-green-400' : 
+                            (session.score ?? 0) >= 70 ? 'text-yellow-400' : 'text-red-400'
+                          }`}>
+                            {session.score !== null ? `${session.score}%` : '-'}
+                          </p>
+                          <p className="text-gray-500 text-xs capitalize">{session.emotion}</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 )}
               </div>
             </div>

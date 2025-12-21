@@ -138,9 +138,9 @@ export default function LandingPage() {
 
             {/* Desktop Nav */}
             <div className="hidden md:flex items-center gap-6">
-              <a href="#features" className="text-gray-400 hover:text-white transition-colors">Features</a>
-              <a href="#topics" className="text-gray-400 hover:text-white transition-colors">Topics</a>
-              <a href="#pricing" className="text-gray-400 hover:text-white transition-colors">Pricing</a>
+              <a href="#features" className="text-gray-400 hover:text-white transition-colors duration-200 animated-underline">Features</a>
+              <a href="#topics" className="text-gray-400 hover:text-white transition-colors duration-200 animated-underline">Topics</a>
+              <a href="#pricing" className="text-gray-400 hover:text-white transition-colors duration-200 animated-underline">Pricing</a>
             </div>
 
             {/* Auth Buttons */}
@@ -182,7 +182,8 @@ export default function LandingPage() {
               {/* Mobile Menu Button */}
               <button 
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2 text-gray-400 hover:text-white"
+                className="md:hidden p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200"
+                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
               >
                 {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
               </button>
@@ -214,10 +215,15 @@ export default function LandingPage() {
             className="text-center"
           >
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-500/10 border border-primary-500/20 text-primary-400 text-sm mb-6">
-              <Sparkles size={16} />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-500/10 border border-primary-500/20 text-primary-400 text-sm mb-6 hover:bg-primary-500/15 hover:border-primary-500/30 transition-all duration-300 cursor-default"
+            >
+              <Sparkles size={16} className="animate-pulse-slow" />
               <span>AI-Powered Adaptive Learning</span>
-            </div>
+            </motion.div>
 
             {/* Headline */}
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
@@ -338,15 +344,16 @@ export default function LandingPage() {
                 key={index}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
+                whileHover={{ y: -4, transition: { duration: 0.2 } }}
                 transition={{ delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="card hover:border-primary-500/30 transition-all group"
+                className="card hover:border-primary-500/30 hover:shadow-lg hover:shadow-primary-500/10 transition-all duration-300 group cursor-default"
               >
-                <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center mb-4 group-hover:bg-primary-500/20 transition-colors">
+                <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center mb-4 group-hover:bg-primary-500/20 group-hover:scale-110 transition-all duration-300">
                   <feature.icon className="text-primary-400" size={24} />
                 </div>
                 <h3 className="text-lg font-semibold text-white mb-2">{feature.title}</h3>
-                <p className="text-gray-400 text-sm">{feature.description}</p>
+                <p className="text-gray-400 text-sm leading-relaxed">{feature.description}</p>
               </motion.div>
             ))}
           </div>
@@ -367,9 +374,11 @@ export default function LandingPage() {
                 key={index}
                 initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.98 }}
                 transition={{ delay: index * 0.05 }}
                 viewport={{ once: true }}
-                className="px-4 sm:px-6 py-2 sm:py-3 bg-surface-light rounded-full text-gray-300 border border-white/10 hover:border-primary-500/50 hover:text-white transition-all cursor-pointer text-sm sm:text-base"
+                className="px-4 sm:px-6 py-2 sm:py-3 bg-surface-light rounded-full text-gray-300 border border-white/10 hover:border-primary-500/50 hover:text-white hover:bg-primary-500/10 transition-all duration-200 cursor-pointer text-sm sm:text-base select-none"
               >
                 {topic}
               </motion.span>
@@ -377,9 +386,9 @@ export default function LandingPage() {
           </div>
 
           <div className="text-center">
-            <Link href="/learn" className="inline-flex items-center gap-2 text-primary-400 hover:text-primary-300 font-medium">
+            <Link href="/learn" className="group inline-flex items-center gap-2 text-primary-400 hover:text-primary-300 font-medium transition-colors duration-200">
               Explore All Topics
-              <ArrowRight size={18} />
+              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform duration-200" />
             </Link>
           </div>
         </div>
@@ -399,16 +408,17 @@ export default function LandingPage() {
                 key={index}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
+                whileHover={{ y: -4 }}
                 transition={{ delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="card"
+                className="card hover:border-white/10 hover:shadow-lg transition-all duration-300"
               >
                 <div className="flex gap-1 mb-4">
                   {[...Array(testimonial.rating)].map((_, i) => (
                     <Star key={i} size={16} className="text-yellow-400 fill-yellow-400" />
                   ))}
                 </div>
-                <p className="text-gray-300 mb-4 italic">&ldquo;{testimonial.content}&rdquo;</p>
+                <p className="text-gray-300 mb-4 italic leading-relaxed">&ldquo;{testimonial.content}&rdquo;</p>
                 <div>
                   <p className="text-white font-medium">{testimonial.name}</p>
                   <p className="text-gray-500 text-sm">{testimonial.role}</p>
@@ -433,16 +443,17 @@ export default function LandingPage() {
                 key={index}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
+                whileHover={{ y: -6, transition: { duration: 0.2 } }}
                 transition={{ delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className={`card relative ${
+                className={`card relative transition-all duration-300 ${
                   plan.highlighted 
-                    ? 'border-primary-500 bg-primary-500/5' 
-                    : ''
+                    ? 'border-primary-500 bg-primary-500/5 shadow-lg shadow-primary-500/20 hover:shadow-xl hover:shadow-primary-500/25' 
+                    : 'hover:border-white/20 hover:shadow-lg'
                 }`}
               >
                 {plan.highlighted && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-primary-500 text-white text-xs font-medium rounded-full">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-primary-500 text-white text-xs font-medium rounded-full shadow-lg">
                     Most Popular
                   </div>
                 )}
@@ -461,10 +472,10 @@ export default function LandingPage() {
                 </ul>
                 <Link 
                   href={hasClerk ? "/sign-up" : "/learn"}
-                  className={`w-full text-center py-3 rounded-xl font-medium transition-all inline-block ${
+                  className={`w-full text-center py-3 rounded-xl font-medium transition-all duration-200 inline-block ${
                     plan.highlighted
-                      ? 'bg-primary-500 hover:bg-primary-600 text-white shadow-lg shadow-primary-500/25'
-                      : 'bg-surface-lighter hover:bg-surface text-white border border-white/10'
+                      ? 'bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white shadow-lg shadow-primary-500/25 hover:shadow-xl hover:shadow-primary-500/30'
+                      : 'bg-surface-lighter hover:bg-surface text-white border border-white/10 hover:border-white/20'
                   }`}
                 >
                   {hasClerk ? plan.cta : 'Try Demo'}
