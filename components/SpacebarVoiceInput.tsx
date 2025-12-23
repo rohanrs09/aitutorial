@@ -99,37 +99,10 @@ export default function SpacebarVoiceInput({
     }
   };
 
-  // Spacebar handling
+  // Spacebar handling - DISABLED
+  // Global spacebar listeners removed to allow normal space input in text fields
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !e.repeat && !disabled && !isProcessing) {
-        e.preventDefault();
-        setIsHolding(true);
-        startRecording();
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        e.preventDefault();
-        setIsHolding(false);
-        if (isRecording) {
-          stopRecording();
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, [disabled, isProcessing, isRecording, startRecording, stopRecording]);
-
-  // Cleanup on unmount
-  useEffect(() => {
+    // Cleanup on unmount
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -217,7 +190,7 @@ export default function SpacebarVoiceInput({
             <Mic size={18} className="sm:w-5 sm:h-5" />
             <span className="text-sm sm:text-base">
               <span className="sm:hidden">Hold to speak</span>
-              <span className="hidden sm:inline">Press & hold [Spacebar] to speak</span>
+              <span className="hidden sm:inline">Press & hold to speak</span>
             </span>
           </>
         )}
