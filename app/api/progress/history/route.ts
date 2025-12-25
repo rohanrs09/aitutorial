@@ -23,11 +23,25 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const { data, error } = await supabase
-      .from('learning_progress')
-      .select('*')
-      .eq('user_id', userId)
-      .order('last_accessed_at', { ascending: false });
+    // Check if userId is a UUID or Clerk user ID format
+    let query;
+    if (userId.startsWith('user_')) {
+      // Clerk user ID format - use clerk_user_id column
+      query = supabase
+        .from('learning_progress')
+        .select('*')
+        .eq('clerk_user_id', userId)
+        .order('last_accessed_at', { ascending: false });
+    } else {
+      // UUID format - use user_id column
+      query = supabase
+        .from('learning_progress')
+        .select('*')
+        .eq('user_id', userId)
+        .order('last_accessed_at', { ascending: false });
+    }
+    
+    const { data, error } = await query;
 
     if (error) {
       console.error('[API] History fetch error:', error);

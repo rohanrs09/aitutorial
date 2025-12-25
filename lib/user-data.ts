@@ -61,6 +61,19 @@ const STORAGE_KEYS = {
   USER_PREFERENCES: 'ai_tutor_preferences',
 };
 
+function getLocalSessionTopicName(sessionId: string): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const stored = localStorage.getItem(STORAGE_KEYS.CURRENT_SESSION);
+    if (!stored) return null;
+    const session = JSON.parse(stored);
+    if (session?.sessionId !== sessionId) return null;
+    return session.topicName || null;
+  } catch {
+    return null;
+  }
+}
+
 // =============================================
 // Session Management (Local + Supabase)
 // =============================================
@@ -105,14 +118,43 @@ export async function createSession(
       }
 
       console.log('[Supabase] Saving session to database...');
+
+      if (clerkUserId && clerkUserId.startsWith('user_')) {
+        const profileUpsert = await supabase
+          .from('user_profiles')
+          .upsert(
+            {
+              clerk_user_id: clerkUserId,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'clerk_user_id' }
+          );
+
+        if (profileUpsert.error) {
+          console.warn('[Supabase] Could not upsert user profile:', profileUpsert.error.message);
+        }
+      }
+      
+      // Determine if clerkUserId is a UUID or Clerk user ID format
+      const insertData: Record<string, any> = {
+        session_id: sessionId,
+        topic_name: topicName,
+        started_at: new Date().toISOString(),
+      };
+      
+      if (clerkUserId) {
+        if (clerkUserId.startsWith('user_')) {
+          // Clerk user ID format
+          insertData.clerk_user_id = clerkUserId;
+        } else {
+          // UUID format
+          insertData.user_id = clerkUserId;
+        }
+      }
+      
       const response = await supabase
         .from('learning_sessions')
-        .insert({
-          session_id: sessionId,
-          topic_name: topicName,
-          clerk_user_id: clerkUserId || null,
-          started_at: new Date().toISOString(),
-        })
+        .insert(insertData)
         .select();
       
       if (response.error) {
@@ -137,7 +179,8 @@ export async function updateSession(
     messages?: SessionMessage[];
     emotionsDetected?: string[];
     quizScore?: number;
-  }
+  },
+  clerkUserId?: string
 ): Promise<void> {
   // Update localStorage
   if (typeof window !== 'undefined') {
@@ -169,12 +212,33 @@ export async function updateSession(
     if (updates.quizScore !== undefined) {
       updateData.quiz_score = updates.quizScore;
     }
+
+    const userPayload: Record<string, unknown> = {};
+    if (clerkUserId) {
+      if (clerkUserId.startsWith('user_')) {
+        userPayload.clerk_user_id = clerkUserId;
+      } else {
+        userPayload.user_id = clerkUserId;
+      }
+    }
     
+    const topicName = getLocalSessionTopicName(sessionId) || 'General Learning';
+
     console.log('[Supabase] Updating session:', { sessionId, updates });
+    // Use upsert to avoid client-side PATCH requests that can be blocked by CORS.
+    // learning_sessions.topic_name is NOT NULL, so provide it.
     const response = await supabase
       .from('learning_sessions')
-      .update(updateData)
-      .eq('session_id', sessionId);
+      .upsert(
+        {
+          session_id: sessionId,
+          ...userPayload,
+          topic_name: topicName,
+          ...updateData,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'session_id' }
+      );
     
     if (response.error) {
       console.warn('[Supabase] Error updating session:', response.error.message);
@@ -229,32 +293,55 @@ export async function endSession(sessionId: string): Promise<void> {
   }
   
   try {
-    const { data: session, error: selectError } = await supabase
-      .from('learning_sessions')
-      .select('started_at')
-      .eq('session_id', sessionId)
-      .single();
-    
-    if (selectError) {
-      console.warn('Error fetching session from Supabase:', selectError.message);
-      return;
-    }
-    
-    if (session) {
-      const startTime = new Date(session.started_at);
-      const durationMinutes = Math.round((endTime.getTime() - startTime.getTime()) / 60000);
-      
-      const { error: updateError } = await supabase
-        .from('learning_sessions')
-        .update({
-          ended_at: endTime.toISOString(),
-          duration_minutes: durationMinutes,
-        })
-        .eq('session_id', sessionId);
-      
-      if (updateError) {
-        console.warn('Error updating session end time in Supabase:', updateError.message);
+    // Compute duration from localStorage if possible (avoids needing a server read)
+    let durationMinutes: number | null = null;
+    let topicName = getLocalSessionTopicName(sessionId) || 'General Learning';
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEYS.CURRENT_SESSION);
+        if (stored) {
+          const localSession = JSON.parse(stored);
+          if (localSession?.sessionId === sessionId && localSession?.startedAt) {
+            const startTime = new Date(localSession.startedAt);
+            durationMinutes = Math.round((endTime.getTime() - startTime.getTime()) / 60000);
+            topicName = localSession.topicName || topicName;
+          }
+        }
+      } catch {
+        // ignore
       }
+    }
+
+    // If duration still unknown, fall back to Supabase read (GET)
+    if (durationMinutes === null) {
+      const { data: session, error: selectError } = await supabase
+        .from('learning_sessions')
+        .select('started_at, topic_name')
+        .eq('session_id', sessionId)
+        .maybeSingle();
+
+      if (!selectError && session?.started_at) {
+        const startTime = new Date(session.started_at);
+        durationMinutes = Math.round((endTime.getTime() - startTime.getTime()) / 60000);
+        topicName = session.topic_name || topicName;
+      }
+    }
+
+    const response = await supabase
+      .from('learning_sessions')
+      .upsert(
+        {
+          session_id: sessionId,
+          topic_name: topicName,
+          ended_at: endTime.toISOString(),
+          duration_minutes: durationMinutes ?? null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'session_id' }
+      );
+
+    if (response.error) {
+      console.warn('Error updating session end time in Supabase:', response.error.message);
     }
   } catch (error) {
     console.warn('Error ending session in Supabase:', error instanceof Error ? error.message : String(error));
@@ -323,10 +410,25 @@ export async function getUserStats(clerkUserId?: string): Promise<UserStats> {
   // Try Supabase first if configured
   try {
     if (isSupabaseConfigured && clerkUserId) {
-      const { data: sessions } = await supabase
-        .from('learning_sessions')
-        .select('duration_minutes, quiz_score, emotions_detected, primary_emotion')
-        .not('ended_at', 'is', null);
+      // Check if clerkUserId is a UUID or Clerk user ID format
+      let query;
+      if (clerkUserId.startsWith('user_')) {
+        // Clerk user ID format - use clerk_user_id column
+        query = supabase
+          .from('learning_sessions')
+          .select('duration_minutes, quiz_score, emotions_detected, primary_emotion')
+          .eq('clerk_user_id', clerkUserId)
+          .not('ended_at', 'is', null);
+      } else {
+        // UUID format - use user_id column
+        query = supabase
+          .from('learning_sessions')
+          .select('duration_minutes, quiz_score, emotions_detected, primary_emotion')
+          .eq('user_id', clerkUserId)
+          .not('ended_at', 'is', null);
+      }
+      
+      const { data: sessions } = await query;
       
       if (sessions && sessions.length > 0) {
         const totalMinutes = sessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0);
@@ -396,12 +498,29 @@ export async function getRecentSessions(
   // Try Supabase first if configured
   try {
     if (isSupabaseConfigured && clerkUserId) {
-      const { data: sessions } = await supabase
-        .from('learning_sessions')
-        .select('session_id, topic_name, started_at, duration_minutes, quiz_score, primary_emotion')
-        .not('ended_at', 'is', null)
-        .order('started_at', { ascending: false })
-        .limit(limit);
+      // Check if clerkUserId is a UUID or Clerk user ID format
+      let query;
+      if (clerkUserId.startsWith('user_')) {
+        // Clerk user ID format - use clerk_user_id column
+        query = supabase
+          .from('learning_sessions')
+          .select('session_id, topic_name, started_at, duration_minutes, quiz_score, primary_emotion')
+          .eq('clerk_user_id', clerkUserId)
+          .not('ended_at', 'is', null)
+          .order('started_at', { ascending: false })
+          .limit(limit);
+      } else {
+        // UUID format - use user_id column
+        query = supabase
+          .from('learning_sessions')
+          .select('session_id, topic_name, started_at, duration_minutes, quiz_score, primary_emotion')
+          .eq('user_id', clerkUserId)
+          .not('ended_at', 'is', null)
+          .order('started_at', { ascending: false })
+          .limit(limit);
+      }
+      
+      const { data: sessions } = await query;
       
       if (sessions && sessions.length > 0) {
         return sessions.map(s => ({
@@ -445,15 +564,25 @@ export async function saveMessage(
   // Try Supabase
   try {
     if (isSupabaseConfigured) {
+      const insertData: Record<string, any> = {
+        session_id: sessionId,
+        role: message.role,
+        content: message.content,
+        emotion: message.emotion || null,
+      };
+      
+      // Add the appropriate user ID field based on format
+      if (clerkUserId && clerkUserId.startsWith('user_')) {
+        // Clerk user ID format
+        insertData.clerk_user_id = clerkUserId;
+      } else if (clerkUserId) {
+        // UUID format
+        insertData.user_id = clerkUserId;
+      }
+      
       await supabase
         .from('conversation_messages')
-        .insert({
-          session_id: sessionId,
-          role: message.role,
-          content: message.content,
-          emotion: message.emotion || null,
-          user_id: clerkUserId || null,
-        });
+        .insert(insertData);
     }
   } catch (error) {
     console.warn('Could not save message to Supabase:', error);

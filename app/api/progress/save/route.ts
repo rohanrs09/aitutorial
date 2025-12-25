@@ -24,20 +24,31 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Determine if userId is a UUID or Clerk user ID format
+    const upsertData = {
+      session_id: sessionId,
+      topic_name: topicName,
+      ...progressData,
+      last_accessed_at: new Date().toISOString(),
+    };
+    
+    // Add the appropriate user ID field based on format
+    if (userId.startsWith('user_')) {
+      // Clerk user ID format
+      upsertData.clerk_user_id = userId;
+    } else {
+      // UUID format
+      upsertData.user_id = userId;
+    }
+    
     const { data, error } = await supabase
       .from('learning_progress')
       .upsert(
-        {
-          user_id: userId,
-          session_id: sessionId,
-          topic_name: topicName,
-          ...progressData,
-          last_accessed_at: new Date().toISOString(),
-        },
+        upsertData,
         { onConflict: 'session_id' }
       )
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('[API] Save progress error:', error);

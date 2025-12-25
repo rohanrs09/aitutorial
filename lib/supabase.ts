@@ -73,7 +73,7 @@ export async function validateSupabaseConnection(): Promise<{
         };
       }
       
-      if (sessionError.message?.includes('Failed to fetch')) {
+      if (sessionError.message?.includes('Failed to fetch') || sessionError.message?.includes('ERR_NAME_NOT_RESOLVED') || sessionError.message?.includes('NetworkError') || sessionError.message?.includes('TypeError')) {
         console.warn('[Supabase] Network error - cannot reach Supabase');
         return { 
           isConnected: false,
@@ -310,28 +310,37 @@ export async function getOrCreateUserProfile(clerkUserId: string, userData?: {
   avatarUrl?: string;
 }): Promise<UserProfile | null> {
   // Try to get existing profile
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from('user_profiles')
     .select('*')
     .eq('clerk_user_id', clerkUserId)
-    .single();
+    .maybeSingle();
+
+  if (existingError) {
+    console.error('Error getting user profile:', existingError);
+    return null;
+  }
 
   if (existing) {
     return existing as UserProfile;
   }
 
-  // Create new profile
+  // Create new profile (idempotent)
   const { data: newProfile, error } = await supabase
     .from('user_profiles')
-    .insert({
-      clerk_user_id: clerkUserId,
-      email: userData?.email,
-      first_name: userData?.firstName,
-      last_name: userData?.lastName,
-      avatar_url: userData?.avatarUrl,
-    })
+    .upsert(
+      {
+        clerk_user_id: clerkUserId,
+        email: userData?.email,
+        first_name: userData?.firstName,
+        last_name: userData?.lastName,
+        avatar_url: userData?.avatarUrl,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'clerk_user_id' }
+    )
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error('Error creating user profile:', error);
@@ -353,7 +362,7 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
     .from('user_preferences')
     .select('*')
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error('Error getting user preferences:', error);
@@ -470,7 +479,7 @@ export async function getUserStats(userId: string): Promise<{
     .from('user_profiles')
     .select('streak_days, sessions_this_month')
     .eq('id', userId)
-    .single();
+    .maybeSingle();
 
   const { data: sessions } = await supabase
     .from('learning_sessions')

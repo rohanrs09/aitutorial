@@ -29,22 +29,45 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Find last active session
-    const { data, error } = await supabase
-      .from('learning_progress')
-      .select('*')
-      .eq('user_id', userId)
-      .neq('status', 'completed')
-      .order('last_accessed_at', { ascending: false })
-      .limit(1)
-      .single();
+    // Check if userId is a UUID or Clerk user ID format
+    let query;
+    if (userId.startsWith('user_')) {
+      // Clerk user ID format - use clerk_user_id column
+      query = supabase
+        .from('learning_progress')
+        .select('*')
+        .eq('clerk_user_id', userId)
+        .neq('status', 'completed')
+        .order('last_accessed_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+    } else {
+      // UUID format - use user_id column
+      query = supabase
+        .from('learning_progress')
+        .select('*')
+        .eq('user_id', userId)
+        .neq('status', 'completed')
+        .order('last_accessed_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+    }
+    
+    const { data, error } = await query;
 
     if (data) {
       // Update last accessed
       await supabase
         .from('learning_progress')
-        .update({ last_accessed_at: new Date().toISOString() })
-        .eq('session_id', data.session_id);
+        .upsert(
+          {
+            session_id: data.session_id,
+            topic_name: data.topic_name,
+            last_accessed_at: new Date().toISOString(),
+            ...(userId.startsWith('user_') ? { clerk_user_id: userId } : { user_id: userId }),
+          },
+          { onConflict: 'session_id' }
+        );
 
       return NextResponse.json({
         success: true,
@@ -55,18 +78,26 @@ export async function GET(request: NextRequest) {
 
     // No active session - create new one
     const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
+    const insertData: Record<string, any> = {
+      session_id: newSessionId,
+      topic_name: topicName || 'default',
+      status: 'started',
+      progress_percentage: 0,
+      last_accessed_at: new Date().toISOString(),
+    };
+
+    if (userId.startsWith('user_')) {
+      insertData.clerk_user_id = userId;
+    } else {
+      insertData.user_id = userId;
+    }
+
     const { data: newSession, error: createError } = await supabase
       .from('learning_progress')
-      .insert({
-        user_id: userId,
-        session_id: newSessionId,
-        topic_name: topicName || 'default',
-        status: 'started',
-        progress_percentage: 0,
-      })
+      .insert(insertData)
       .select()
-      .single();
+      .maybeSingle();
 
     if (createError) {
       console.error('[API] Error creating session:', createError);

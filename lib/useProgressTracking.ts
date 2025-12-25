@@ -28,8 +28,17 @@ export function useProgressTracking(userId?: string) {
         const result = await resumeSession(userId);
         if (result.session) {
           setCurrentSession(result.session);
-          const progressData = await loadProgress(result.session.session_id);
-          setProgress(progressData.data);
+          const sessionId =
+            result.session.session_id ||
+            result.session.sessionId ||
+            result.session.sessionID ||
+            result.session.session_id;
+          if (sessionId) {
+            const progressData = await loadProgress(sessionId);
+            setProgress(progressData.data);
+          } else {
+            setProgress(null);
+          }
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to resume session');

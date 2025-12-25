@@ -59,8 +59,13 @@ CREATE TABLE IF NOT EXISTS session_messages (
 CREATE TABLE IF NOT EXISTS conversation_messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id TEXT REFERENCES learning_sessions(session_id) ON DELETE CASCADE,
+  user_id UUID REFERENCES user_profiles(id),
+  clerk_user_id TEXT,
   role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
   content TEXT NOT NULL,
+  emotion TEXT,
+  audio_url TEXT,
+  timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -215,6 +220,9 @@ CREATE INDEX IF NOT EXISTS idx_learning_sessions_session_id ON learning_sessions
 CREATE INDEX IF NOT EXISTS idx_learning_sessions_user_id ON learning_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_learning_sessions_clerk_user_id ON learning_sessions(clerk_user_id);
 CREATE INDEX IF NOT EXISTS idx_session_messages_session_id ON session_messages(session_id);
+CREATE INDEX IF NOT EXISTS idx_conversation_messages_session_id ON conversation_messages(session_id);
+CREATE INDEX IF NOT EXISTS idx_conversation_messages_user_id ON conversation_messages(user_id);
+CREATE INDEX IF NOT EXISTS idx_conversation_messages_clerk_user_id ON conversation_messages(clerk_user_id);
 CREATE INDEX IF NOT EXISTS idx_quiz_attempts_session_id ON quiz_attempts(session_id);
 CREATE INDEX IF NOT EXISTS idx_concept_mastery_user_id ON concept_mastery(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_notes_session_id ON user_notes(session_id);

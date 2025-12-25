@@ -49,7 +49,7 @@ interface CustomTopic {
 
 export default function TutorSession() {
   const router = useRouter();
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   
   // Progress tracking hook
   const progressTracking = useProgressTracking(user?.id);
@@ -153,13 +153,15 @@ export default function TutorSession() {
 
   // Initialize session on mount
   useEffect(() => {
+    if (!isLoaded) return;
+    if (sessionId) return;
     const initSession = async () => {
       const topic = getTopicById(selectedTopic);
-      const newSessionId = await createSession(topic?.name || 'General Learning');
+      const newSessionId = await createSession(topic?.name || 'General Learning', user?.id);
       setSessionId(newSessionId);
     };
     initSession();
-  }, []);
+  }, [isLoaded, selectedTopic, user?.id, sessionId]);
 
   // Auto-save progress every 30 seconds
   useEffect(() => {
@@ -468,7 +470,7 @@ export default function TutorSession() {
 
     // Save user message to session
     if (sessionId) {
-      saveMessage(sessionId, { role: 'user', content: text, emotion: currentEmotion });
+      saveMessage(sessionId, { role: 'user', content: text, emotion: currentEmotion }, user?.id);
     }
 
     try {
@@ -562,25 +564,36 @@ export default function TutorSession() {
 
         // Generate diagram if needed
         if (data.needsDiagram) {
-          generateDiagram(data.message);
+          await generateDiagram(data.message);
         }
 
         // Save assistant message to session
         if (sessionId) {
-          saveMessage(sessionId, { role: 'assistant', content: data.message });
-          
+          saveMessage(sessionId, { role: 'assistant', content: data.message }, user?.id);
+
           // Update session with message count and emotions
           const updatedMessages = [...messages, userMessage, assistantMessage];
-          updateSession(sessionId, {
-            messages: updatedMessages.map(m => ({
-              id: m.id,
-              role: m.role,
-              content: m.content,
-              emotion: null,
-              timestamp: new Date()
-            })),
-            emotionsDetected: [...new Set(sessionStats.emotionHistory.map(e => e.emotion))]
-          });
+          const emotionsDetected = [
+            ...new Set([
+              ...(sessionStats.emotionHistory?.map(e => e.emotion) || []),
+              currentEmotion,
+            ]),
+          ];
+
+          updateSession(
+            sessionId,
+            {
+              messages: updatedMessages.map(m => ({
+                id: m.id,
+                role: m.role,
+                content: m.content,
+                emotion: m.role === 'user' ? currentEmotion : null,
+                timestamp: new Date(),
+              })),
+              emotionsDetected,
+            },
+            user?.id
+          );
         }
 
         // Speak the response
@@ -649,7 +662,7 @@ export default function TutorSession() {
       const totalQuestions = sessionStats.questionsAsked + 1;
       const totalCorrect = sessionStats.correctAnswers + (isCorrect ? 1 : 0);
       const score = Math.round((totalCorrect / totalQuestions) * 100);
-      updateSession(sessionId, { quizScore: score });
+      updateSession(sessionId, { quizScore: score }, user?.id);
     }
 
     // Add note about the answer

@@ -2,7 +2,8 @@ import { supabase, isSupabaseConfigured } from './supabase';
 
 export interface LearningProgress {
   id: string;
-  user_id: string;
+  user_id?: string;
+  clerk_user_id?: string;
   session_id: string;
   topic_name: string;
   completed_at?: string;
@@ -14,10 +15,16 @@ export interface LearningProgress {
     totalSteps: number;
     bookmarks: number[];
   };
+  concepts_covered?: string[];
+  primary_emotion?: string;
+  quiz_score?: number;
+  total_time_minutes?: number;
+  mastery_level?: number;
 }
 
 export interface UserLearningState {
-  userId: string;
+  userId?: string;
+  clerkUserId?: string;
   currentSessionId?: string;
   currentTopic?: string;
   lastAccessedAt: string;
@@ -30,6 +37,52 @@ export interface UserLearningState {
 const PROGRESS_STORAGE_KEY = 'learning_progress';
 const SESSION_STORAGE_KEY = 'current_session';
 
+function sanitizeProgressForSupabase(progressData: Partial<LearningProgress> & Record<string, unknown>): Partial<LearningProgress> {
+  const cleaned: Partial<LearningProgress> = {};
+
+  if (typeof progressData.progress_percentage === 'number') {
+    cleaned.progress_percentage = progressData.progress_percentage;
+  }
+  if (typeof progressData.status === 'string') {
+    cleaned.status = progressData.status as LearningProgress['status'];
+  }
+  if (progressData.content_position && typeof progressData.content_position === 'object') {
+    cleaned.content_position = progressData.content_position as LearningProgress['content_position'];
+  }
+  if (Array.isArray((progressData as any).concepts_covered)) {
+    cleaned.concepts_covered = (progressData as any).concepts_covered;
+  }
+  if (Array.isArray((progressData as any).conceptsCovered)) {
+    cleaned.concepts_covered = (progressData as any).conceptsCovered;
+  }
+  if (typeof (progressData as any).primary_emotion === 'string') {
+    cleaned.primary_emotion = (progressData as any).primary_emotion;
+  }
+  if (typeof (progressData as any).primaryEmotion === 'string') {
+    cleaned.primary_emotion = (progressData as any).primaryEmotion;
+  }
+  if (typeof (progressData as any).quiz_score === 'number') {
+    cleaned.quiz_score = (progressData as any).quiz_score;
+  }
+  if (typeof (progressData as any).quizScore === 'number') {
+    cleaned.quiz_score = (progressData as any).quizScore;
+  }
+  if (typeof (progressData as any).total_time_minutes === 'number') {
+    cleaned.total_time_minutes = (progressData as any).total_time_minutes;
+  }
+  if (typeof (progressData as any).timeSpent === 'number') {
+    cleaned.total_time_minutes = Math.max(0, Math.round(((progressData as any).timeSpent as number) / 60));
+  }
+  if (typeof (progressData as any).mastery_level === 'number') {
+    cleaned.mastery_level = (progressData as any).mastery_level;
+  }
+  if (typeof (progressData as any).masteryLevel === 'number') {
+    cleaned.mastery_level = (progressData as any).masteryLevel;
+  }
+
+  return cleaned;
+}
+
 /**
  * Save learning progress to Supabase and localStorage
  */
@@ -39,13 +92,23 @@ export async function saveProgress(
   topicName: string,
   progressData: Partial<LearningProgress>
 ) {
+  const sanitizedProgress = sanitizeProgressForSupabase(progressData as any);
+
   // Fallback: Save to localStorage
-  const localProgress = {
-    ...progressData,
-    user_id: userId,
+  const localProgress: any = {
+    ...sanitizedProgress,
     session_id: sessionId,
     topic_name: topicName,
     last_accessed_at: new Date().toISOString(),
+  };
+  
+  // Add the appropriate user ID field based on format
+  if (userId.startsWith('user_')) {
+    // Clerk user ID format
+    localProgress.clerk_user_id = userId;
+  } else {
+    // UUID format
+    localProgress.user_id = userId;
   };
 
   try {
@@ -60,21 +123,32 @@ export async function saveProgress(
     return { success: true, source: 'localStorage' };
   }
 
+  // Determine if userId is a UUID or Clerk user ID format
+  const upsertData: any = {
+    session_id: sessionId,
+    topic_name: topicName,
+    ...sanitizedProgress,
+    last_accessed_at: new Date().toISOString(),
+  };
+  
+  // Add the appropriate user ID field based on format
+  if (userId.startsWith('user_')) {
+    // Clerk user ID format
+    upsertData.clerk_user_id = userId;
+  } else {
+    // UUID format
+    upsertData.user_id = userId;
+  }
+  
   try {
     const { data, error } = await supabase
       .from('learning_progress')
       .upsert(
-        {
-          user_id: userId,
-          session_id: sessionId,
-          topic_name: topicName,
-          ...progressData,
-          last_accessed_at: new Date().toISOString(),
-        },
+        upsertData,
         { onConflict: 'session_id' }
       )
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       const errorMsg = error?.message || JSON.stringify(error) || 'Unknown error';
@@ -106,7 +180,7 @@ export async function loadProgress(sessionId: string) {
         .from('learning_progress')
         .select('*')
         .eq('session_id', sessionId)
-        .single();
+        .maybeSingle();
 
       if (!error && data) {
         console.log('[Progress] Loaded from Supabase:', data);
@@ -142,11 +216,25 @@ export async function getUserLearningHistory(userId: string) {
   }
 
   try {
-    const { data, error } = await supabase
-      .from('learning_progress')
-      .select('*')
-      .eq('user_id', userId)
-      .order('last_accessed_at', { ascending: false });
+    // Check if userId is a UUID or Clerk user ID format
+    let query;
+    if (userId.startsWith('user_')) {
+      // Clerk user ID format - use clerk_user_id column
+      query = supabase
+        .from('learning_progress')
+        .select('*')
+        .eq('clerk_user_id', userId)
+        .order('last_accessed_at', { ascending: false });
+    } else {
+      // UUID format - use user_id column
+      query = supabase
+        .from('learning_progress')
+        .select('*')
+        .eq('user_id', userId)
+        .order('last_accessed_at', { ascending: false });
+    }
+    
+    const { data, error } = await query;
 
     if (error) {
       const errorMsg = error?.message || JSON.stringify(error) || 'Failed to load history';
@@ -173,7 +261,9 @@ export async function resumeSession(userId: string, topicName?: string) {
     if (activeSession) {
       try {
         const session = JSON.parse(activeSession);
-        if (session.userId === userId && (!topicName || session.topic === topicName)) {
+        // Check if the session belongs to the user (handle both user ID formats)
+        const sessionUserId = session.clerkUserId || session.userId;
+        if (sessionUserId === userId && (!topicName || session.topic === topicName)) {
           console.log('[Progress] Resuming from localStorage:', session);
           return { session, source: 'localStorage' };
         }
@@ -184,14 +274,31 @@ export async function resumeSession(userId: string, topicName?: string) {
 
     // Try to get last session from Supabase
     if (isSupabaseConfigured) {
-      const { data, error } = await supabase
-        .from('learning_progress')
-        .select('*')
-        .eq('user_id', userId)
-        .neq('status', 'completed')
-        .order('last_accessed_at', { ascending: false })
-        .limit(1)
-        .single();
+      // Check if userId is a UUID or Clerk user ID format
+      let query;
+      if (userId.startsWith('user_')) {
+        // Clerk user ID format - use clerk_user_id column
+        query = supabase
+          .from('learning_progress')
+          .select('*')
+          .eq('clerk_user_id', userId)
+          .neq('status', 'completed')
+          .order('last_accessed_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+      } else {
+        // UUID format - use user_id column
+        query = supabase
+          .from('learning_progress')
+          .select('*')
+          .eq('user_id', userId)
+          .neq('status', 'completed')
+          .order('last_accessed_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+      }
+      
+      const { data, error } = await query;
 
       if (!error && data) {
         console.log('[Progress] Resuming from Supabase:', data);
@@ -211,11 +318,19 @@ export async function resumeSession(userId: string, topicName?: string) {
 
     // No existing session - create new one
     const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const newSession = {
-      userId,
+    const newSession: any = {
       sessionId: newSessionId,
       topic: topicName || 'default',
       timestamp: new Date().toISOString(),
+    };
+    
+    // Add the appropriate user ID field based on format
+    if (userId.startsWith('user_')) {
+      // Clerk user ID format
+      newSession.clerkUserId = userId;
+    } else {
+      // UUID format
+      newSession.userId = userId;
     };
 
     localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newSession));
@@ -234,14 +349,42 @@ export async function completeSession(sessionId: string, userId: string) {
   // Update in Supabase
   if (isSupabaseConfigured) {
     try {
+      // learning_progress.topic_name is NOT NULL, so provide it for upsert.
+      // Prefer localStorage (fast), fall back to loadProgress.
+      let topicName = 'default';
+      try {
+        const stored = localStorage.getItem(`${PROGRESS_STORAGE_KEY}_${sessionId}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          topicName = parsed.topic_name || parsed.topicName || topicName;
+        }
+      } catch {
+        // ignore
+      }
+
+      if (!topicName || topicName === 'default') {
+        try {
+          const loaded = await loadProgress(sessionId);
+          if (loaded.data?.topic_name) topicName = loaded.data.topic_name;
+        } catch {
+          // ignore
+        }
+      }
+
       const { error } = await supabase
         .from('learning_progress')
-        .update({
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-          last_accessed_at: new Date().toISOString(),
-        })
-        .eq('session_id', sessionId);
+        .upsert(
+          {
+            session_id: sessionId,
+            topic_name: topicName,
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+            last_accessed_at: new Date().toISOString(),
+            progress_percentage: 100,
+            ...(userId.startsWith('user_') ? { clerk_user_id: userId } : { user_id: userId }),
+          },
+          { onConflict: 'session_id' }
+        );
 
       if (error) {
         const errMsg = error?.message || JSON.stringify(error) || 'Failed to complete';
@@ -336,8 +479,11 @@ export async function updateContentPosition(
     const progressPercentage = (currentStep / totalSteps) * 100;
 
     // Update
+    // Use the appropriate user ID from the data
+    const userId = data.clerk_user_id || data.user_id;
+    
     const result = await saveProgress(
-      data.user_id,
+      userId,
       sessionId,
       data.topic_name,
       {
@@ -375,8 +521,11 @@ export async function addBookmark(sessionId: string, stepNumber: number) {
       bookmarks.push(stepNumber);
     }
 
+    // Use the appropriate user ID from the data
+    const userId = data.clerk_user_id || data.user_id;
+    
     const result = await saveProgress(
-      data.user_id,
+      userId,
       sessionId,
       data.topic_name,
       {
