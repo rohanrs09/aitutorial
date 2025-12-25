@@ -39,12 +39,15 @@ export async function POST(request: NextRequest) {
     // Convert File to Buffer for OpenAI
     const buffer = Buffer.from(await audioFile.arrayBuffer());
     
-    // Create a new File object from buffer
-    const file = new File([buffer], 'audio.webm', { type: audioFile.type });
+    // Use FormData for OpenAI API
+    const uploadFormData = new FormData();
+    uploadFormData.append('file', new Blob([buffer], { type: audioFile.type }), 'audio.webm');
+    uploadFormData.append('model', 'whisper-1');
+    uploadFormData.append('language', 'en');
 
     // Transcribe using OpenAI Whisper
     const transcription = await openai.audio.transcriptions.create({
-      file: file,
+      file: new File([buffer], audioFile.name || 'audio.webm', { type: audioFile.type }),
       model: 'whisper-1',
       language: 'en',
     });

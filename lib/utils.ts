@@ -97,112 +97,97 @@ export function generateSessionId(): string {
  */
 export function sanitizeMermaidCode(code: string): string {
   if (!code || typeof code !== 'string') {
-    return 'graph TD\n    A[No diagram available]';
+    return 'flowchart TD\n    A["No diagram"]';
   }
 
-  let sanitized = code.trim();
+  let result = code.trim();
 
-  // Remove HTML tags that break Mermaid parsing
-  sanitized = sanitized.replace(/<[^>]*>/g, '');
+  // Remove HTML tags
+  result = result.replace(/<[^>]*>/g, '');
 
-  // Remove markdown code block wrappers if present
-  sanitized = sanitized.replace(/^```mermaid\s*/i, '');
-  sanitized = sanitized.replace(/^```\s*/gm, '');
-  sanitized = sanitized.replace(/\s*```$/g, '');
+  // Remove markdown code block wrappers
+  result = result.replace(/^```mermaid\s*/i, '');
+  result = result.replace(/^```\s*/gm, '');
+  result = result.replace(/\s*```$/g, '');
 
-  // Replace problematic Unicode characters
-  sanitized = sanitized
-    .replace(/[\u2018\u2019]/g, "'") // Smart quotes to regular quotes
-    .replace(/[\u201C\u201D]/g, '"') // Smart double quotes
-    .replace(/[\u2013\u2014]/g, '-') // En/em dashes to regular dash
-    .replace(/[\u2026]/g, '...') // Ellipsis
-    .replace(/[\u00A0]/g, ' '); // Non-breaking space
+  // Replace problematic Unicode
+  result = result
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/[\u2026]/g, '...')
+    .replace(/[\u00A0]/g, ' ');
 
-  // Escape special characters in node labels that break parsing
-  // Replace unescaped brackets/parentheses inside labels
-  sanitized = sanitized.replace(/\[([^\]]*?)\(([^)]*?)\)([^\]]*?)\]/g, '[\$1\$2\$3]');
-  
-  // Remove or escape characters that break Mermaid
-  sanitized = sanitized
-    .replace(/[{}]/g, '') // Remove curly braces (except in subgraph)
-    .replace(/\|\|/g, ' or ') // Replace double pipes
-    .replace(/&&/g, ' and ') // Replace double ampersands
-    .replace(/\$/g, '') // Remove dollar signs
-    .replace(/@/g, 'at ') // Replace @ symbol
-    .replace(/#(?!\w)/g, ''); // Remove standalone hash symbols
-
-  // Fix common issues with arrows
-  sanitized = sanitized
-    .replace(/--+>/g, '-->') // Normalize arrows
-    .replace(/<--+/g, '<--')
-    .replace(/=+>/g, '==>')
-    .replace(/<-+\./g, '<-.')
-    .replace(/\.-+>/g, '.->');
-
-  // Ensure node IDs are valid (alphanumeric + underscore)
-  const lines = sanitized.split('\n');
-  const cleanedLines = lines.map(line => {
-    // Skip directive lines
-    if (line.trim().startsWith('%%') || line.trim().startsWith('graph') || 
-        line.trim().startsWith('flowchart') || line.trim().startsWith('sequenceDiagram') ||
-        line.trim().startsWith('classDiagram') || line.trim().startsWith('stateDiagram') ||
-        line.trim().startsWith('erDiagram') || line.trim().startsWith('gantt') ||
-        line.trim().startsWith('pie') || line.trim().startsWith('subgraph') ||
-        line.trim() === 'end') {
+  // Process line by line
+  const lines = result.split('\n');
+  const cleaned = lines.map((line) => {
+    const trimmed = line.trim();
+    
+    // Keep diagram declarations
+    if (/^(graph|flowchart|sequenceDiagram)/.test(trimmed)) {
       return line;
     }
-    // Clean up whitespace issues
-    return line.replace(/\s{2,}/g, ' ');
+
+    // For all other lines, sanitize bracket contents character by character
+    let processed = line;
+    
+    // Remove semicolons completely
+    processed = processed.replace(/;/g, '');
+    
+    // Fix square brackets - extract and clean content
+    processed = processed.replace(/\[([^\]]*)\]/g, (match, content) => {
+      // Keep only: letters, numbers, spaces, and word boundaries
+      let clean = content
+        .replace(/[^\w\s]/g, ' ')  // Replace non-word chars with space
+        .replace(/\s+/g, ' ')      // Collapse spaces
+        .trim()
+        .substring(0, 25);
+      return clean ? `["${clean}"]` : '["Item"]';
+    });
+
+    // Fix curly braces
+    processed = processed.replace(/\{([^}]*)\}/g, (match, content) => {
+      let clean = content
+        .replace(/[^\w\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .substring(0, 25);
+      return clean ? `{"${clean}"}` : '{"Item"}';
+    });
+
+    // Fix parentheses
+    processed = processed.replace(/\(([^)]*)\)/g, (match, content) => {
+      let clean = content
+        .replace(/[^\w\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .substring(0, 25);
+      return clean ? `("${clean}")` : '("Item")';
+    });
+
+    return processed;
   });
 
-  sanitized = cleanedLines.join('\n');
+  result = cleaned.join('\n');
 
-  // Validate that the code starts with a valid diagram type
-  const validStarts = [
-    'graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 
-    'stateDiagram', 'erDiagram', 'gantt', 'pie', 'journey',
-    'gitGraph', 'mindmap', 'timeline', 'quadrantChart'
-  ];
-  
-  const firstLine = sanitized.split('\n')[0].trim().toLowerCase();
-  const hasValidStart = validStarts.some(start => firstLine.startsWith(start.toLowerCase()));
-  
-  if (!hasValidStart) {
-    // Wrap in a basic flowchart if no valid start
-    sanitized = `flowchart TD\n    ${sanitized}`;
+  // Ensure valid start
+  if (!result.match(/^\s*(flowchart|graph|sequenceDiagram)/i)) {
+    result = `flowchart TD\n    ${result}`;
   }
 
-  return sanitized;
+  return result;
 }
 
-/**
- * Validates if a Mermaid code string is likely to parse successfully
- */
 export function validateMermaidCode(code: string): { valid: boolean; error?: string } {
   if (!code || typeof code !== 'string') {
-    return { valid: false, error: 'Empty or invalid diagram code' };
+    return { valid: false, error: 'Empty code' };
   }
 
   const sanitized = sanitizeMermaidCode(code);
   
-  // Check for balanced brackets
-  const brackets = { '[': 0, '(': 0, '{': 0 };
-  for (const char of sanitized) {
-    if (char === '[') brackets['[']++;
-    if (char === ']') brackets['[']--;
-    if (char === '(') brackets['(']++;
-    if (char === ')') brackets['(']--;
-    if (char === '{') brackets['{']++;
-    if (char === '}') brackets['{']--;
-  }
-  
-  if (brackets['['] !== 0 || brackets['('] !== 0) {
-    return { valid: false, error: 'Unbalanced brackets in diagram' };
-  }
-
-  // Check for minimum valid structure
-  if (sanitized.length < 10) {
-    return { valid: false, error: 'Diagram code too short' };
+  // Check has diagram type
+  if (!/^(flowchart|graph|sequenceDiagram)/i.test(sanitized)) {
+    return { valid: false, error: 'Invalid diagram' };
   }
 
   return { valid: true };

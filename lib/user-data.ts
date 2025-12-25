@@ -1,6 +1,6 @@
 'use client';
 
-import { supabase, isSupabaseConfigured } from './supabase';
+import { supabase, isSupabaseConfigured, validateSupabaseConnection } from './supabase';
 
 // =============================================
 // User Session Context
@@ -84,22 +84,48 @@ export async function createSession(
   // Store in localStorage for immediate access
   if (typeof window !== 'undefined') {
     localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(sessionData));
+    console.log('[Session] Created session:', { sessionId, topicName });
   }
   
   // Try to save to Supabase if configured
-  try {
-    if (isSupabaseConfigured) {
-      await supabase
+  if (isSupabaseConfigured) {
+    try {
+      // Validate connection and tables
+      const validation = await validateSupabaseConnection();
+      
+      if (!validation.isConnected) {
+        console.warn('[Supabase] Connection failed - using localStorage only:', validation.error);
+        return sessionId;
+      }
+      
+      if (!validation.tablesExist) {
+        console.warn('[Supabase] Tables not created - using localStorage only');
+        console.info('[Setup] To enable Supabase persistence, run: migrations/001_create_tables.sql');
+        return sessionId;
+      }
+
+      console.log('[Supabase] Saving session to database...');
+      const response = await supabase
         .from('learning_sessions')
         .insert({
           session_id: sessionId,
           topic_name: topicName,
-          user_id: clerkUserId || null,
+          clerk_user_id: clerkUserId || null,
           started_at: new Date().toISOString(),
-        });
+        })
+        .select();
+      
+      if (response.error) {
+        console.warn('[Supabase] Could not save session:', response.error.message);
+        if (response.error.code === 'PGRST116' || response.error.message.includes('not found')) {
+          console.info('[Setup] Tables missing - app will use local storage only');
+        }
+      } else {
+        console.log('[Supabase] ✅ Session saved successfully');
+      }
+    } catch (error) {
+      console.warn('[Supabase] Error saving session:', error instanceof Error ? error.message : String(error));
     }
-  } catch (error) {
-    console.warn('Could not save session to Supabase:', error);
   }
   
   return sessionId;
@@ -123,30 +149,40 @@ export async function updateSession(
         if (updates.emotionsDetected) session.emotionsDetected = updates.emotionsDetected;
         if (updates.quizScore !== undefined) session.quizScore = updates.quizScore;
         localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(session));
+        console.log('[Session] Updated in localStorage:', { sessionId, updates });
       }
     }
   }
   
-  // Try to update Supabase
+  // Try to update Supabase (skip if not configured)
+  if (!isSupabaseConfigured) {
+    return;
+  }
+  
   try {
-    if (isSupabaseConfigured) {
-      const updateData: Record<string, unknown> = {
-        total_messages: updates.messages?.length || 0,
-      };
-      if (updates.emotionsDetected) {
-        updateData.emotions_detected = updates.emotionsDetected;
-      }
-      if (updates.quizScore !== undefined) {
-        updateData.quiz_score = updates.quizScore;
-      }
-      
-      await supabase
-        .from('learning_sessions')
-        .update(updateData)
-        .eq('session_id', sessionId);
+    const updateData: Record<string, unknown> = {
+      total_messages: updates.messages?.length || 0,
+    };
+    if (updates.emotionsDetected) {
+      updateData.emotions_detected = updates.emotionsDetected;
+    }
+    if (updates.quizScore !== undefined) {
+      updateData.quiz_score = updates.quizScore;
+    }
+    
+    console.log('[Supabase] Updating session:', { sessionId, updates });
+    const response = await supabase
+      .from('learning_sessions')
+      .update(updateData)
+      .eq('session_id', sessionId);
+    
+    if (response.error) {
+      console.warn('[Supabase] Error updating session:', response.error.message);
+    } else {
+      console.log('[Supabase] ✅ Session updated successfully');
     }
   } catch (error) {
-    console.warn('Could not update session in Supabase:', error);
+    console.warn('[Supabase] Could not update session:', error instanceof Error ? error.message : String(error));
   }
 }
 
@@ -187,30 +223,41 @@ export async function endSession(sessionId: string): Promise<void> {
     }
   }
   
-  // Update Supabase
+  // Update Supabase (skip if not configured)
+  if (!isSupabaseConfigured) {
+    return;
+  }
+  
   try {
-    if (isSupabaseConfigured) {
-      const { data: session } = await supabase
-        .from('learning_sessions')
-        .select('started_at')
-        .eq('session_id', sessionId)
-        .single();
+    const { data: session, error: selectError } = await supabase
+      .from('learning_sessions')
+      .select('started_at')
+      .eq('session_id', sessionId)
+      .single();
+    
+    if (selectError) {
+      console.warn('Error fetching session from Supabase:', selectError.message);
+      return;
+    }
+    
+    if (session) {
+      const startTime = new Date(session.started_at);
+      const durationMinutes = Math.round((endTime.getTime() - startTime.getTime()) / 60000);
       
-      if (session) {
-        const startTime = new Date(session.started_at);
-        const durationMinutes = Math.round((endTime.getTime() - startTime.getTime()) / 60000);
-        
-        await supabase
-          .from('learning_sessions')
-          .update({
-            ended_at: endTime.toISOString(),
-            duration_minutes: durationMinutes,
-          })
-          .eq('session_id', sessionId);
+      const { error: updateError } = await supabase
+        .from('learning_sessions')
+        .update({
+          ended_at: endTime.toISOString(),
+          duration_minutes: durationMinutes,
+        })
+        .eq('session_id', sessionId);
+      
+      if (updateError) {
+        console.warn('Error updating session end time in Supabase:', updateError.message);
       }
     }
   } catch (error) {
-    console.warn('Could not end session in Supabase:', error);
+    console.warn('Error ending session in Supabase:', error instanceof Error ? error.message : String(error));
   }
 }
 

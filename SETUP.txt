@@ -1,0 +1,42 @@
+SETUP INSTRUCTIONS
+==================
+
+FIXED ISSUES
+-----------
+
+Issue 1: Supabase 404 Errors
+✓ POST /conversation_messages - table now in SQL schema
+✓ PATCH /learning_sessions - RLS policies now allow UPDATE/PATCH
+✓ POST /learning_sessions - app validates before attempting operations
+
+
+Issue 2: Mermaid Bracket Errors
+✓ Removed overly strict bracket validation
+✓ Improved sanitization to remove bracket characters from labels
+✓ All labels are now quoted and bracket-safe
+✓ Graceful error handling with fallback diagrams
+
+
+TO COMPLETE SETUP
+-----------------
+1. Go to https://supabase.com and login to your project
+2. Open SQL Editor
+3. Copy ALL content from: migrations/001_create_tables.sql
+4. Paste it into SQL Editor and click "Run"
+5. Set environment variables in .env.local:
+   NEXT_PUBLIC_SUPABASE_URL=your_project_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+6. Restart dev server: npm run dev
+
+
+WHAT'S FIXED
+-----------
+✓ conversation_messages table created
+✓ learning_sessions supports PATCH operations
+✓ All RLS policies allow INSERT/UPDATE/SELECT
+✓ Mermaid diagrams no longer crash on brackets
+✓ App works offline with localStorage fallback
+
+
+The app now works both with and without Supabase configured.
+

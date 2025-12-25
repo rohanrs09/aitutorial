@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
   try {
     // Validate API key configuration
     if (!isOpenAIConfigured()) {
+      console.warn('TTS: OpenAI API key not configured');
       return NextResponse.json(
         { 
           error: 'OpenAI API key not configured. Text-to-speech is unavailable.',
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { text, useElevenLabs = false } = body;
 
-    if (!text) {
+    if (!text || text.trim().length === 0) {
       return NextResponse.json(
         { error: 'No text provided' },
         { status: 400 }
@@ -43,23 +44,56 @@ export async function POST(request: NextRequest) {
     }
 
     // Default: Use OpenAI TTS
-    const mp3 = await openai.audio.speech.create({
-      model: 'tts-1',
-      voice: 'nova', // Clear, friendly voice
-      input: text,
-      speed: 1.0,
-    });
+    try {
+      const mp3 = await openai.audio.speech.create({
+        model: 'tts-1',
+        voice: 'nova',
+        input: text,
+        speed: 1.0,
+      });
 
-    const buffer = Buffer.from(await mp3.arrayBuffer());
+      const buffer = Buffer.from(await mp3.arrayBuffer());
 
-    return new NextResponse(buffer, {
-      headers: {
-        'Content-Type': 'audio/mpeg',
-        'Content-Length': buffer.length.toString(),
-      },
-    });
+      if (!buffer || buffer.length === 0) {
+        console.error('TTS: Empty buffer from OpenAI');
+        return NextResponse.json(
+          { error: 'Failed to generate audio' },
+          { status: 500 }
+        );
+      }
+
+      return new NextResponse(buffer, {
+        headers: {
+          'Content-Type': 'audio/mpeg',
+          'Content-Length': buffer.length.toString(),
+          'Cache-Control': 'public, max-age=3600',
+        },
+      });
+    } catch (openaiError: any) {
+      console.error('OpenAI TTS Error:', {
+        message: openaiError.message,
+        status: openaiError.status,
+        error: openaiError.error
+      });
+
+      if (openaiError.status === 429) {
+        return NextResponse.json(
+          { error: 'Rate limited. Please try again later.' },
+          { status: 429 }
+        );
+      }
+
+      if (openaiError.status === 401) {
+        return NextResponse.json(
+          { error: 'OpenAI API key is invalid' },
+          { status: 503 }
+        );
+      }
+
+      throw openaiError;
+    }
   } catch (error: any) {
-    console.error('TTS Error:', error);
+    console.error('TTS Handler Error:', error);
     return NextResponse.json(
       { error: error.message || 'Text to speech conversion failed' },
       { status: 500 }

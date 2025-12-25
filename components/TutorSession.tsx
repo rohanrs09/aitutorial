@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Square, Subtitles, FileText, Settings, ChevronLeft, ChevronRight, Send, MessageSquare, Mic, X, Plus, HelpCircle, RefreshCw, Sparkles, Pause, Play, Download, Video, VideoOff, MoreVertical, ChevronUp, Home, LogOut, ArrowLeft, BookOpen } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@clerk/nextjs';
 
 // Components
 import AnimatedTutorOrb from '@/components/AnimatedTutorOrb';
@@ -22,6 +23,7 @@ import LearningProgressTracker from '@/components/LearningProgressTracker';
 import { getTopicById, learningTopics } from '@/lib/tutor-prompts';
 import { EmotionType } from '@/lib/utils';
 import { createSession, endSession, updateSession, generateSessionId, saveMessage, type SessionMessage } from '@/lib/user-data';
+import { useProgressTracking } from '@/lib/useProgressTracking';
 
 interface Note {
   id: string;
@@ -47,6 +49,10 @@ interface CustomTopic {
 
 export default function TutorSession() {
   const router = useRouter();
+  const { user } = useUser();
+  
+  // Progress tracking hook
+  const progressTracking = useProgressTracking(user?.id);
   
   // Session management
   const [sessionId, setSessionId] = useState<string>('');
@@ -155,10 +161,56 @@ export default function TutorSession() {
     initSession();
   }, []);
 
+  // Auto-save progress every 30 seconds
+  useEffect(() => {
+    if (!user?.id || !progressTracking.currentSession || messages.length === 0) return;
+
+    const autoSaveInterval = setInterval(async () => {
+      try {
+        const progress = Math.min(100, (currentSlideIndex / Math.max(1, learningSlides.length)) * 100);
+        await progressTracking.saveCurrentProgress({
+          progress_percentage: progress,
+          questionsAsked: sessionStats.questionsAsked,
+          correctAnswers: sessionStats.correctAnswers,
+          slidesViewed: sessionStats.slidesViewed,
+          timeSpent: sessionStats.timeSpent,
+          conceptsCovered: sessionStats.conceptsCovered,
+          lastSlideIndex: currentSlideIndex,
+          totalSlides: learningSlides.length,
+        });
+
+        // Update content position
+        if (learningSlides.length > 0) {
+          await progressTracking.updatePosition(currentSlideIndex, learningSlides.length);
+        }
+      } catch (error) {
+        console.error('[TutorSession] Auto-save failed:', error);
+      }
+    }, 30000); // Auto-save every 30 seconds
+
+    return () => clearInterval(autoSaveInterval);
+  }, [user?.id, progressTracking.currentSession, messages.length, currentSlideIndex, learningSlides.length, sessionStats, progressTracking]);
+
   // Handle end session
   const handleEndSession = async () => {
     setIsEndingSession(true);
     try {
+      // Save final progress
+      if (user?.id && progressTracking.currentSession) {
+        await progressTracking.saveCurrentProgress({
+          progress_percentage: Math.min(100, (currentSlideIndex / Math.max(1, learningSlides.length)) * 100),
+          questionsAsked: sessionStats.questionsAsked,
+          correctAnswers: sessionStats.correctAnswers,
+          slidesViewed: sessionStats.slidesViewed,
+          timeSpent: sessionStats.timeSpent,
+          conceptsCovered: sessionStats.conceptsCovered,
+        });
+
+        // Mark session as completed
+        await progressTracking.completeCurrentSession();
+      }
+
+      // End session in database
       if (sessionId) {
         await endSession(sessionId);
       }

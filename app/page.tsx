@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import ResumeSession from '@/components/ResumeSession';
 
 // Dynamically import Clerk components to avoid build errors when keys aren't configured
 const SignedIn = dynamic(() => import('@clerk/nextjs').then(mod => mod.SignedIn), { ssr: false });
@@ -119,7 +120,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     // Check if Clerk is configured (client-side only)
-    setHasClerk(!!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+    setHasClerk(isClerkConfigured);
   }, []);
 
   return (
@@ -275,6 +276,15 @@ export default function LandingPage() {
                   <Play size={20} className="mr-2" />
                   Try Demo Now
                 </Link>
+              )}
+            </div>
+
+            {/* Resume Session Component */}
+            <div className="max-w-2xl mx-auto mb-12">
+              {hasClerk && (
+                <SignedIn>
+                  <ResumeSession />
+                </SignedIn>
               )}
             </div>
 

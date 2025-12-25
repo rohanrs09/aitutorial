@@ -6,36 +6,172 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 // Check if Supabase is properly configured
 export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
 
+// Log initialization status
+if (typeof window !== 'undefined') {
+  console.log('[Supabase] Configuration Status:', {
+    isConfigured: isSupabaseConfigured,
+    hasUrl: !!supabaseUrl,
+    hasKey: !!supabaseAnonKey,
+    url: supabaseUrl ? `${supabaseUrl.split('.')[0]}.supabase.co` : 'NOT SET',
+  });
+}
+
 // Create client only if configured (avoids errors when not set up)
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseAnonKey || 'placeholder-key'
 );
 
-// Validate Supabase connection
+// Validate Supabase connection and required tables
 export async function validateSupabaseConnection(): Promise<{
   isConnected: boolean;
   error?: string;
+  tablesExist?: boolean;
 }> {
   if (!isSupabaseConfigured) {
+    console.warn('[Supabase] Not configured - using localStorage only');
     return { isConnected: false, error: 'Supabase not configured' };
   }
   
   try {
-    // Try a simple query to check connection
-    const { error } = await supabase
-      .from('learning_topics')
+    console.log('[Supabase] Validating connection and tables...');
+    
+    // Check if critical tables exist by attempting a query
+    const { data, error: sessionError } = await supabase
+      .from('learning_sessions')
       .select('id')
       .limit(1);
     
-    if (error) {
-      return { isConnected: false, error: error.message };
+    if (sessionError) {
+      console.error('[Supabase] Connection error:', {
+        code: (sessionError as any).code,
+        message: sessionError.message,
+        status: (sessionError as any).status,
+      });
+      
+      // 404 or "not found" means table doesn't exist
+      if (
+        (sessionError as any).status === 404 ||
+        sessionError.message?.includes('404') ||
+        sessionError.message?.includes('not found') ||
+        sessionError.message?.includes('does not exist')
+      ) {
+        console.warn('[Supabase] Tables not found - must run migration');
+        return { 
+          isConnected: true,
+          tablesExist: false,
+          error: 'Required tables not created in Supabase. Run: migrations/001_create_tables.sql in Supabase SQL Editor'
+        };
+      }
+      
+      if (sessionError.message?.includes('permission') || sessionError.message?.includes('Policy')) {
+        console.warn('[Supabase] Permission denied - RLS policies issue');
+        return { 
+          isConnected: true,
+          tablesExist: false,
+          error: 'Permission denied - check RLS policies in Supabase'
+        };
+      }
+      
+      if (sessionError.message?.includes('Failed to fetch')) {
+        console.warn('[Supabase] Network error - cannot reach Supabase');
+        return { 
+          isConnected: false,
+          error: 'Cannot reach Supabase server - using localStorage only'
+        };
+      }
+      
+      console.warn('[Supabase] Unknown error:', sessionError.message);
+      return { 
+        isConnected: true,
+        tablesExist: false,
+        error: sessionError.message 
+      };
     }
     
-    return { isConnected: true };
+    console.log('[Supabase] ✅ Connection validated - tables exist');
+    return { isConnected: true, tablesExist: true };
   } catch (err) {
-    return { isConnected: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    console.error('[Supabase] Validation exception:', err);
+    return { 
+      isConnected: false, 
+      error: err instanceof Error ? err.message : 'Unknown connection error' 
+    };
   }
+}
+
+// =============================================
+// Supabase Health Check
+// =============================================
+
+export async function checkSupabaseHealth(): Promise<{
+  status: 'healthy' | 'degraded' | 'offline';
+  configured: boolean;
+  connected: boolean;
+  tablesExist: boolean;
+  details: {
+    url: string;
+    hasKey: boolean;
+    error?: string;
+  };
+}> {
+  const configured = isSupabaseConfigured;
+  const url = supabaseUrl ? `${supabaseUrl.split('.')[0]}.supabase.co` : 'NOT SET';
+  
+  if (!configured) {
+    return {
+      status: 'offline',
+      configured: false,
+      connected: false,
+      tablesExist: false,
+      details: {
+        url,
+        hasKey: false,
+        error: 'Supabase not configured - add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local'
+      }
+    };
+  }
+
+  const validation = await validateSupabaseConnection();
+  
+  if (!validation.isConnected) {
+    return {
+      status: 'offline',
+      configured: true,
+      connected: false,
+      tablesExist: false,
+      details: {
+        url,
+        hasKey: true,
+        error: validation.error || 'Connection failed'
+      }
+    };
+  }
+
+  if (!validation.tablesExist) {
+    return {
+      status: 'degraded',
+      configured: true,
+      connected: true,
+      tablesExist: false,
+      details: {
+        url,
+        hasKey: true,
+        error: validation.error || 'Tables not created'
+      }
+    };
+  }
+
+  return {
+    status: 'healthy',
+    configured: true,
+    connected: true,
+    tablesExist: true,
+    details: {
+      url,
+      hasKey: true,
+    }
+  };
 }
 
 // =============================================
