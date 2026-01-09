@@ -3,12 +3,12 @@
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { 
-  Mic, Brain, BarChart3, Sparkles, CheckCircle, ArrowRight, 
-  Play, Volume2, BookOpen, Target, Zap, Users, Star, Menu, X
+  Mic, Search, Filter, BookOpen, GraduationCap, TrendingUp, Clock, Menu, X
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import ResumeSession from '@/components/ResumeSession';
+import CourseCard from '@/components/CourseCard';
+import { getAllCourses, type Course } from '@/lib/course-data';
 
 // Dynamically import Clerk components to avoid build errors when keys aren't configured
 const SignedIn = dynamic(() => import('@clerk/nextjs').then(mod => mod.SignedIn), { ssr: false });
@@ -19,109 +19,31 @@ const UserButton = dynamic(() => import('@clerk/nextjs').then(mod => mod.UserBut
 // Check if Clerk is configured
 const isClerkConfigured = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
-const features = [
-  {
-    icon: Mic,
-    title: 'Voice-First Learning',
-    description: 'Simply speak your questions naturally. Our AI understands context and responds conversationally.'
-  },
-  {
-    icon: Brain,
-    title: 'Emotion-Aware Adaptation',
-    description: 'Real-time emotion detection adjusts explanations when you\'re confused or accelerates when you\'re confident.'
-  },
-  {
-    icon: BarChart3,
-    title: 'Progress Tracking',
-    description: 'Visual dashboards track your learning journey with detailed analytics and mastery levels.'
-  },
-  {
-    icon: Sparkles,
-    title: 'Interactive Slides',
-    description: 'Auto-generated learning slides with diagrams, quizzes, and key takeaways synced with audio.'
-  },
-];
-
-const topics = [
-  'Economics', 'Data Structures', 'Algorithms', 'GRE Prep', 
-  'Programming', 'Mathematics', 'Aptitude', 'Custom Topics'
-];
-
-const testimonials = [
-  {
-    name: 'Sarah M.',
-    role: 'GRE Student',
-    content: 'The voice interaction feels so natural. It\'s like having a patient tutor available 24/7.',
-    rating: 5
-  },
-  {
-    name: 'Alex K.',
-    role: 'CS Student',
-    content: 'Finally understood recursion! The AI detected I was confused and simplified perfectly.',
-    rating: 5
-  },
-  {
-    name: 'Priya R.',
-    role: 'MBA Student',
-    content: 'Economics concepts became crystal clear. The adaptive teaching is incredible.',
-    rating: 5
-  }
-];
-
-const pricingPlans = [
-  {
-    name: 'Free',
-    price: '$0',
-    period: 'forever',
-    features: [
-      '10 voice sessions/month',
-      '3 topics available',
-      'Basic progress tracking',
-      'Community support'
-    ],
-    cta: 'Start Free',
-    highlighted: false
-  },
-  {
-    name: 'Pro',
-    price: '$19',
-    period: '/month',
-    features: [
-      'Unlimited voice sessions',
-      'All topics + custom topics',
-      'Advanced analytics',
-      'Emotion detection',
-      'Priority support',
-      'Session history'
-    ],
-    cta: 'Start Pro Trial',
-    highlighted: true
-  },
-  {
-    name: 'Team',
-    price: '$49',
-    period: '/month',
-    features: [
-      'Everything in Pro',
-      'Up to 10 team members',
-      'Admin dashboard',
-      'API access',
-      'Custom integrations',
-      'Dedicated support'
-    ],
-    cta: 'Contact Sales',
-    highlighted: false
-  }
-];
-
-export default function LandingPage() {
+export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hasClerk, setHasClerk] = useState(false);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedLevel, setSelectedLevel] = useState<'all' | 'beginner' | 'intermediate' | 'advanced'>('all');
 
   useEffect(() => {
     // Check if Clerk is configured (client-side only)
     setHasClerk(isClerkConfigured);
+    // Load courses
+    setCourses(getAllCourses());
   }, []);
+
+  // Filter courses based on search and level
+  const filteredCourses = courses.filter(course => {
+    const matchesSearch = searchQuery === '' || 
+      course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      course.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      course.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    const matchesLevel = selectedLevel === 'all' || course.level === selectedLevel;
+    
+    return matchesSearch && matchesLevel;
+  });
 
   return (
     <div className="min-h-screen bg-surface">
@@ -132,16 +54,15 @@ export default function LandingPage() {
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-pink-500 flex items-center justify-center">
-                <Mic size={18} className="text-white" />
+                <BookOpen size={18} className="text-white" />
               </div>
-              <span className="font-bold text-lg text-white hidden sm:block">AI Voice Tutor</span>
+              <span className="font-bold text-lg text-white hidden sm:block">LearnAI Platform</span>
             </Link>
 
             {/* Desktop Nav */}
             <div className="hidden md:flex items-center gap-6">
-              <a href="#features" className="text-gray-400 hover:text-white transition-colors duration-200 animated-underline">Features</a>
-              <a href="#topics" className="text-gray-400 hover:text-white transition-colors duration-200 animated-underline">Topics</a>
-              <a href="#pricing" className="text-gray-400 hover:text-white transition-colors duration-200 animated-underline">Pricing</a>
+              <Link href="/" className="text-gray-400 hover:text-white transition-colors duration-200">Courses</Link>
+              <Link href="/dashboard" className="text-gray-400 hover:text-white transition-colors duration-200">My Learning</Link>
             </div>
 
             {/* Auth Buttons */}
@@ -206,319 +127,104 @@ export default function LandingPage() {
         )}
       </nav>
 
-      {/* Hero Section */}
-      <section className="pt-24 sm:pt-32 pb-16 sm:pb-24 px-4 sm:px-6 lg:px-8">
+      {/* Hero Section with Search */}
+      <section className="pt-24 pb-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="text-center"
           >
-            {/* Badge */}
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.4, delay: 0.1 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-500/10 border border-primary-500/20 text-primary-400 text-sm mb-6 hover:bg-primary-500/15 hover:border-primary-500/30 transition-all duration-300 cursor-default"
-            >
-              <Sparkles size={16} className="animate-pulse-slow" />
-              <span>AI-Powered Adaptive Learning</span>
-            </motion.div>
-
-            {/* Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
-              Learn Smarter with
-              <span className="gradient-text"> Voice AI</span>
-            </h1>
-
-            {/* Subheadline */}
-            <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto mb-8">
-              Experience the future of education. Speak naturally, learn adaptively, 
-              and master any subject with an AI tutor that understands you.
-            </p>
-
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-              {hasClerk ? (
-                <>
-                  <SignedOut>
-                    <Link 
-                      href="/sign-up"
-                      className="btn-primary text-lg px-8 py-4 w-full sm:w-auto"
-                    >
-                      <Play size={20} className="mr-2" />
-                      Start Learning Free
-                    </Link>
-                    <Link 
-                      href="/learn"
-                      className="btn-secondary text-lg px-8 py-4 w-full sm:w-auto"
-                    >
-                      <Volume2 size={20} className="mr-2" />
-                      Try Demo
-                    </Link>
-                  </SignedOut>
-                  <SignedIn>
-                    <Link 
-                      href="/learn"
-                      className="btn-primary text-lg px-8 py-4"
-                    >
-                      <Play size={20} className="mr-2" />
-                      Start Learning
-                    </Link>
-                  </SignedIn>
-                </>
-              ) : (
-                <Link 
-                  href="/learn"
-                  className="btn-primary text-lg px-8 py-4"
-                >
-                  <Play size={20} className="mr-2" />
-                  Try Demo Now
-                </Link>
-              )}
+            {/* Header */}
+            <div className="text-center mb-8">
+              <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
+                Master Any Subject with AI-Powered Learning
+              </h1>
+              <p className="text-gray-400 max-w-2xl mx-auto">
+                Choose from expert-curated courses and learn with an adaptive AI tutor that understands your pace
+              </p>
             </div>
 
-            {/* Resume Session Component */}
-            <div className="max-w-2xl mx-auto mb-12">
-              {hasClerk && (
-                <SignedIn>
-                  <ResumeSession />
-                </SignedIn>
-              )}
-            </div>
-
-            {/* Hero Visual */}
-            <div className="relative max-w-4xl mx-auto">
-              <div className="aspect-video rounded-2xl bg-gradient-to-br from-surface-light to-surface overflow-hidden border border-white/10 shadow-2xl">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center p-8">
-                    <div className="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-6 rounded-full bg-gradient-to-br from-primary-500 to-pink-500 flex items-center justify-center animate-pulse">
-                      <Mic size={40} className="text-white sm:w-14 sm:h-14" />
-                    </div>
-                    <p className="text-gray-400 text-sm sm:text-base">&ldquo;Explain binary search to me...&rdquo;</p>
-                  </div>
+            {/* Search and Filter Bar */}
+            <div className="max-w-4xl mx-auto mb-8">
+              <div className="flex flex-col sm:flex-row gap-4">
+                {/* Search Input */}
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
+                  <input
+                    type="text"
+                    placeholder="Search courses..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-surface-light border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-primary-500/50 transition-colors"
+                  />
                 </div>
-                {/* Decorative elements */}
-                <div className="absolute top-4 left-4 px-3 py-1 bg-green-500/20 text-green-400 text-xs rounded-full border border-green-500/30">
-                  Live Demo
+
+                {/* Level Filter */}
+                <div className="flex gap-2">
+                  {(['all', 'beginner', 'intermediate', 'advanced'] as const).map((level) => (
+                    <button
+                      key={level}
+                      onClick={() => setSelectedLevel(level)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        selectedLevel === level
+                          ? 'bg-primary-500 text-white'
+                          : 'bg-surface-light text-gray-400 hover:text-white hover:bg-surface-lighter border border-white/10'
+                      }`}
+                    >
+                      {level === 'all' ? 'All Levels' : level.charAt(0).toUpperCase() + level.slice(1)}
+                    </button>
+                  ))}
                 </div>
               </div>
-              {/* Floating stats */}
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 }}
-                className="absolute -left-4 sm:left-0 top-1/4 bg-surface-light border border-white/10 rounded-xl p-3 sm:p-4 shadow-xl"
-              >
-                <div className="flex items-center gap-2">
-                  <Brain className="text-primary-400" size={20} />
-                  <div>
-                    <p className="text-white font-medium text-sm">Emotion Detected</p>
-                    <p className="text-green-400 text-xs">Engaged & Curious</p>
-                  </div>
-                </div>
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.6 }}
-                className="absolute -right-4 sm:right-0 bottom-1/4 bg-surface-light border border-white/10 rounded-xl p-3 sm:p-4 shadow-xl"
-              >
-                <div className="flex items-center gap-2">
-                  <Target className="text-pink-400" size={20} />
-                  <div>
-                    <p className="text-white font-medium text-sm">Mastery Level</p>
-                    <p className="text-pink-400 text-xs">85% Complete</p>
-                  </div>
-                </div>
-              </motion.div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl mx-auto mb-8">
+              <div className="card p-4 text-center">
+                <BookOpen className="text-primary-400 mx-auto mb-2" size={24} />
+                <p className="text-2xl font-bold text-white">{courses.length}</p>
+                <p className="text-xs text-gray-500">Courses</p>
+              </div>
+              <div className="card p-4 text-center">
+                <Clock className="text-blue-400 mx-auto mb-2" size={24} />
+                <p className="text-2xl font-bold text-white">300+</p>
+                <p className="text-xs text-gray-500">Hours</p>
+              </div>
+              <div className="card p-4 text-center">
+                <GraduationCap className="text-green-400 mx-auto mb-2" size={24} />
+                <p className="text-2xl font-bold text-white">50k+</p>
+                <p className="text-xs text-gray-500">Students</p>
+              </div>
+              <div className="card p-4 text-center">
+                <TrendingUp className="text-pink-400 mx-auto mb-2" size={24} />
+                <p className="text-2xl font-bold text-white">4.8</p>
+                <p className="text-xs text-gray-500">Avg Rating</p>
+              </div>
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-surface-light/30">
+      {/* Courses Grid */}
+      <section className="py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12 sm:mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Why Choose AI Voice Tutor?</h2>
-            <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-              Experience learning that adapts to you, not the other way around.
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-            {features.map((feature, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                transition={{ delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="card hover:border-primary-500/30 hover:shadow-lg hover:shadow-primary-500/10 transition-all duration-300 group cursor-default"
-              >
-                <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center mb-4 group-hover:bg-primary-500/20 group-hover:scale-110 transition-all duration-300">
-                  <feature.icon className="text-primary-400" size={24} />
-                </div>
-                <h3 className="text-lg font-semibold text-white mb-2">{feature.title}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed">{feature.description}</p>
-              </motion.div>
-            ))}
-          </div>
+          {filteredCourses.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredCourses.map((course, index) => (
+                <CourseCard key={course.id} course={course} index={index} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <BookOpen className="text-gray-600 mx-auto mb-4" size={48} />
+              <p className="text-gray-400 text-lg mb-2">No courses found</p>
+              <p className="text-gray-500 text-sm">Try adjusting your search or filters</p>
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Topics Section */}
-      <section id="topics" className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Master Any Subject</h2>
-            <p className="text-gray-400 text-lg">From algorithms to economics, we&apos;ve got you covered.</p>
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-3 sm:gap-4 mb-12">
-            {topics.map((topic, index) => (
-              <motion.span
-                key={index}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ delay: index * 0.05 }}
-                viewport={{ once: true }}
-                className="px-4 sm:px-6 py-2 sm:py-3 bg-surface-light rounded-full text-gray-300 border border-white/10 hover:border-primary-500/50 hover:text-white hover:bg-primary-500/10 transition-all duration-200 cursor-pointer text-sm sm:text-base select-none"
-              >
-                {topic}
-              </motion.span>
-            ))}
-          </div>
-
-          <div className="text-center">
-            <Link href="/learn" className="group inline-flex items-center gap-2 text-primary-400 hover:text-primary-300 font-medium transition-colors duration-200">
-              Explore All Topics
-              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform duration-200" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section */}
-      <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-surface-light/30">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Loved by Learners</h2>
-            <p className="text-gray-400 text-lg">See what our students have to say.</p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6 sm:gap-8">
-            {testimonials.map((testimonial, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                whileHover={{ y: -4 }}
-                transition={{ delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="card hover:border-white/10 hover:shadow-lg transition-all duration-300"
-              >
-                <div className="flex gap-1 mb-4">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} size={16} className="text-yellow-400 fill-yellow-400" />
-                  ))}
-                </div>
-                <p className="text-gray-300 mb-4 italic leading-relaxed">&ldquo;{testimonial.content}&rdquo;</p>
-                <div>
-                  <p className="text-white font-medium">{testimonial.name}</p>
-                  <p className="text-gray-500 text-sm">{testimonial.role}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section id="pricing" className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Simple, Transparent Pricing</h2>
-            <p className="text-gray-400 text-lg">Start free. Upgrade when you&apos;re ready.</p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
-            {pricingPlans.map((plan, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                whileHover={{ y: -6, transition: { duration: 0.2 } }}
-                transition={{ delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className={`card relative transition-all duration-300 ${
-                  plan.highlighted 
-                    ? 'border-primary-500 bg-primary-500/5 shadow-lg shadow-primary-500/20 hover:shadow-xl hover:shadow-primary-500/25' 
-                    : 'hover:border-white/20 hover:shadow-lg'
-                }`}
-              >
-                {plan.highlighted && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-primary-500 text-white text-xs font-medium rounded-full shadow-lg">
-                    Most Popular
-                  </div>
-                )}
-                <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
-                <div className="mb-6">
-                  <span className="text-4xl font-bold text-white">{plan.price}</span>
-                  <span className="text-gray-400">{plan.period}</span>
-                </div>
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2 text-gray-300 text-sm">
-                      <CheckCircle size={16} className="text-green-400 flex-shrink-0" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <Link 
-                  href={hasClerk ? "/sign-up" : "/learn"}
-                  className={`w-full text-center py-3 rounded-xl font-medium transition-all duration-200 inline-block ${
-                    plan.highlighted
-                      ? 'bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white shadow-lg shadow-primary-500/25 hover:shadow-xl hover:shadow-primary-500/30'
-                      : 'bg-surface-lighter hover:bg-surface text-white border border-white/10 hover:border-white/20'
-                  }`}
-                >
-                  {hasClerk ? plan.cta : 'Try Demo'}
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto text-center">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="card bg-gradient-to-br from-primary-500/10 to-pink-500/10 border-primary-500/20 py-12 sm:py-16"
-          >
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Ready to Transform Your Learning?</h2>
-            <p className="text-gray-400 text-lg mb-8 max-w-xl mx-auto">
-              Join thousands of learners who are mastering new skills with AI Voice Tutor.
-            </p>
-            <Link 
-              href={hasClerk ? "/sign-up" : "/learn"}
-              className="btn-primary text-lg px-8 py-4 inline-flex items-center gap-2"
-            >
-              {hasClerk ? 'Get Started for Free' : 'Try Demo'}
-              <ArrowRight size={20} />
-            </Link>
-          </motion.div>
-        </div>
-      </section>
 
       {/* Footer */}
       <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t border-white/5">

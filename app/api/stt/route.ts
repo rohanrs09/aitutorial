@@ -1,26 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { aiAdapter, isAIConfigured } from '@/lib/ai-adapter';
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
-});
-
-// Check if OpenAI API key is configured
-const isOpenAIConfigured = () => {
-  return !!process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'sk-your-openai-api-key-here';
-};
-
-// Alternative: Deepgram STT (more accurate for voice)
-// For this implementation, we'll use OpenAI Whisper
+// Speech-to-text using AI adapter (model-agnostic)
 export async function POST(request: NextRequest) {
   try {
-    // Validate API key configuration
-    if (!isOpenAIConfigured()) {
+    // Validate AI configuration
+    if (!isAIConfigured()) {
+      const providerInfo = aiAdapter.getProviderInfo();
       return NextResponse.json(
         { 
-          error: 'OpenAI API key not configured. Speech-to-text is unavailable.',
-          code: 'API_KEY_MISSING'
+          error: `AI (${providerInfo.provider}) not configured. Speech-to-text is unavailable.`,
+          code: 'API_KEY_MISSING',
+          provider: providerInfo.provider
         },
         { status: 503 }
       );
@@ -36,24 +27,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convert File to Buffer for OpenAI
+    // Convert File to Blob for AI adapter
     const buffer = Buffer.from(await audioFile.arrayBuffer());
-    
-    // Use FormData for OpenAI API
-    const uploadFormData = new FormData();
-    uploadFormData.append('file', new Blob([buffer], { type: audioFile.type }), 'audio.webm');
-    uploadFormData.append('model', 'whisper-1');
-    uploadFormData.append('language', 'en');
+    const audioBlob = new Blob([buffer], { type: audioFile.type });
 
-    // Transcribe using OpenAI Whisper
-    const transcription = await openai.audio.transcriptions.create({
-      file: new File([buffer], audioFile.name || 'audio.webm', { type: audioFile.type }),
-      model: 'whisper-1',
+    // Transcribe using AI adapter (model-agnostic)
+    const transcriptionText = await aiAdapter.transcribeAudio({
+      audio: audioBlob,
       language: 'en',
     });
 
     return NextResponse.json({
-      text: transcription.text,
+      text: transcriptionText,
       success: true,
     });
   } catch (error: any) {

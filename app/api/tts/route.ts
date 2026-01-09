@@ -1,14 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
-});
-
-// Check if OpenAI API key is configured
-const isOpenAIConfigured = () => {
-  return !!process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'sk-your-openai-api-key-here';
-};
+import { aiAdapter, isAIConfigured } from '@/lib/ai-adapter';
 
 // Optional: ElevenLabs for better voice quality
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
@@ -16,13 +7,15 @@ const ELEVENLABS_VOICE_ID = '21m00Tcm4TlvDq8ikWAM'; // Default voice
 
 export async function POST(request: NextRequest) {
   try {
-    // Validate API key configuration
-    if (!isOpenAIConfigured()) {
-      console.warn('TTS: OpenAI API key not configured');
+    // Validate AI configuration
+    if (!isAIConfigured()) {
+      const providerInfo = aiAdapter.getProviderInfo();
+      console.warn(`TTS: AI (${providerInfo.provider}) not configured`);
       return NextResponse.json(
         { 
-          error: 'OpenAI API key not configured. Text-to-speech is unavailable.',
-          code: 'API_KEY_MISSING'
+          error: `AI (${providerInfo.provider}) not configured. Text-to-speech is unavailable.`,
+          code: 'API_KEY_MISSING',
+          provider: providerInfo.provider
         },
         { status: 503 }
       );
@@ -43,19 +36,18 @@ export async function POST(request: NextRequest) {
       return await generateElevenLabsTTS(text);
     }
 
-    // Default: Use OpenAI TTS
+    // Default: Use AI adapter for TTS (model-agnostic)
     try {
-      const mp3 = await openai.audio.speech.create({
-        model: 'tts-1',
+      const audioBlob = await aiAdapter.generateSpeech({
+        text,
         voice: 'nova',
-        input: text,
         speed: 1.0,
       });
 
-      const buffer = Buffer.from(await mp3.arrayBuffer());
+      const buffer = Buffer.from(await audioBlob.arrayBuffer());
 
       if (!buffer || buffer.length === 0) {
-        console.error('TTS: Empty buffer from OpenAI');
+        console.error('TTS: Empty buffer from AI provider');
         return NextResponse.json(
           { error: 'Failed to generate audio' },
           { status: 500 }
@@ -69,28 +61,29 @@ export async function POST(request: NextRequest) {
           'Cache-Control': 'public, max-age=3600',
         },
       });
-    } catch (openaiError: any) {
-      console.error('OpenAI TTS Error:', {
-        message: openaiError.message,
-        status: openaiError.status,
-        error: openaiError.error
+    } catch (ttsError: any) {
+      const providerInfo = aiAdapter.getProviderInfo();
+      console.error(`${providerInfo.provider} TTS Error:`, {
+        message: ttsError.message,
+        status: ttsError.status,
+        error: ttsError.error
       });
 
-      if (openaiError.status === 429) {
+      if (ttsError.status === 429) {
         return NextResponse.json(
           { error: 'Rate limited. Please try again later.' },
           { status: 429 }
         );
       }
 
-      if (openaiError.status === 401) {
+      if (ttsError.status === 401) {
         return NextResponse.json(
-          { error: 'OpenAI API key is invalid' },
+          { error: `${providerInfo.provider} API key is invalid` },
           { status: 503 }
         );
       }
 
-      throw openaiError;
+      throw ttsError;
     }
   } catch (error: any) {
     console.error('TTS Handler Error:', error);
