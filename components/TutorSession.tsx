@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Square, Subtitles, FileText, Settings, ChevronLeft, ChevronRight, Send, MessageSquare, Mic, X, Plus, HelpCircle, RefreshCw, Sparkles, Pause, Play, Download, Video, VideoOff, MoreVertical, ChevronUp, Home, LogOut, ArrowLeft, BookOpen } from 'lucide-react';
+import { Square, Subtitles, FileText, Settings, Send, Mic, X, HelpCircle, RefreshCw, Sparkles, Pause, Play, Download, Video, VideoOff, LogOut, ArrowLeft, BookOpen, Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 
@@ -10,17 +10,12 @@ import { useUser } from '@clerk/nextjs';
 import AnimatedTutorOrb from '@/components/AnimatedTutorOrb';
 import SpacebarVoiceInput from '@/components/SpacebarVoiceInput';
 import LiveTranscript from '@/components/LiveTranscript';
-import ScenarioSlide, { ScenarioQuestion } from '@/components/ScenarioSlide';
 import EmotionCameraWidget from '@/components/EmotionCameraWidget';
 import NotesPanel from '@/components/NotesPanel';
-import TopicSelector from '@/components/TopicSelector';
-import MermaidDiagram from '@/components/MermaidDiagram';
-import CustomTopicBuilder from '@/components/CustomTopicBuilder';
 import LearningSlidePanel, { LearningSlide } from '@/components/LearningSlidePanel';
 import LearningProgressTracker from '@/components/LearningProgressTracker';
 
 // Utils & Data
-import { getTopicById, learningTopics } from '@/lib/tutor-prompts';
 import { EmotionType } from '@/lib/utils';
 import { createSession, endSession, updateSession, generateSessionId, saveMessage, type SessionMessage } from '@/lib/user-data';
 import { useProgressTracking } from '@/lib/useProgressTracking';
@@ -38,14 +33,7 @@ interface Message {
   content: string;
 }
 
-interface CustomTopic {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
-  learningGoals: string[];
-}
+// Removed: CustomTopic interface - not needed for focused learning
 
 export default function TutorSession() {
   const router = useRouter();
@@ -66,26 +54,14 @@ export default function TutorSession() {
   const [isListening, setIsListening] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState('');
   
-  // Topic and content state
-  const [selectedTopic, setSelectedTopic] = useState('dsa-binary-search');
-  const [currentScenario, setCurrentScenario] = useState<ScenarioQuestion | null>(null);
-  const [scenarioIndex, setScenarioIndex] = useState(0);
-  const [currentDiagram, setCurrentDiagram] = useState<string | null>(null);
-  const [customTopics, setCustomTopics] = useState<CustomTopic[]>([]);
-  const [showCustomTopicBuilder, setShowCustomTopicBuilder] = useState(false);
-  
-  // UI state
-  const [showNotes, setShowNotes] = useState(true);
+  // Topic and content state - SIMPLIFIED
+  // UI state - MINIMAL (only essential) - Course-based only, no topic selection
+  const [showNotes, setShowNotes] = useState(false); // Hidden by default, user can enable
   const [showSubtitles, setShowSubtitles] = useState(true);
-  const [cameraEnabled, setCameraEnabled] = useState(false);
-  const [showTopicSelector, setShowTopicSelector] = useState(false);
-  const [inputMode, setInputMode] = useState<'voice' | 'text'>('voice');
+  const [cameraEnabled, setCameraEnabled] = useState(false); // User enables manually
   const [textInput, setTextInput] = useState('');
-  const [showChatHistory, setShowChatHistory] = useState(false);
-  const [viewMode, setViewMode] = useState<'slides' | 'quiz'>('slides');
-  const [isLargeScreen, setIsLargeScreen] = useState(true);
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [showWelcomeModal, setShowWelcomeModal] = useState(true); // Show welcome on first load
+  const [showQuickPrompts, setShowQuickPrompts] = useState(true); // Show quick learning prompts
+  const inputMode = 'voice'; // Always voice, text as fallback
   
   // Learning slides state
   const [learningSlides, setLearningSlides] = useState<LearningSlide[]>([]);
@@ -93,9 +69,7 @@ export default function TutorSession() {
   const [isGeneratingSlides, setIsGeneratingSlides] = useState(false);
   
   // Guidance and help state
-  const [showGuidance, setShowGuidance] = useState(true);
   const [guidanceMessage, setGuidanceMessage] = useState('');
-  const [consecutiveNegativeEmotions, setConsecutiveNegativeEmotions] = useState(0);
   const [lastSimplificationTime, setLastSimplificationTime] = useState<number>(0);
   
   // Audio sync state
@@ -139,6 +113,10 @@ export default function TutorSession() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
+  
+  // TTS CACHE: Prevent duplicate API calls for same text
+  const ttsCache = useRef<Map<string, string>>(new Map()); // text hash -> audio URL
+  const currentTTSRequest = useRef<string | null>(null); // Track in-flight request
 
   // Update session time
   useEffect(() => {
@@ -151,17 +129,95 @@ export default function TutorSession() {
     return () => clearInterval(timer);
   }, [sessionStartTime]);
 
-  // Initialize session on mount
+  // Cleanup cached audio URLs on unmount
+  useEffect(() => {
+    return () => {
+      // Revoke all cached audio URLs to prevent memory leaks
+      ttsCache.current.forEach((url) => {
+        URL.revokeObjectURL(url);
+      });
+      ttsCache.current.clear();
+      console.log('[TTS] Cleaned up cached audio URLs');
+    };
+  }, []);
+
+  // CRITICAL: Stop audio when slide changes (SYNCHRONIZATION FIX)
+  useEffect(() => {
+    if (audioRef.current && !audioRef.current.paused) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsSpeaking(false);
+      console.log('[Audio Sync] Stopped audio on slide change');
+    }
+  }, [currentSlideIndex]);
+
+  // Course context state - stores lecture data from course page
+  const [courseContext, setCourseContext] = useState<{
+    courseId: string;
+    courseTitle?: string;
+    lectureId: string;
+    lectureTitle: string;
+    lectureDescription: string;
+    sectionTitle?: string;
+    returnPath?: string;
+  } | null>(null);
+
+  // State to trigger welcome message speaking
+  const [welcomeMessageToSpeak, setWelcomeMessageToSpeak] = useState<string | null>(null);
+
+  // Check for help context from course page - EXTRACT FULL LECTURE DATA
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const helpContextStr = sessionStorage.getItem('helpContext');
+      const returnPath = sessionStorage.getItem('returnPath');
+      
+      if (helpContextStr) {
+        try {
+          const context = JSON.parse(helpContextStr);
+          if (context.source === 'course' && context.lectureTitle) {
+            // Store full course context
+            setCourseContext({
+              courseId: context.courseId,
+              courseTitle: context.courseTitle,
+              lectureId: context.lectureId,
+              lectureTitle: context.lectureTitle,
+              lectureDescription: context.lectureDescription || '',
+              sectionTitle: context.sectionTitle,
+              returnPath: returnPath || `/course/${context.courseId}?lecture=${context.lectureId}`
+            });
+            
+            // Course context is set - no need for topic selection
+            
+            // Store welcome message to speak later (after speakText is defined)
+            const welcomeMsg = `I'm here to help you learn "${context.lectureTitle}"${context.sectionTitle ? ` from ${context.sectionTitle}` : ''}. ${context.lectureDescription ? `This lecture covers: ${context.lectureDescription.substring(0, 100)}. ` : ''}You can ask me to explain it simply, show examples, break it down step-by-step, or ask any question about this topic. What would you like to learn?`;
+            setCurrentTranscript(welcomeMsg);
+            setWelcomeMessageToSpeak(welcomeMsg);
+            setShowQuickPrompts(true); // Show quick prompts for easy learning
+            
+            // Clear context from storage (but keep in state)
+            sessionStorage.removeItem('helpContext');
+          }
+        } catch (e) {
+          console.error('Failed to parse help context:', e);
+        }
+      }
+    }
+  }, []); // No dependencies - runs once on mount
+
+  // Initialize session on mount - course-based only
   useEffect(() => {
     if (!isLoaded) return;
     if (sessionId) return;
     const initSession = async () => {
-      const topic = getTopicById(selectedTopic);
-      const newSessionId = await createSession(topic?.name || 'General Learning', user?.id);
+      // Use course context if available, otherwise generic
+      const sessionName = courseContext 
+        ? `${courseContext.lectureTitle} - ${courseContext.courseTitle || 'Course Help'}`
+        : 'AI Learning Session';
+      const newSessionId = await createSession(sessionName, user?.id);
       setSessionId(newSessionId);
     };
     initSession();
-  }, [isLoaded, selectedTopic, user?.id, sessionId]);
+  }, [isLoaded, courseContext, user?.id, sessionId]);
 
   // Auto-save progress every 30 seconds
   useEffect(() => {
@@ -193,7 +249,7 @@ export default function TutorSession() {
     return () => clearInterval(autoSaveInterval);
   }, [user?.id, progressTracking.currentSession, messages.length, currentSlideIndex, learningSlides.length, sessionStats, progressTracking]);
 
-  // Handle end session
+  // Handle end session - AUTO REDIRECT back to course if came from course
   const handleEndSession = async () => {
     setIsEndingSession(true);
     try {
@@ -216,31 +272,63 @@ export default function TutorSession() {
       if (sessionId) {
         await endSession(sessionId);
       }
-      router.push('/dashboard');
+      
+      // AUTO REDIRECT: If came from course, go back to course (PRIORITY)
+      if (courseContext?.returnPath) {
+        const returnPath = courseContext.returnPath;
+        // Clear course context
+        setCourseContext(null);
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('returnPath');
+          sessionStorage.removeItem('helpContext');
+        }
+        // Redirect to course
+        router.push(returnPath);
+        return; // Exit early to prevent further execution
+      }
+      
+      // If not from course, go to dashboard or home
+      if (user?.id) {
+        router.push('/dashboard');
+      } else {
+        router.push('/');
+      }
     } catch (error) {
       console.error('Error ending session:', error);
-      router.push('/');
+      // Always try to redirect to course if available
+      if (courseContext?.returnPath) {
+        const returnPath = courseContext.returnPath;
+        setCourseContext(null);
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('returnPath');
+          sessionStorage.removeItem('helpContext');
+        }
+        router.push(returnPath);
+      } else if (user?.id) {
+        router.push('/dashboard');
+      } else {
+        router.push('/');
+      }
     }
   };
 
   // Handle go back (with confirmation if session in progress)
   const handleGoBack = () => {
+    // PRIORITY: If from course, always show where we're going back to
+    const returnDestination = courseContext?.returnPath || '/';
+    const isReturningToCourse = !!courseContext;
+    
     if (messages.length > 0 || sessionStats.timeSpent > 60) {
+      // Show confirmation modal with clear return destination
       setShowEndSessionModal(true);
     } else {
-      router.push('/');
+      // Quick return - no confirmation needed
+      console.log(`[Navigation] Returning to: ${returnDestination}`);
+      router.push(returnDestination);
     }
   };
 
-  // Track screen size for responsive layout
-  useEffect(() => {
-    const checkScreenSize = () => {
-      setIsLargeScreen(window.innerWidth >= 1280); // xl breakpoint
-    };
-    checkScreenSize();
-    window.addEventListener('resize', checkScreenSize);
-    return () => window.removeEventListener('resize', checkScreenSize);
-  }, []);
+  // Removed: Screen size tracking - using CSS responsive classes instead
 
   // Track emotion history
   useEffect(() => {
@@ -408,13 +496,11 @@ export default function TutorSession() {
   // Pause/Resume session controls
   const toggleSessionPause = useCallback(() => {
     if (isSessionPaused) {
-      // Resume
       setIsSessionPaused(false);
       if (audioRef.current && audioRef.current.paused && audioUrl) {
         audioRef.current.play();
       }
     } else {
-      // Pause
       setIsSessionPaused(true);
       if (audioRef.current && !audioRef.current.paused) {
         audioRef.current.pause();
@@ -422,43 +508,31 @@ export default function TutorSession() {
     }
   }, [isSessionPaused, audioUrl]);
 
-  // Sample scenarios for demonstration
-  const sampleScenarios: ScenarioQuestion[] = [
-    {
-      id: '1',
-      scenarioNumber: 1,
-      question: 'Always reticent amongst strangers, she would slowly open up around her friends, eventually becoming _________.',
-      options: ['withdrawn', 'conspiratorial', 'chatty', 'loquacious', 'rude', 'taciturn'],
-      correctIndex: 3,
-      explanation: '"Loquacious" means very talkative, which contrasts with being reticent (reserved). The sentence describes someone who opens up and becomes talkative.',
-      hint: 'Look for a word that means the opposite of reticent.'
-    },
-    {
-      id: '2',
-      scenarioNumber: 2,
-      question: 'What is the time complexity of binary search?',
-      options: ['O(n)', 'O(log n)', 'O(n²)', 'O(1)'],
-      correctIndex: 1,
-      explanation: 'Binary search has O(log n) time complexity because it divides the search space in half with each comparison.',
-      hint: 'Think about how the algorithm divides the problem space.'
-    }
-  ];
-
-  // Initialize with first scenario
-  useEffect(() => {
-    if (!currentScenario && sampleScenarios.length > 0) {
-      setCurrentScenario(sampleScenarios[0]);
-    }
-  }, []);
+  // Request deduplication - prevent duplicate API calls
+  const lastRequestRef = useRef<string>('');
+  const lastRequestTimeRef = useRef<number>(0);
 
   // Handle voice transcript
   const handleTranscript = async (text: string) => {
     if (!text.trim() || isProcessing) return;
     
+    // OPTIMIZATION: Prevent duplicate requests within 2 seconds
+    const now = Date.now();
+    if (text === lastRequestRef.current && now - lastRequestTimeRef.current < 2000) {
+      console.log('[Optimization] Duplicate request blocked');
+      return;
+    }
+    lastRequestRef.current = text;
+    lastRequestTimeRef.current = now;
+    
     setIsProcessing(true);
     setIsListening(false);
     setIsGeneratingSlides(true);
-    setShowGuidance(false);
+    
+    // Hide quick prompts after first question
+    if (showQuickPrompts) {
+      setShowQuickPrompts(false);
+    }
     
     // Add user message
     const userMessage: Message = {
@@ -474,40 +548,55 @@ export default function TutorSession() {
     }
 
     try {
-      // Get topic info (handles both standard and custom topics)
-      const customTopic = customTopics.find(t => t.id === selectedTopic);
-      const standardTopic = getTopicById(selectedTopic);
-      const topicInfo = customTopic 
-        ? { 
-            name: customTopic.name, 
-            description: customTopic.description,
-            category: customTopic.category,
-            isCustom: true,
-            learningGoals: customTopic.learningGoals,
-            difficulty: customTopic.difficulty
-          }
-        : { 
-            name: standardTopic?.name || 'general',
-            description: standardTopic?.description || '',
-            category: standardTopic?.category || 'General',
-            isCustom: false
-          };
+      // COURSE-BASED ONLY: Must have course context
+      if (!courseContext) {
+        setGuidanceMessage('Please access AI Tutor from a course page. Go to a course and click "Need Help?" to get started.');
+        setIsProcessing(false);
+        return;
+      }
+      
+      // Use course lecture data - AUTOMATICALLY INJECT LECTURE CONTEXT
+      const topicInfo = {
+        name: courseContext.lectureTitle,
+        description: courseContext.lectureDescription || courseContext.lectureTitle,
+        category: courseContext.sectionTitle || courseContext.courseTitle || 'Course Content',
+        isCustom: false
+      };
+      
+      // Build rich lecture context for AI
+      const lectureContext = `
+=== CURRENT LECTURE CONTEXT ===
+Course: ${courseContext.courseTitle || 'Current Course'}
+Section: ${courseContext.sectionTitle || 'Current Section'}
+Lecture Title: ${courseContext.lectureTitle}
+${courseContext.lectureDescription ? `Lecture Description: ${courseContext.lectureDescription}` : ''}
 
-      // Get tutor response with slides
+IMPORTANT: The student is currently watching/learning from this specific lecture. 
+Your responses should be directly related to this lecture content. 
+Reference specific concepts from this lecture and help clarify any confusion about this topic.
+`;
+
+      // Get tutor response with slides - AUTO-INJECT LECTURE CONTEXT
       const response = await fetch('/api/tutor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
           topic: topicInfo.name,
-          topicDescription: topicInfo.description,
+          topicDescription: lectureContext + (topicInfo.description || ''),
           topicCategory: topicInfo.category,
-          isCustomTopic: topicInfo.isCustom,
-          learningGoals: topicInfo.isCustom ? (topicInfo as any).learningGoals : [],
-          difficulty: topicInfo.isCustom ? (topicInfo as any).difficulty : 'intermediate',
+          isCustomTopic: false,
+          learningGoals: [],
+          difficulty: 'intermediate',
           emotion: currentEmotion,
           emotionConfidence: emotionConfidence,
-          history: messages.slice(-5)
+          history: messages.slice(-5),
+          // Pass course context explicitly
+          courseContext: courseContext ? {
+            courseId: courseContext.courseId,
+            lectureTitle: courseContext.lectureTitle,
+            lectureDescription: courseContext.lectureDescription
+          } : undefined
         })
       });
 
@@ -526,7 +615,6 @@ export default function TutorSession() {
         if (data.slides && data.slides.length > 0) {
           setLearningSlides(data.slides);
           setCurrentSlideIndex(0);
-          setViewMode('slides');
           
           // Update session stats
           setSessionStats(prev => ({
@@ -562,10 +650,7 @@ export default function TutorSession() {
           setNotes(prev => [...prev, ...newNotes]);
         }
 
-        // Generate diagram if needed
-        if (data.needsDiagram) {
-          await generateDiagram(data.message);
-        }
+        // Diagrams are now included in slides automatically
 
         // Save assistant message to session
         if (sessionId) {
@@ -596,232 +681,260 @@ export default function TutorSession() {
           );
         }
 
-        // Speak the response
+        // Speak the response (auto-detect best TTS provider)
         await speakText(data.message);
       }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setIsProcessing(false);
-      setIsGeneratingSlides(false);
-    }
+      } catch (error: any) {
+        console.error('Error processing tutor request:', error);
+        
+        // Show user-friendly error message
+        if (error.message?.includes('rate limit') || error.message?.includes('429')) {
+          setGuidanceMessage('Service is busy. Switching to Gemini fallback... Please wait.');
+        } else if (error.message?.includes('API key') || error.message?.includes('configured')) {
+          setGuidanceMessage('AI service not configured. Please add OPENAI_API_KEY or GEMINI_API_KEY to your environment variables.');
+        } else {
+          setGuidanceMessage('An error occurred. Please try again.');
+        }
+        setTimeout(() => setGuidanceMessage(''), 10000);
+      } finally {
+        // Clear in-flight request tracker
+        currentTTSRequest.current = null;
+      }
+    setIsProcessing(false);
+    setIsGeneratingSlides(false);
   };
 
-  // Text-to-speech
-  const speakText = async (text: string) => {
+  // Text-to-speech with auto-play and slide sync
+  // CRITICAL: Graceful failure - never block UI if TTS fails
+  // CACHE: Only call TTS API once per unique text
+  const speakText = async (text: string, useElevenLabs: boolean = false) => {
+    // Stop any currently playing audio first (SYNCHRONIZATION FIX)
+    if (audioRef.current && !audioRef.current.paused) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    
+    // Generate cache key (first 100 chars + length for uniqueness)
+    const cacheKey = text.substring(0, 100) + text.length;
+    
+    // GUARD 1: Check if we already have cached audio for this text
+    if (ttsCache.current.has(cacheKey)) {
+      console.log('[TTS] Using cached audio (no API call)');
+      const cachedUrl = ttsCache.current.get(cacheKey)!;
+      setAudioUrl(cachedUrl);
+      setIsSpeaking(true);
+      return;
+    }
+    
+    // GUARD 2: Prevent duplicate in-flight requests
+    if (currentTTSRequest.current === cacheKey) {
+      console.log('[TTS] Request already in progress, skipping duplicate');
+      return;
+    }
+    
+    currentTTSRequest.current = cacheKey;
+    console.log('[TTS] Calling API (first time for this text)');
+    
     try {
       const response = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text })
-      });
-
-      const audioBlob = await response.blob();
-      const url = URL.createObjectURL(audioBlob);
-      setAudioUrl(url);
-      setIsSpeaking(true);
-    } catch (error) {
-      console.error('TTS Error:', error);
-      setIsSpeaking(false);
-    }
-  };
-
-  // Generate diagram
-  const generateDiagram = async (context: string) => {
-    try {
-      const topic = getTopicById(selectedTopic);
-      const response = await fetch('/api/diagram', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topic: topic?.name || 'Concept',
-          description: context,
-          type: 'mermaid'
+        body: JSON.stringify({ 
+          text: text.substring(0, 5000), // Limit text length
+          voice: 'alloy',
+          useElevenLabs: useElevenLabs
         })
       });
 
-      const data = await response.json();
-      if (data.success && data.diagram) {
-        setCurrentDiagram(data.diagram);
-      }
-    } catch (error) {
-      console.error('Diagram error:', error);
-    }
-  };
-
-  // Handle scenario answer
-  const handleScenarioAnswer = (selectedIndex: number, isCorrect: boolean) => {
-    // Update session stats
-    setSessionStats(prev => ({
-      ...prev,
-      correctAnswers: prev.correctAnswers + (isCorrect ? 1 : 0)
-    }));
-
-    // Update session with quiz score
-    if (sessionId) {
-      const totalQuestions = sessionStats.questionsAsked + 1;
-      const totalCorrect = sessionStats.correctAnswers + (isCorrect ? 1 : 0);
-      const score = Math.round((totalCorrect / totalQuestions) * 100);
-      updateSession(sessionId, { quizScore: score }, user?.id);
-    }
-
-    // Add note about the answer
-    const note: Note = {
-      id: `note-${Date.now()}`,
-      type: isCorrect ? 'concept' : 'tip',
-      content: isCorrect 
-        ? `Correctly answered: ${currentScenario?.question.substring(0, 50)}...`
-        : `Review needed: ${currentScenario?.explanation}`,
-      timestamp: new Date()
-    };
-    setNotes(prev => [...prev, note]);
-
-    // Speak feedback
-    const feedback = isCorrect 
-      ? "Excellent! That's correct. " + currentScenario?.explanation
-      : "Not quite. " + currentScenario?.explanation;
-    
-    setCurrentTranscript(feedback);
-    speakText(feedback);
-  };
-
-  // Navigate scenarios
-  const nextScenario = () => {
-    if (scenarioIndex < sampleScenarios.length - 1) {
-      setScenarioIndex(prev => prev + 1);
-      setCurrentScenario(sampleScenarios[scenarioIndex + 1]);
-    }
-  };
-
-  const prevScenario = () => {
-    if (scenarioIndex > 0) {
-      setScenarioIndex(prev => prev - 1);
-      setCurrentScenario(sampleScenarios[scenarioIndex - 1]);
-    }
-  };
-
-  // Handle emotion detection with enhanced smoothing and proactive confusion resolution
-  const handleEmotionDetected = useCallback((emotion: string, confidence: number) => {
-    const now = Date.now();
-    
-    // Add to emotion history for smoothing
-    setEmotionHistory(prev => {
-      const updated = [...prev, { emotion, confidence, time: now }]
-        .filter(e => now - e.time < 15000) // Keep last 15 seconds
-        .slice(-10); // Keep max 10 entries
-      return updated;
-    });
-
-    // Calculate smoothed emotion (weighted average of recent detections)
-    const recentEmotions = emotionHistory.filter(e => now - e.time < 10000);
-    const emotionCounts: Record<string, { count: number; totalConfidence: number }> = {};
-    
-    [...recentEmotions, { emotion, confidence, time: now }].forEach(e => {
-      if (!emotionCounts[e.emotion]) {
-        emotionCounts[e.emotion] = { count: 0, totalConfidence: 0 };
-      }
-      emotionCounts[e.emotion].count++;
-      emotionCounts[e.emotion].totalConfidence += e.confidence;
-    });
-
-    // Find dominant emotion
-    let dominantEmotion = emotion;
-    let maxScore = 0;
-    Object.entries(emotionCounts).forEach(([em, data]) => {
-      const score = data.count * (data.totalConfidence / data.count);
-      if (score > maxScore) {
-        maxScore = score;
-        dominantEmotion = em;
-      }
-    });
-
-    const smoothedConfidence = emotionCounts[dominantEmotion] 
-      ? emotionCounts[dominantEmotion].totalConfidence / emotionCounts[dominantEmotion].count 
-      : confidence;
-
-    setCurrentEmotion(dominantEmotion);
-    setEmotionConfidence(smoothedConfidence);
-
-    // Track consecutive negative emotions
-    if ((dominantEmotion === 'confused' || dominantEmotion === 'frustrated') && smoothedConfidence > 0.5) {
-      setConsecutiveNegativeEmotions(prev => prev + 1);
-    } else if (dominantEmotion === 'happy' || dominantEmotion === 'engaged' || dominantEmotion === 'confident') {
-      setConsecutiveNegativeEmotions(0);
-    }
-
-    // PROACTIVE CONFUSION RESOLUTION
-    const timeSinceLastAction = now - lastConfusionActionRef.current;
-    const canTakeAction = timeSinceLastAction > 20000; // 20 second cooldown
-
-    // Auto-trigger simplification for persistent confusion (3+ detections)
-    if (consecutiveNegativeEmotions >= 3 && canTakeAction && !isProcessing && !isSessionPaused) {
-      lastConfusionActionRef.current = now;
-      setConsecutiveNegativeEmotions(0);
-      
-      // Auto-simplify without requiring user action
-      handleAutoSimplify(dominantEmotion);
-      return;
-    }
-
-    // High confidence single detection
-    if ((dominantEmotion === 'confused' || dominantEmotion === 'frustrated') && 
-        smoothedConfidence > 0.75 && canTakeAction && !isProcessing && !isSessionPaused) {
-      lastConfusionActionRef.current = now;
-      
-      // Show proactive offer
-      const helpMessage = dominantEmotion === 'confused'
-        ? "I noticed you might be finding this tricky. Let me explain it in a simpler way..."
-        : "This can be challenging. Let me try a different approach...";
-      
-      setGuidanceMessage(helpMessage);
-      
-      // Auto-simplify after brief pause to let user see the message
-      setTimeout(() => {
-        if (!isProcessing && !isSessionPaused) {
-          handleAutoSimplify(dominantEmotion);
+      // GRACEFUL FAILURE: Check for voiceUnavailable flag (from backend)
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = await response.json();
+        
+        // Voice is temporarily unavailable (quota/rate limit)
+        if (errorData.voiceUnavailable) {
+          console.warn('[TTS] Voice temporarily unavailable:', errorData.error);
+          setIsSpeaking(false);
+          // Show subtle UI message (non-blocking)
+          setGuidanceMessage('Voice temporarily unavailable. You can still read the content.');
+          setTimeout(() => setGuidanceMessage(''), 5000);
+          return; // Continue without audio - slides still render
         }
-      }, 2000);
-    } else if ((dominantEmotion === 'confused' || dominantEmotion === 'frustrated') && 
-               smoothedConfidence > 0.5 && !isProcessing) {
-      // Lower confidence - just show guidance
-      setGuidanceMessage(
-        dominantEmotion === 'confused'
-          ? "Need help? Say 'simplify' or click the simplify button."
-          : "Feeling stuck? I can explain this differently."
-      );
-      setTimeout(() => setGuidanceMessage(''), 8000);
+        
+        // Other errors - log but don't block
+        console.error('[TTS] Error:', errorData.error);
+        setIsSpeaking(false);
+        return;
+      }
+
+      // Success - we have audio
+      const audioBlob = await response.blob();
+      
+      // Validate audio blob
+      if (!audioBlob || audioBlob.size === 0) {
+        console.warn('[TTS] Empty audio blob received');
+        setIsSpeaking(false);
+        return;
+      }
+      
+      // Create object URL from blob
+      const url = URL.createObjectURL(audioBlob);
+      
+      // CACHE: Store audio URL for reuse
+      ttsCache.current.set(cacheKey, url);
+      console.log('[TTS] Cached audio for reuse');
+      
+      // Clean up old audio URL (prevent memory leaks)
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
+      
+      setAudioUrl(url);
+      setIsSpeaking(true);
+
+      // Wait for audio element to be ready, then auto-play
+      setTimeout(() => {
+        if (audioRef.current) {
+          audioRef.current.src = url;
+          audioRef.current.load();
+          
+          // Auto-play when ready
+          audioRef.current.oncanplaythrough = () => {
+            audioRef.current?.play().catch(err => {
+              console.log('[TTS] Auto-play prevented (user interaction required):', err);
+              // Browser requires user interaction for autoplay - this is normal
+              setIsSpeaking(false);
+            });
+          };
+          
+          // Handle audio errors gracefully
+          audioRef.current.onerror = (e) => {
+            console.error('[TTS] Audio playback error:', e);
+            setIsSpeaking(false);
+            setGuidanceMessage('Audio playback failed. You can still read the response below.');
+            setTimeout(() => setGuidanceMessage(''), 8000);
+          };
+          
+          // Reset time tracking when audio starts
+          audioRef.current.onplay = () => {
+            setAudioCurrentTime(0);
+            setIsSpeaking(true);
+          };
+          
+          // Update time tracking during playback
+          audioRef.current.ontimeupdate = () => {
+            if (audioRef.current) {
+              setAudioCurrentTime(audioRef.current.currentTime);
+            }
+          };
+          
+          // Clean up when finished
+          audioRef.current.onended = () => {
+            setIsSpeaking(false);
+            setAudioCurrentTime(0);
+          };
+          
+          // Try to play immediately if possible
+          audioRef.current.play().catch(() => {
+            // Silent fail - browser may require user interaction
+          });
+        }
+      }, 100);
+    } catch (error: any) {
+      // GRACEFUL FAILURE: Log error silently, don't block UI
+      console.error('[TTS] Error:', error.message || error);
+      setIsSpeaking(false);
+      
+      // Show subtle, non-alarming message
+      setGuidanceMessage('Voice temporarily unavailable. Content is still available to read.');
+      setTimeout(() => setGuidanceMessage(''), 5000);
+      
+      // Don't throw error - continue without audio
     }
-  }, [isProcessing, isSessionPaused, emotionHistory, consecutiveNegativeEmotions]);
+  };
 
-  // Auto-simplify content when confusion is detected
-  const handleAutoSimplify = async (detectedEmotion: string) => {
-    if (isProcessing || learningSlides.length === 0) return;
+  // Speak welcome message when it's set (AFTER speakText is defined)
+  useEffect(() => {
+    if (welcomeMessageToSpeak) {
+      const msg = welcomeMessageToSpeak;
+      setWelcomeMessageToSpeak(null); // Clear after setting
+      // Delay to ensure component is fully mounted
+      const timer = setTimeout(() => {
+        speakText(msg);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [welcomeMessageToSpeak]);
 
+  // Removed: Scenario handling - not needed for focused learning experience
+
+  // Auto-simplify content when confusion is detected - NOW WORKS WITH OR WITHOUT EXISTING SLIDES
+  const handleAutoSimplify = useCallback(async (detectedEmotion: string) => {
+    if (isProcessing) return;
+
+    setIsProcessing(true);
     setIsGeneratingSlides(true);
     setGuidanceMessage('');
     const currentTopic = getCurrentTopicInfo();
     
     try {
+      // Get context - use last message or current topic
       const lastAssistantMessage = messages.filter(m => m.role === 'assistant').pop();
-      const contentToSimplify = lastAssistantMessage?.content || currentTopic.name;
+      const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+      const contentToExplain = lastAssistantMessage?.content || lastUserMessage?.content || currentTopic.name;
 
       // Speak acknowledgment
       const ackMessage = detectedEmotion === 'confused'
-        ? "I can see this is confusing. Let me break it down more simply."
-        : "Let me try explaining this in a different, easier way.";
+        ? "I can see you're confused. Let me explain this step by step with visual slides and audio."
+        : "I notice you're finding this challenging. Let me break it down in a simpler way with slides.";
       setCurrentTranscript(ackMessage);
-      await speakText(ackMessage);
+      
+      // Get topic info - PRIORITY to course context
+      let topicInfo;
+      let lectureContext = '';
+      
+      if (courseContext) {
+        topicInfo = {
+          name: courseContext.lectureTitle,
+          description: courseContext.lectureDescription || courseContext.lectureTitle,
+          category: courseContext.sectionTitle || 'Course Content',
+          isCustom: false
+        };
+        lectureContext = `
+=== CURRENT LECTURE CONTEXT ===
+Course: ${courseContext.courseTitle || 'Current Course'}
+Lecture: ${courseContext.lectureTitle}
+${courseContext.lectureDescription ? `Description: ${courseContext.lectureDescription}` : ''}
+The student is confused about THIS SPECIFIC LECTURE. Explain it simply!
+`;
+      } else {
+        // No course context - show error
+        setGuidanceMessage('Please access AI Tutor from a course page to use this feature.');
+        setIsProcessing(false);
+        setIsGeneratingSlides(false);
+        return;
+      }
 
-      // Get simplified response
+      // Generate explanation with slides - AUTO-INJECT LECTURE CONTEXT
       const response = await fetch('/api/tutor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: `The student is ${detectedEmotion} and needs a much simpler explanation. Explain this concept as if teaching a complete beginner: ${contentToSimplify.substring(0, 300)}`,
-          topic: currentTopic.name,
+          message: `The student is ${detectedEmotion} and needs a clear, simple explanation with visual slides. Explain: ${contentToExplain.substring(0, 300)}. Make sure to generate detailed slides with diagrams.`,
+          topic: topicInfo.name,
+          topicDescription: lectureContext + (topicInfo.description || contentToExplain.substring(0, 200)),
+          topicCategory: topicInfo.category,
+          isCustomTopic: false,
+          learningGoals: [],
+          difficulty: 'beginner',
           emotion: detectedEmotion,
           emotionConfidence: 0.95,
-          history: messages.slice(-3)
+          history: messages.slice(-3),
+          courseContext: courseContext ? {
+            courseId: courseContext.courseId,
+            lectureTitle: courseContext.lectureTitle,
+            lectureDescription: courseContext.lectureDescription
+          } : undefined
         })
       });
 
@@ -836,19 +949,165 @@ export default function TutorSession() {
         setMessages(prev => [...prev, assistantMessage]);
         setCurrentTranscript(data.message);
 
+        // CRITICAL: Set slides and switch to slides view
         if (data.slides && data.slides.length > 0) {
           setLearningSlides(data.slides);
           setCurrentSlideIndex(0);
+          // Slides are automatically shown // Switch to slides view
+          
+          // Update session stats
+          setSessionStats(prev => ({
+            ...prev,
+            slidesViewed: prev.slidesViewed + data.slides.length
+          }));
+        } else {
+          // If no slides returned, create fallback slides
+          console.warn('[AutoSimplify] No slides returned, creating fallback');
+          const fallbackSlides = [{
+            id: `slide-${Date.now()}-0`,
+            title: `Understanding ${topicInfo.name}`,
+            type: 'concept' as const,
+            content: data.message.substring(0, 200) + '...',
+            keyPoints: extractKeyPointsFromText(data.message).slice(0, 3),
+            isSimplified: true,
+            simplificationLevel: 'basic' as const
+          }];
+          setLearningSlides(fallbackSlides);
+          setCurrentSlideIndex(0);
+          // Slides are automatically shown
         }
 
+        // Generate and play audio automatically
         await speakText(data.message);
+        
+        // Auto-play audio when ready
+        if (audioRef.current && audioUrl) {
+          audioRef.current.play().catch(err => {
+            console.error('Auto-play prevented:', err);
+          });
+        }
       }
     } catch (error) {
       console.error('Auto-simplification error:', error);
+      setGuidanceMessage('Sorry, I had trouble generating the explanation. Please try asking a question.');
     } finally {
+      setIsProcessing(false);
       setIsGeneratingSlides(false);
     }
-  };
+  }, [isProcessing, messages, courseContext, speakText, audioUrl]);
+
+  // Helper to extract key points from text
+  const extractKeyPointsFromText = useCallback((text: string): string[] => {
+    const points: string[] = [];
+    const bulletRegex = /^[•\-*]\s+(.+)$/gm;
+    const numberedRegex = /^\d+\.\s+(.+)$/gm;
+    
+    let match;
+    while ((match = bulletRegex.exec(text)) !== null) {
+      points.push(match[1].trim());
+    }
+    while ((match = numberedRegex.exec(text)) !== null) {
+      points.push(match[1].trim());
+    }
+    
+    if (points.length === 0) {
+      const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 20);
+      return sentences.slice(0, 3).map(s => s.trim());
+    }
+    
+    return points.slice(0, 5);
+  }, []);
+
+  // Handle emotion detection with enhanced smoothing and proactive confusion resolution
+  const handleEmotionDetected = useCallback((emotion: string, confidence: number) => {
+    const now = Date.now();
+    
+    // Add to emotion history and calculate smoothed emotion
+    setEmotionHistory(prev => {
+      const updated = [...prev, { emotion, confidence, time: now }]
+        .filter(e => now - e.time < 15000) // Keep last 15 seconds
+        .slice(-10); // Keep max 10 entries
+      
+      // Calculate smoothed emotion from recent history
+      const recentEmotions = updated.filter(e => now - e.time < 10000);
+      const emotionCounts: Record<string, { count: number; totalConfidence: number }> = {};
+      
+      recentEmotions.forEach(e => {
+        if (!emotionCounts[e.emotion]) {
+          emotionCounts[e.emotion] = { count: 0, totalConfidence: 0 };
+        }
+        emotionCounts[e.emotion].count++;
+        emotionCounts[e.emotion].totalConfidence += e.confidence;
+      });
+
+      // Find dominant emotion
+      let dominantEmotion = emotion;
+      let maxScore = 0;
+      Object.entries(emotionCounts).forEach(([em, data]) => {
+        const score = data.count * (data.totalConfidence / data.count);
+        if (score > maxScore) {
+          maxScore = score;
+          dominantEmotion = em;
+        }
+      });
+
+      const smoothedConfidence = emotionCounts[dominantEmotion] 
+        ? emotionCounts[dominantEmotion].totalConfidence / emotionCounts[dominantEmotion].count 
+        : confidence;
+
+      // Update emotion state
+      setCurrentEmotion(dominantEmotion);
+      setEmotionConfidence(smoothedConfidence);
+
+      // EMOTION-BASED AUTO-HELP: Trigger re-explanation when confused/frustrated
+      const timeSinceLastAction = now - lastConfusionActionRef.current;
+      const canTakeAction = timeSinceLastAction > 15000; // 15 second cooldown
+
+      console.log('[Emotion] Detection:', {
+        emotion: dominantEmotion,
+        confidence: smoothedConfidence,
+        canTakeAction,
+        isProcessing,
+        isSessionPaused,
+        timeSinceLastAction: Math.floor(timeSinceLastAction / 1000) + 's'
+      });
+
+      // High confidence confusion/frustration - AUTO-GENERATE SIMPLIFIED SLIDES
+      if ((dominantEmotion === 'confused' || dominantEmotion === 'frustrated') && 
+          smoothedConfidence > 0.7 && canTakeAction && !isProcessing && !isSessionPaused) {
+        lastConfusionActionRef.current = now;
+        const helpMessage = dominantEmotion === 'confused'
+          ? "I see you're confused. Generating visual slides with audio explanation..."
+          : "This seems challenging. Creating simplified slides with audio...";
+        console.log('[Emotion] 🎯 HIGH confidence trigger:', dominantEmotion, smoothedConfidence);
+        setGuidanceMessage(helpMessage);
+        setTimeout(() => {
+          if (!isProcessing && !isSessionPaused) {
+            console.log('[Emotion] ✅ Executing auto-simplify for high confidence');
+            handleAutoSimplify(dominantEmotion);
+          }
+        }, 1500);
+      } else if ((dominantEmotion === 'confused' || dominantEmotion === 'frustrated') && 
+                 smoothedConfidence > 0.5 && canTakeAction && !isProcessing) {
+        // Medium confidence - show guidance and auto-generate
+        lastConfusionActionRef.current = now;
+        console.log('[Emotion] 📊 MEDIUM confidence trigger:', dominantEmotion, smoothedConfidence);
+        setGuidanceMessage(
+          dominantEmotion === 'confused'
+            ? "I can help! Generating visual slides with audio explanation..."
+            : "Let me create simplified slides with audio to help you understand."
+        );
+        setTimeout(() => {
+          if (!isProcessing && !isSessionPaused) {
+            console.log('[Emotion] ✅ Executing auto-simplify for medium confidence');
+            handleAutoSimplify(dominantEmotion);
+          }
+        }, 3000);
+      }
+
+      return updated;
+    });
+  }, [isProcessing, isSessionPaused, handleAutoSimplify]);
 
   // Request simplified content
   const handleRequestSimplification = async () => {
@@ -912,117 +1171,7 @@ export default function TutorSession() {
     setCurrentTranscript('');
   };
 
-  // Generate scenarios for a topic
-  const generateScenariosForTopic = async (topicName: string, description: string, learningGoals: string[] = [], difficulty: string = 'intermediate') => {
-    try {
-      const response = await fetch('/api/generate-slides', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topicName,
-          description,
-          learningGoals,
-          emotion: currentEmotion,
-          emotionConfidence: emotionConfidence
-        })
-      });
-
-      const data = await response.json();
-      
-      if (data.success && data.slides && data.slides.length > 0) {
-        // Convert slides to scenarios
-        const scenarios: ScenarioQuestion[] = data.slides
-          .filter((slide: any) => slide.type === 'practice' || slide.quiz)
-          .map((slide: any, index: number) => ({
-            id: `generated-${Date.now()}-${index}`,
-            scenarioNumber: index + 1,
-            question: slide.quiz?.question || slide.title,
-            options: slide.quiz?.options || ['Option A', 'Option B', 'Option C', 'Option D'],
-            correctIndex: slide.quiz?.correctAnswer || 0,
-            explanation: slide.quiz?.explanation || slide.content,
-            hint: 'Think about what you just learned.'
-          }));
-
-        // If no practice slides, create a scenario from the first concept slide
-        if (scenarios.length === 0) {
-          const conceptSlide = data.slides.find((s: any) => s.type === 'concept') || data.slides[0];
-          scenarios.push({
-            id: `generated-${Date.now()}-0`,
-            scenarioNumber: 1,
-            question: `What is the main concept of ${topicName}?`,
-            options: [
-              conceptSlide?.keyPoints?.[0] || 'Understanding the basics',
-              'Something unrelated',
-              'A different concept',
-              'None of the above'
-            ],
-            correctIndex: 0,
-            explanation: conceptSlide?.content || description,
-            hint: 'Think about the key points we discussed.'
-          });
-        }
-
-        setCurrentScenario(scenarios[0]);
-        setScenarioIndex(0);
-        
-        // Store all scenarios for navigation
-        return scenarios;
-      }
-    } catch (error) {
-      console.error('Error generating scenarios:', error);
-    }
-    return null;
-  };
-
-  // Handle topic change
-  const handleTopicChange = async (topicId: string) => {
-    setSelectedTopic(topicId);
-    setShowTopicSelector(false);
-    
-    // Check if it's a custom topic
-    const customTopic = customTopics.find(t => t.id === topicId);
-    const topic = customTopic || getTopicById(topicId);
-    
-    // Generate scenarios for custom topics
-    if (customTopic) {
-      await generateScenariosForTopic(
-        customTopic.name,
-        customTopic.description,
-        customTopic.learningGoals,
-        customTopic.difficulty
-      );
-    } else {
-      // Reset to sample scenarios for standard topics
-      setCurrentScenario(sampleScenarios[0]);
-      setScenarioIndex(0);
-    }
-    
-    const welcomeMessage = `Great choice! Let's learn about ${topic?.name}. ${topic?.description || ''} What would you like to know?`;
-    
-    setCurrentTranscript(welcomeMessage);
-    speakText(welcomeMessage);
-  };
-
-  // Handle custom topic creation
-  const handleCustomTopicCreated = async (topic: CustomTopic) => {
-    const newTopic = { ...topic, examples: [] };
-    setCustomTopics(prev => [...prev, newTopic]);
-    setSelectedTopic(topic.id);
-    setShowCustomTopicBuilder(false);
-    
-    // Generate scenarios for the new custom topic
-    await generateScenariosForTopic(
-      topic.name,
-      topic.description,
-      topic.learningGoals,
-      topic.difficulty
-    );
-    
-    const welcomeMessage = `Excellent! I've created a custom learning path for ${topic.name}. ${topic.description} Let's start with your first learning goal: ${topic.learningGoals[0] || 'exploring the basics'}. What would you like to know?`;
-    
-    setCurrentTranscript(welcomeMessage);
-    speakText(welcomeMessage);
-  };
+  // Removed: Topic change and custom topic handling - simplified for focused learning
 
   // Handle text input submit
   const handleTextSubmit = (e?: React.FormEvent) => {
@@ -1033,12 +1182,15 @@ export default function TutorSession() {
     setTextInput('');
   };
 
-  // Get current topic info (handles both standard and custom topics)
+  // Get current topic info - SIMPLIFIED
   const getCurrentTopicInfo = () => {
-    const customTopic = customTopics.find(t => t.id === selectedTopic);
-    if (customTopic) return { name: customTopic.name, category: customTopic.category };
-    const topic = getTopicById(selectedTopic);
-    return { name: topic?.name || 'General', category: topic?.category || 'General' };
+    if (courseContext) {
+      return { 
+        name: courseContext.lectureTitle, 
+        category: courseContext.sectionTitle || courseContext.courseTitle || 'Course' 
+      };
+    }
+    return { name: 'No Course Selected', category: 'Please access from a course page' };
   };
 
   return (
@@ -1050,7 +1202,7 @@ export default function TutorSession() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
             onClick={() => setShowEndSessionModal(false)}
           >
             <motion.div
@@ -1060,11 +1212,41 @@ export default function TutorSession() {
               onClick={e => e.stopPropagation()}
               className="bg-surface-light rounded-2xl p-6 max-w-md w-full border border-white/10 shadow-2xl"
             >
-              <h3 className="text-xl font-bold text-white mb-2">End Learning Session?</h3>
-              <p className="text-gray-400 mb-6">
-                You&apos;ve been learning for {Math.floor(sessionStats.timeSpent / 60)} minutes. 
-                Your progress will be saved.
+              <h3 className="text-xl font-bold text-white mb-3">End Learning Session?</h3>
+              
+              {/* Session Stats Summary */}
+              <div className="mb-4 p-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-white">{Math.floor(sessionStats.timeSpent / 60)}</p>
+                    <p className="text-xs text-gray-400">Minutes</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-white">{sessionStats.questionsAsked}</p>
+                    <p className="text-xs text-gray-400">Questions</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-white">{sessionStats.slidesViewed}</p>
+                    <p className="text-xs text-gray-400">Slides Viewed</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-white">{sessionStats.conceptsCovered.length}</p>
+                    <p className="text-xs text-gray-400">Concepts</p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-gray-400 mb-4 text-sm">
+                Your progress will be saved automatically.
               </p>
+              
+              {courseContext && (
+                <div className="mb-4 p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                  <p className="text-sm text-purple-300">
+                    You&apos;ll return to: <strong>{courseContext.lectureTitle}</strong>
+                  </p>
+                </div>
+              )}
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowEndSessionModal(false)}
@@ -1088,167 +1270,66 @@ export default function TutorSession() {
         )}
       </AnimatePresence>
 
-      {/* Welcome Modal - Topic Selection Guide */}
-      <AnimatePresence>
-        {showWelcomeModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="bg-surface-light rounded-2xl p-6 sm:p-8 max-w-lg w-full border border-white/10 shadow-2xl"
-            >
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary-500 to-pink-500 flex items-center justify-center">
-                  <Mic size={32} className="text-white" />
-                </div>
-                <h2 className="text-2xl font-bold text-white mb-2">Welcome to AI Voice Tutor</h2>
-                <p className="text-gray-400">Choose how you{"'"}d like to learn today</p>
-              </div>
-              
-              <div className="space-y-3 mb-6">
-                {/* Quick Start Option */}
-                <button
-                  onClick={() => {
-                    setShowWelcomeModal(false);
-                    const topic = getTopicById('dsa-binary-search');
-                    const welcomeMsg = `Let's learn about ${topic?.name}! ${topic?.description} What would you like to know?`;
-                    setCurrentTranscript(welcomeMsg);
-                    speakText(welcomeMsg);
-                  }}
-                  className="w-full p-4 bg-gradient-to-r from-primary-500/20 to-pink-500/20 border border-primary-500/30 rounded-xl text-left hover:border-primary-500/50 transition-all group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary-500/20 flex items-center justify-center group-hover:bg-primary-500/30 transition-colors">
-                      <Play size={20} className="text-primary-400" />
-                    </div>
-                    <div>
-                      <p className="text-white font-medium">Quick Start</p>
-                      <p className="text-gray-400 text-sm">Start with Binary Search (recommended)</p>
-                    </div>
-                  </div>
-                </button>
-                
-                {/* Browse Topics Option */}
-                <button
-                  onClick={() => {
-                    setShowWelcomeModal(false);
-                    setShowTopicSelector(true);
-                  }}
-                  className="w-full p-4 bg-surface border border-white/10 rounded-xl text-left hover:border-primary-500/30 transition-all group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-surface-lighter flex items-center justify-center group-hover:bg-primary-500/20 transition-colors">
-                      <BookOpen size={20} className="text-gray-400 group-hover:text-primary-400" />
-                    </div>
-                    <div>
-                      <p className="text-white font-medium">Browse Topics</p>
-                      <p className="text-gray-400 text-sm">Choose from economics, algorithms, GRE &amp; more</p>
-                    </div>
-                  </div>
-                </button>
-                
-                {/* Custom Topic Option */}
-                <button
-                  onClick={() => {
-                    setShowWelcomeModal(false);
-                    setShowCustomTopicBuilder(true);
-                  }}
-                  className="w-full p-4 bg-surface border border-white/10 rounded-xl text-left hover:border-green-500/30 transition-all group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-surface-lighter flex items-center justify-center group-hover:bg-green-500/20 transition-colors">
-                      <Plus size={20} className="text-gray-400 group-hover:text-green-400" />
-                    </div>
-                    <div>
-                      <p className="text-white font-medium">Create Custom Topic</p>
-                      <p className="text-gray-400 text-sm">Build your own personalized learning path</p>
-                    </div>
-                  </div>
-                </button>
-              </div>
-              
-              <p className="text-center text-gray-500 text-xs">
-                Tip: Hold <kbd className="px-1.5 py-0.5 bg-surface rounded text-gray-400">Spacebar</kbd> or tap the mic to speak anytime
-              </p>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Removed: Welcome Modal - not needed for focused learning */}
 
-      {/* Navigation Header */}
-      <header className="bg-surface/95 backdrop-blur-lg border-b border-white/5 sticky top-0 z-40">
+      {/* Navigation Header - FIXED at top, never shifts */}
+      <header className="bg-surface/95 backdrop-blur-lg border-b border-white/5 fixed top-0 left-0 right-0 z-40">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
           <div className="flex items-center justify-between h-14 sm:h-16">
             {/* Left: Back Button & Logo */}
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
               <button
                 onClick={handleGoBack}
-                className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5 min-h-touch min-w-touch flex items-center justify-center"
-                title="Go back"
+                className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5 flex-shrink-0"
+                title={courseContext ? 'Back to course' : 'Back to home'}
               >
                 <ArrowLeft size={20} />
               </button>
-              <div className="hidden sm:flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-pink-500 flex items-center justify-center">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-pink-500 flex items-center justify-center flex-shrink-0">
                   <Mic size={16} className="text-white" />
                 </div>
-                <span className="font-semibold text-white">AI Tutor</span>
+                <div className="min-w-0">
+                  <span className="font-semibold text-white text-sm sm:text-base">AI Tutor</span>
+                  {courseContext && (
+                    <p className="text-xs text-purple-400 truncate hidden sm:block">{courseContext.lectureTitle}</p>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Center: Topic & Timer */}
-            <div className="flex items-center gap-2 sm:gap-4">
-              <div className="hidden md:block text-center">
-                <p className="text-sm font-medium text-white truncate max-w-[200px]">
-                  {getCurrentTopicInfo().name}
-                </p>
-                <p className="text-xs text-gray-500">{getCurrentTopicInfo().category}</p>
-              </div>
-              <div className="px-3 py-1.5 bg-surface-lighter rounded-lg">
-                <span className="text-sm font-mono text-gray-300">
-                  {Math.floor(sessionStats.timeSpent / 60).toString().padStart(2, '0')}:
-                  {(sessionStats.timeSpent % 60).toString().padStart(2, '0')}
+            {/* Right: Session Stats & Actions */}
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              {/* Timer - Hidden on small screens */}
+              <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-surface-light rounded-lg">
+                <Clock size={14} className="text-gray-400" />
+                <span className="text-xs text-gray-400">
+                  {Math.floor(sessionStats.timeSpent / 60)}:{String(sessionStats.timeSpent % 60).padStart(2, '0')}
                 </span>
               </div>
-            </div>
 
-            {/* Right: Controls */}
-            <div className="flex items-center gap-1 sm:gap-2">
-              {/* Progress Tracker Toggle */}
-              <button
-                onClick={() => setShowProgressTracker(!showProgressTracker)}
-                className={`p-2 rounded-lg transition-colors min-h-touch min-w-touch flex items-center justify-center ${
-                  showProgressTracker ? 'bg-primary-500/20 text-primary-400' : 'text-gray-400 hover:text-white hover:bg-white/5'
-                }`}
-                title="Toggle progress"
-              >
-                <Sparkles size={18} />
-              </button>
-              
-              {/* Notes Toggle */}
-              <button
-                onClick={() => setShowNotes(!showNotes)}
-                className={`p-2 rounded-lg transition-colors min-h-touch min-w-touch hidden lg:flex items-center justify-center ${
-                  showNotes ? 'bg-primary-500/20 text-primary-400' : 'text-gray-400 hover:text-white hover:bg-white/5'
-                }`}
-                title="Toggle notes"
-              >
-                <FileText size={18} />
-              </button>
+              {/* Emotion Status - Compact */}
+              {currentEmotion && emotionConfidence > 0.3 && (
+                <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-surface-light rounded-lg">
+                  <div className={`w-2 h-2 rounded-full ${
+                    currentEmotion === 'confused' || currentEmotion === 'frustrated' 
+                      ? 'bg-orange-400 animate-pulse' 
+                      : currentEmotion === 'happy' || currentEmotion === 'engaged'
+                      ? 'bg-green-400'
+                      : 'bg-blue-400'
+                  }`} />
+                  <span className="text-xs text-gray-400 capitalize">{currentEmotion}</span>
+                </div>
+              )}
 
-              {/* End Session */}
+              {/* End Session Button - Responsive */}
               <button
                 onClick={() => setShowEndSessionModal(true)}
-                className="px-3 sm:px-4 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors text-sm font-medium flex items-center gap-1.5 min-h-touch"
+                className="px-3 sm:px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-all text-xs font-medium border border-red-500/20 hover:border-red-500/30"
+                title="End learning session"
               >
-                <LogOut size={16} />
-                <span className="hidden sm:inline">End</span>
+                <span className="hidden sm:inline">End Session</span>
+                <X size={16} className="sm:hidden" />
               </button>
             </div>
           </div>
@@ -1268,10 +1349,16 @@ export default function TutorSession() {
           setAudioCurrentTime(0);
         }}
         onPause={() => setIsSpeaking(false)}
+        onError={(e) => {
+          console.error('[Audio] Playback error:', e);
+          setIsSpeaking(false);
+          setGuidanceMessage('Audio playback error. Please try again.');
+          setTimeout(() => setGuidanceMessage(''), 5000);
+        }}
       />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      {/* Main Content Area - Full height below fixed header */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden mt-14 sm:mt-16">
         {/* Notes Sidebar - Hidden on mobile, shown on lg+ */}
         <AnimatePresence>
           {showNotes && (
@@ -1298,55 +1385,7 @@ export default function TutorSession() {
             <div className="max-w-4xl mx-auto">
               {/* Main Content Card */}
               <div className="bg-[#f5f0e8] rounded-xl sm:rounded-2xl shadow-2xl min-h-[400px] sm:min-h-[500px] relative p-4 sm:p-6 md:p-8">
-                {/* Mobile Header Row */}
-                <div className="flex items-center justify-between gap-2 mb-4 sm:mb-0">
-                  {/* Topic Selector Button */}
-                  <button
-                    onClick={() => setShowTopicSelector(!showTopicSelector)}
-                    className="px-3 py-2 bg-primary-600 text-white text-xs sm:text-sm font-medium rounded-lg hover:bg-primary-700 active:scale-95 transition-all flex items-center gap-1.5 min-h-touch truncate max-w-[200px]"
-                  >
-                    <span className="truncate">{getCurrentTopicInfo().name}</span>
-                  </button>
-
-                  {/* View Mode Toggle - Mobile optimized */}
-                  <div className="flex bg-white/50 rounded-lg p-1">
-                    <button
-                      onClick={() => setViewMode('slides')}
-                      className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all min-h-touch flex items-center gap-1 ${viewMode === 'slides' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:text-gray-900'}`}
-                    >
-                      <Sparkles size={14} />
-                      <span className="hidden sm:inline">Slides</span>
-                    </button>
-                    <button
-                      onClick={() => setViewMode('quiz')}
-                      className={`px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all min-h-touch ${viewMode === 'quiz' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:text-gray-900'}`}
-                    >
-                      <span>Quiz</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Topic Selector Dropdown */}
-                <AnimatePresence>
-                  {showTopicSelector && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute top-16 sm:top-14 left-3 sm:left-4 z-20 w-[calc(100%-1.5rem)] sm:w-80 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden max-h-[60vh] overflow-y-auto"
-                    >
-                      <TopicSelector
-                        selectedTopic={selectedTopic}
-                        onTopicChange={handleTopicChange}
-                        onCreateCustom={() => {
-                          setShowTopicSelector(false);
-                          setShowCustomTopicBuilder(true);
-                        }}
-                        customTopics={customTopics.map(t => ({ ...t, examples: [] }))}
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {/* REMOVED: Topic selector and view mode toggle - unnecessary complexity */}
 
                 {/* Tutor Orb - Responsive positioning */}
                 <div className="hidden sm:flex absolute top-4 sm:top-6 right-4 sm:right-6 w-28 sm:w-40 h-20 sm:h-28 bg-gray-600 rounded-xl items-center justify-center shadow-lg">
@@ -1358,117 +1397,150 @@ export default function TutorSession() {
                   />
                 </div>
 
-                {/* Main Content Area */}
+                {/* Main Content Area - SIMPLIFIED: Only Learning Slides */}
                 <div className="mt-4 sm:mt-16 sm:pr-36 md:pr-48 min-h-[300px] sm:min-h-[calc(100%-8rem)]">
-                  {viewMode === 'slides' ? (
-                    learningSlides.length > 0 || isGeneratingSlides ? (
-                      <LearningSlidePanel
-                        slides={learningSlides}
-                        currentSlideIndex={currentSlideIndex}
-                        onSlideChange={setCurrentSlideIndex}
-                        onRequestSimplification={handleRequestSimplification}
-                        emotion={currentEmotion}
-                        emotionConfidence={emotionConfidence}
-                        isLoading={isGeneratingSlides}
-                        tutorMessage={currentTranscript}
-                        audioCurrentTime={audioCurrentTime}
-                        isAudioPlaying={isSpeaking}
-                        autoAdvance={true}
-                      />
-                    ) : (
-                      <div className="h-full flex flex-col items-center justify-center text-gray-700 px-4">
-                        <motion.div
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="text-center max-w-lg"
-                        >
-                          <h2 className="text-xl sm:text-2xl font-bold mb-4">Welcome to AI Voice Tutor</h2>
-                          
-                          {showGuidance && (
-                            <div className="space-y-3 mb-6">
-                              <div className="flex items-center gap-3 text-left bg-purple-50 p-3 sm:p-4 rounded-xl">
-                                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold text-sm">1</div>
-                                <p className="text-sm sm:text-base">Hold <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-xs font-mono">Space</kbd> or tap mic to speak</p>
-                              </div>
-                              <div className="flex items-center gap-3 text-left bg-blue-50 p-3 sm:p-4 rounded-xl">
-                                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm">2</div>
-                                <p className="text-sm sm:text-base">Learning slides appear as I explain</p>
-                              </div>
-                              <div className="flex items-center gap-3 text-left bg-green-50 p-3 sm:p-4 rounded-xl">
-                                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-sm">3</div>
-                                <p className="text-sm sm:text-base">If confused, I&apos;ll automatically simplify!</p>
-                              </div>
-                            </div>
-                          )}
-
-                          <p className="text-gray-500 text-sm sm:text-base">
-                            Select a topic above or start speaking.
-                          </p>
-
-                          {currentDiagram && (
-                            <div className="mt-6 p-4 bg-white rounded-xl">
-                              <MermaidDiagram code={currentDiagram} />
-                            </div>
-                          )}
-                        </motion.div>
-                      </div>
-                    )
+                  {learningSlides.length > 0 || isGeneratingSlides ? (
+                    <LearningSlidePanel
+                      slides={learningSlides}
+                      currentSlideIndex={currentSlideIndex}
+                      onSlideChange={setCurrentSlideIndex}
+                      onRequestSimplification={handleRequestSimplification}
+                      emotion={currentEmotion}
+                      emotionConfidence={emotionConfidence}
+                      isLoading={isGeneratingSlides}
+                      tutorMessage={currentTranscript}
+                      audioCurrentTime={audioCurrentTime}
+                      isAudioPlaying={isSpeaking}
+                      autoAdvance={true}
+                    />
                   ) : (
-                    currentScenario ? (
-                      <ScenarioSlide
-                        scenario={currentScenario}
-                        onAnswer={handleScenarioAnswer}
-                        showHint={currentEmotion === 'confused'}
-                      />
-                    ) : (
-                      <div className="h-full flex flex-col items-center justify-center text-gray-500">
-                        <HelpCircle size={40} className="mb-4 text-gray-300" />
-                        <p className="text-sm sm:text-base text-center px-4">Complete a learning session to unlock practice questions.</p>
-                      </div>
-                    )
+                    <div className="h-full flex flex-col items-center justify-center text-gray-700 px-4">
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-center max-w-lg"
+                      >
+                        {courseContext ? (
+                          <>
+                            <h2 className="text-xl sm:text-2xl font-bold mb-4">
+                              Learning: {courseContext.lectureTitle}
+                            </h2>
+                            <p className="text-gray-500 text-sm sm:text-base mb-4">
+                              What would you like to learn about this topic? Choose a quick prompt or ask your own question.
+                            </p>
+                            
+                            {/* Quick Learning Prompts */}
+                            {showQuickPrompts && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+                                {[
+                                  { text: "Explain this topic in simple terms", icon: "🎯" },
+                                  { text: "Explain with examples", icon: "💡" },
+                                  { text: "Show me step-by-step", icon: "📝" },
+                                  { text: "What are the key concepts?", icon: "🔑" },
+                                  { text: "Give me practice problems", icon: "✏️" },
+                                  { text: "Explain like I'm a beginner", icon: "🌱" }
+                                ].map((prompt, idx) => (
+                                  <motion.button
+                                    key={idx}
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => {
+                                      const fullPrompt = `${prompt.text} about ${courseContext.lectureTitle}`;
+                                      handleTranscript(fullPrompt);
+                                      setShowQuickPrompts(false);
+                                    }}
+                                    disabled={isProcessing}
+                                    className="p-3 bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 border border-blue-200 rounded-lg text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-lg">{prompt.icon}</span>
+                                      <span className="text-sm font-medium text-gray-700">{prompt.text}</span>
+                                    </div>
+                                  </motion.button>
+                                ))}
+                              </div>
+                            )}
+                            
+                            {courseContext.lectureDescription && (
+                              <div className="p-4 bg-blue-50 rounded-xl mb-4 text-left">
+                                <p className="text-sm text-gray-700 font-medium mb-2">About this lecture:</p>
+                                <p className="text-sm text-gray-600">{courseContext.lectureDescription}</p>
+                              </div>
+                            )}
+                            
+                            {!showQuickPrompts && (
+                              <button
+                                onClick={() => setShowQuickPrompts(true)}
+                                className="text-xs text-blue-600 hover:text-blue-700 underline mb-2"
+                              >
+                                Show quick learning prompts
+                              </button>
+                            )}
+                            
+                            <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-xl">
+                              <p className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                                <Mic size={16} className="text-green-600" />
+                                Ready to help you learn!
+                              </p>
+                              <p className="text-xs text-gray-600">
+                                • <strong>Hold Spacebar</strong> or click mic button to speak<br/>
+                                • <strong>Type</strong> your question in the input box<br/>
+                                • <strong>Click</strong> quick prompts above for instant help
+                              </p>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <h2 className="text-xl sm:text-2xl font-bold mb-4 text-red-600">
+                              No Course Selected
+                            </h2>
+                            <p className="text-gray-500 text-sm sm:text-base mb-6">
+                              Please access AI Tutor from a course page. Go to a course and click "Need Help?" to get started.
+                            </p>
+                            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-left">
+                              <p className="text-sm text-gray-700 font-medium mb-2">How to use:</p>
+                              <ol className="text-sm text-gray-600 list-decimal list-inside space-y-1">
+                                <li>Navigate to a course page</li>
+                                <li>Click "Need Help with AI Tutor" button</li>
+                                <li>Start asking questions about the lecture</li>
+                              </ol>
+                            </div>
+                          </>
+                        )}
+                      </motion.div>
+                    </div>
                   )}
                 </div>
-
-                {/* Navigation for Quiz mode */}
-                {viewMode === 'quiz' && currentScenario && (
-                  <div className="absolute bottom-4 sm:bottom-6 left-4 sm:left-8 right-4 sm:right-8 flex justify-between items-center">
-                    <button
-                      onClick={prevScenario}
-                      disabled={scenarioIndex === 0}
-                      className="flex items-center gap-1 sm:gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed min-h-touch text-sm"
-                    >
-                      <ChevronLeft size={18} />
-                      <span className="hidden sm:inline">Previous</span>
-                    </button>
-                    <span className="text-gray-500 text-sm">
-                      {scenarioIndex + 1} / {sampleScenarios.length}
-                    </span>
-                    <button
-                      onClick={nextScenario}
-                      disabled={scenarioIndex === sampleScenarios.length - 1}
-                      className="flex items-center gap-1 sm:gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed min-h-touch text-sm"
-                    >
-                      <span className="hidden sm:inline">Next</span>
-                      <ChevronRight size={18} />
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
           </div>
 
-          {/* Guidance Message Banner */}
+          {/* Guidance Message Banner - Enhanced for emotion detection */}
           <AnimatePresence>
             {guidanceMessage && (
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="mx-3 sm:mx-4 mb-2 p-3 bg-orange-500 text-white rounded-xl flex items-center justify-between gap-2"
+                className="mx-3 sm:mx-4 mb-2 p-3 sm:p-4 bg-gradient-to-r from-orange-500/90 to-amber-500/90 text-white rounded-xl flex items-center justify-between gap-2 shadow-lg"
               >
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                  <HelpCircle size={18} className="flex-shrink-0" />
-                  <p className="text-xs sm:text-sm truncate">{guidanceMessage}</p>
+                  <div className="flex-shrink-0">
+                    <motion.div
+                      animate={{ rotate: [0, 10, -10, 0] }}
+                      transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 2 }}
+                    >
+                      <HelpCircle size={20} className="text-white" />
+                    </motion.div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm font-medium truncate">{guidanceMessage}</p>
+                    {currentEmotion === 'confused' || currentEmotion === 'frustrated' ? (
+                      <p className="text-[10px] sm:text-xs text-white/80 mt-1">
+                        Detected via camera emotion analysis
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                   <button
@@ -1488,6 +1560,23 @@ export default function TutorSession() {
               </motion.div>
             )}
           </AnimatePresence>
+          
+          {/* Emotion-based auto-help notification */}
+          {currentEmotion === 'confused' && emotionConfidence > 0.6 && !guidanceMessage && !isProcessing && (
+            <AnimatePresence>
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mx-3 sm:mx-4 mb-2 p-3 bg-purple-500/20 border border-purple-500/30 text-purple-200 rounded-xl flex items-center gap-2"
+              >
+                <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+                <p className="text-xs sm:text-sm flex-1">
+                  I noticed you might be confused. I&apos;ll automatically provide a simpler explanation...
+                </p>
+              </motion.div>
+            </AnimatePresence>
+          )}
 
           {/* Live Transcript Banner */}
           {showSubtitles && (
@@ -1498,79 +1587,37 @@ export default function TutorSession() {
             />
           )}
 
-          {/* Mobile Camera Panel - Shows when camera enabled on mobile/tablet */}
+          {/* Mobile Camera Panel - Optional emotion detection */}
           <AnimatePresence>
-            {cameraEnabled && !isLargeScreen && (
+            {cameraEnabled && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 className="xl:hidden px-3 sm:px-4 pb-2"
               >
-                <div className="max-w-sm mx-auto">
+                <div className="max-w-sm mx-auto card bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-500/20 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-semibold text-white">Emotion Detection</h4>
+                    <button
+                      onClick={() => setCameraEnabled(false)}
+                      className="p-1.5 rounded-lg bg-gray-700/50 text-gray-500 hover:text-white"
+                    >
+                      <VideoOff size={14} />
+                    </button>
+                  </div>
                   <EmotionCameraWidget
                     onEmotionDetected={handleEmotionDetected}
                     isEnabled={cameraEnabled}
-                    onToggle={() => setCameraEnabled(!cameraEnabled)}
+                    onToggle={() => setCameraEnabled(false)}
                     position="corner"
                   />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Mobile Chat History Panel */}
-          <AnimatePresence>
-            {showChatHistory && !isLargeScreen && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="xl:hidden px-3 sm:px-4 pb-2"
-              >
-                <div className="bg-surface-light rounded-xl p-3 max-w-lg mx-auto">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-medium text-gray-400">Chat History</h4>
-                    <button
-                      onClick={() => setShowChatHistory(false)}
-                      className="p-1 hover:bg-white/10 rounded"
-                    >
-                      <X size={14} className="text-gray-500" />
-                    </button>
-                  </div>
-                  <div className="max-h-40 overflow-y-auto space-y-2 scrollbar-hide">
-                    {messages.length === 0 ? (
-                      <p className="text-xs text-gray-500 text-center py-4">No messages yet</p>
-                    ) : (
-                      messages.slice(-8).map((msg) => (
-                        <div
-                          key={msg.id}
-                          className={`text-xs p-2 rounded-lg whitespace-pre-wrap break-words ${msg.role === 'user' ? 'bg-primary-500/20 text-primary-200 ml-4' : 'bg-gray-700/50 text-gray-300 mr-4'}`}
-                        >
-                          <span className="font-medium">{msg.role === 'user' ? 'You: ' : 'Tutor: '}</span>
-                          {msg.content.length > 150 ? msg.content.substring(0, 150) + '...' : msg.content}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                  {/* Mobile text input */}
-                  <form onSubmit={handleTextSubmit} className="flex gap-2 mt-2 pt-2 border-t border-white/10">
-                    <input
-                      type="text"
-                      value={textInput}
-                      onChange={(e) => setTextInput(e.target.value)}
-                      placeholder="Type a message..."
-                      disabled={isProcessing}
-                      className="flex-1 px-3 py-2 min-h-touch bg-surface-lighter border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
-                    />
-                    <button
-                      type="submit"
-                      disabled={!textInput.trim() || isProcessing}
-                      className="btn-primary px-3 py-2 rounded-lg"
-                    >
-                      <Send size={16} />
-                    </button>
-                  </form>
+                  {currentEmotion !== 'neutral' && (
+                    <div className="mt-2 p-2 bg-surface rounded-lg">
+                      <p className="text-xs text-gray-400 mb-1">Detected:</p>
+                      <p className="text-sm font-medium text-white capitalize">{currentEmotion}</p>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -1579,6 +1626,50 @@ export default function TutorSession() {
 
         {/* Right Sidebar - Hidden on mobile/tablet */}
         <div className="hidden xl:flex flex-col w-72 2xl:w-80 bg-surface-light/50 p-3 gap-3 flex-shrink-0">
+          {/* Emotion Camera Widget - PROMINENT, FIRST THING USER SEES */}
+          <div className="card bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-500/20">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <h4 className="text-sm font-semibold text-white">Emotion Detection</h4>
+              </div>
+              <button
+                onClick={() => setCameraEnabled(!cameraEnabled)}
+                className={`p-1.5 rounded-lg transition-colors ${
+                  cameraEnabled 
+                    ? 'bg-green-500/20 text-green-400' 
+                    : 'bg-gray-700/50 text-gray-500 hover:text-gray-400'
+                }`}
+                title={cameraEnabled ? 'Disable camera' : 'Enable camera'}
+              >
+                {cameraEnabled ? <VideoOff size={14} /> : <Video size={14} />}
+              </button>
+            </div>
+            <EmotionCameraWidget
+              onEmotionDetected={handleEmotionDetected}
+              isEnabled={cameraEnabled}
+              onToggle={() => setCameraEnabled(!cameraEnabled)}
+              position="sidebar"
+            />
+            {currentEmotion !== 'neutral' && (
+              <div className="mt-2 p-2 bg-surface rounded-lg">
+                <p className="text-xs text-gray-400 mb-1">Current Emotion:</p>
+                <p className="text-sm font-medium text-white capitalize">{currentEmotion}</p>
+                {emotionConfidence > 0 && (
+                  <div className="mt-1 flex items-center gap-2">
+                    <div className="flex-1 h-1 bg-gray-700 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-green-500 rounded-full transition-all"
+                        style={{ width: `${emotionConfidence * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-500">{Math.round(emotionConfidence * 100)}%</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Learning Progress Tracker */}
           <LearningProgressTracker
             concepts={conceptMastery}
@@ -1589,13 +1680,6 @@ export default function TutorSession() {
             onConceptClick={(conceptId) => {
               console.log('Concept clicked:', conceptId);
             }}
-          />
-
-          <EmotionCameraWidget
-            onEmotionDetected={handleEmotionDetected}
-            isEnabled={cameraEnabled}
-            onToggle={() => setCameraEnabled(!cameraEnabled)}
-            position="sidebar"
           />
           
           {/* Quick Stats */}
@@ -1617,62 +1701,7 @@ export default function TutorSession() {
             </div>
           </div>
 
-          {/* Chat History Toggle */}
-          <button
-            onClick={() => setShowChatHistory(!showChatHistory)}
-            className="btn-secondary text-sm"
-          >
-            <MessageSquare size={16} />
-            {showChatHistory ? 'Hide Chat' : 'Show Chat'}
-          </button>
-
-          {/* Chat History */}
-          <AnimatePresence>
-            {showChatHistory && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="flex-1 card overflow-hidden p-0"
-              >
-                <div className="h-48 overflow-y-auto p-3 space-y-2 scrollbar-hide">
-                  {messages.length === 0 ? (
-                    <p className="text-xs text-gray-500 text-center py-4">No messages yet</p>
-                  ) : (
-                    messages.slice(-10).map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={`text-xs p-2 rounded-lg whitespace-pre-wrap break-words ${msg.role === 'user' ? 'bg-primary-500/20 text-primary-200 ml-4' : 'bg-gray-700/50 text-gray-300 mr-4'}`}
-                      >
-                        <span className="font-medium">{msg.role === 'user' ? 'You: ' : 'Tutor: '}</span>
-                        {msg.content.length > 100 ? msg.content.substring(0, 100) + '...' : msg.content}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Text Input */}
-          <form onSubmit={handleTextSubmit} className="flex gap-2">
-            <input
-              ref={textInputRef}
-              type="text"
-              value={textInput}
-              onChange={(e) => setTextInput(e.target.value)}
-              placeholder="Type a message..."
-              disabled={isProcessing}
-              className="input text-sm py-2"
-            />
-            <button
-              type="submit"
-              disabled={!textInput.trim() || isProcessing}
-              className="btn-primary px-3"
-            >
-              <Send size={16} />
-            </button>
-          </form>
+          {/* Removed: Text input - voice only for cleaner UX */}
         </div>
       </div>
 
@@ -1695,78 +1724,57 @@ export default function TutorSession() {
             >
               <FileText size={18} />
             </button>
-            {/* Camera Toggle - Visible on all screens */}
+            {/* Camera Toggle - Visible on all screens, MORE PROMINENT */}
             <button
               onClick={() => setCameraEnabled(!cameraEnabled)}
-              className={`btn-ghost p-2.5 xl:hidden ${cameraEnabled ? 'bg-green-600/50 text-green-400' : ''}`}
-              title="Toggle camera"
+              className={`p-2.5 rounded-lg transition-all xl:hidden ${
+                cameraEnabled 
+                  ? 'bg-gradient-to-r from-green-600/30 to-emerald-600/30 text-green-400 border border-green-500/30' 
+                  : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/10'
+              }`}
+              title={cameraEnabled ? 'Disable emotion detection' : 'Enable emotion detection'}
             >
-              {cameraEnabled ? <VideoOff size={18} /> : <Video size={18} />}
+              {cameraEnabled ? (
+                <>
+                  <VideoOff size={18} />
+                  <span className="hidden sm:inline ml-1 text-xs">Emotion ON</span>
+                </>
+              ) : (
+                <>
+                  <Video size={18} />
+                  <span className="hidden sm:inline ml-1 text-xs">Enable</span>
+                </>
+              )}
             </button>
-            {/* Chat Toggle - Visible on mobile/tablet */}
-            <button
-              onClick={() => setShowChatHistory(!showChatHistory)}
-              className={`btn-ghost p-2.5 xl:hidden ${showChatHistory ? 'bg-white/10 text-white' : ''}`}
-              title="Toggle chat"
-            >
-              <MessageSquare size={18} />
-            </button>
-            {/* Input Mode Toggle - Mobile only */}
-            <div className="flex items-center bg-surface-light rounded-lg p-1 xl:hidden">
-              <button
-                onClick={() => setInputMode('voice')}
-                className={`p-2 rounded-md transition-all ${inputMode === 'voice' ? 'bg-primary-500 text-white' : 'text-gray-400'}`}
-              >
-                <Mic size={16} />
-              </button>
-              <button
-                onClick={() => setInputMode('text')}
-                className={`p-2 rounded-md transition-all ${inputMode === 'text' ? 'bg-primary-500 text-white' : 'text-gray-400'}`}
-              >
-                <Send size={16} />
-              </button>
-            </div>
           </div>
 
-          {/* Center - Input Area */}
+          {/* Center - Voice Input (Always) */}
           <div className="flex-1 max-w-sm sm:max-w-md">
-            {inputMode === 'voice' || isLargeScreen ? (
-              <SpacebarVoiceInput
-                onTranscript={handleTranscript}
-                isProcessing={isProcessing}
-                disabled={isSpeaking}
-              />
-            ) : (
-              <form onSubmit={handleTextSubmit} className="flex gap-2">
-                <input
-                  type="text"
-                  value={textInput}
-                  onChange={(e) => setTextInput(e.target.value)}
-                  placeholder="Type your question..."
-                  disabled={isProcessing}
-                  className="input rounded-full text-sm py-2.5"
-                />
-                <button
-                  type="submit"
-                  disabled={!textInput.trim() || isProcessing}
-                  className="btn-primary rounded-full p-2.5"
-                >
-                  <Send size={18} />
-                </button>
-              </form>
-            )}
+            <SpacebarVoiceInput
+              onTranscript={handleTranscript}
+              isProcessing={isProcessing}
+              disabled={isSpeaking}
+            />
           </div>
 
           {/* Right Controls */}
           <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Mobile Emotion Indicator */}
+            {/* Mobile Emotion Indicator - More prominent */}
             {cameraEnabled && currentEmotion !== 'neutral' && (
-              <div className="xl:hidden flex items-center gap-1 px-2 py-1 bg-surface-light rounded-lg text-xs">
-                <span className={`w-2 h-2 rounded-full ${
-                  currentEmotion === 'confused' || currentEmotion === 'frustrated' ? 'bg-yellow-500' :
-                  currentEmotion === 'happy' || currentEmotion === 'excited' ? 'bg-green-500' : 'bg-purple-500'
-                }`}></span>
-                <span className="text-gray-400 capitalize hidden xs:inline">{currentEmotion}</span>
+              <div className="xl:hidden flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30 rounded-lg">
+                <div className="relative">
+                  <span className={`w-2.5 h-2.5 rounded-full block ${
+                    currentEmotion === 'confused' || currentEmotion === 'frustrated' ? 'bg-yellow-500 animate-pulse' :
+                    currentEmotion === 'happy' || currentEmotion === 'excited' ? 'bg-green-500' : 'bg-purple-500'
+                  }`}></span>
+                  <span className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-current animate-ping opacity-75" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-gray-300 font-medium capitalize">{currentEmotion}</span>
+                  {emotionConfidence > 0 && (
+                    <span className="text-[10px] text-gray-500">{Math.round(emotionConfidence * 100)}% confidence</span>
+                  )}
+                </div>
               </div>
             )}
             
@@ -1811,15 +1819,7 @@ export default function TutorSession() {
         </div>
       </div>
 
-      {/* Custom Topic Builder Modal */}
-      <AnimatePresence>
-        {showCustomTopicBuilder && (
-          <CustomTopicBuilder
-            onTopicCreated={handleCustomTopicCreated}
-            onClose={() => setShowCustomTopicBuilder(false)}
-          />
-        )}
-      </AnimatePresence>
+      {/* Removed: Custom Topic Builder - not needed for focused learning */}
     </div>
   );
 }

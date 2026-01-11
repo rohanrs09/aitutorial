@@ -63,58 +63,51 @@ function generateSimplificationPrompt(emotion: EmotionType, userMessage: string)
   if (emotion === 'confused') {
     return `The student is CONFUSED about: "${userMessage}"
 
-IMMEDIATELY SIMPLIFY your response:
-1. Use the MOST BASIC language possible (explain as if to a 10-year-old)
-2. Break the concept into the SMALLEST possible steps (no more than 3-4 words per step)
+IMMEDIATELY SIMPLIFY your response (BACKEND FOCUS):
+1. Use the MOST BASIC language possible (explain as if to a beginner)
+2. Break the backend concept into the SMALLEST possible steps
 3. Start with the absolute fundamentals - don't assume ANY prior knowledge
-4. Use MULTIPLE simple analogies from everyday life (cooking, sports, games, etc.)
-5. Provide a concrete visual example or scenario
-6. Use short sentences (max 10-12 words each)
-7. Ask simple yes/no questions to check understanding
-8. Avoid ALL technical jargon and complex terms
+4. Use ONE clear real-world analogy related to backend concepts
+5. Provide a SIMPLE, working code snippet that demonstrates the concept
+6. Explain WHY the code works, line by line
+7. Show ONE common mistake and how to fix it
+8. Avoid ALL unnecessary technical jargon
 9. If you must use a technical term, define it in the simplest way first
-10. Repeat the key idea in different ways
+10. Keep code examples minimal and focused
 
-Example format:
-"Let me explain this in the simplest way:
-[Simple analogy]
-Here's what this means:
-Step 1: [Simple action]
-Step 2: [Simple action]
-Step 3: [Simple action]
+Follow the required format:
+- Title
+- Short explanation (2-3 sentences)
+- One real-world analogy
+- One working code snippet (simple, runnable)
+- One common mistake
 
-Think of it like [everyday example].
-
-Does this make sense so far?"`;
+Do NOT generate slides, UI, or design content. Focus ONLY on backend learning.`;
   }
   
   if (emotion === 'frustrated') {
     return `The student is FRUSTRATED about: "${userMessage}"
 
-COMPLETELY CHANGE YOUR APPROACH:
-1. Start with validation: "I know this can be frustrating. Let's try a totally different way."
+COMPLETELY CHANGE YOUR APPROACH (BACKEND FOCUS):
+1. Start with validation: "I know this can be frustrating. Let's debug this step by step."
 2. STOP using the previous explanation method
 3. Use the ABSOLUTE SIMPLEST language
-4. Break it down into TINY steps
-5. Provide immediate, easy wins with simple concepts they CAN understand
-6. Use encouraging language throughout
-7. Suggest it's okay to take a break if needed
-8. Focus on building confidence first, comprehension second
-9. Use familiar, comforting analogies (family, home, daily routine)
-10. Keep paragraphs very short (2-3 sentences max)
+4. Break the backend logic down into TINY steps
+5. Provide a MINIMAL working code example they can run immediately
+6. Show them EXACTLY what to type and what output to expect
+7. Use encouraging language throughout
+8. Focus on ONE working example first, then explain why it works
+9. Use a simple, relatable analogy for the backend concept
+10. Show the most common mistake with this concept and how to avoid it
 
-Example format:
-"I totally understand your frustration. Let's try this a completely different way.
+Follow the required format:
+- Title
+- Short explanation (acknowledge frustration, then explain simply)
+- One real-world analogy (comforting, familiar)
+- One working code snippet (MINIMAL, runnable, with expected output)
+- One common mistake (what they're likely doing wrong)
 
-Forget everything for a moment. 
-
-Think about [super simple everyday thing they definitely know].
-
-Now, [our concept] is just like that, but [one simple difference].
-
-That's it. That's the core idea.
-
-Want me to show you a really simple example?"`;
+Do NOT generate slides, UI, or design content. Focus ONLY on getting the backend code to work.`;
   }
   
   return '';
@@ -137,9 +130,11 @@ export function shouldAutoGenerateSimplifiedResponse(
 export function enhancePromptForEmotion(
   basePrompt: string,
   emotion: EmotionType,
-  confidence: number
+  confidence: number,
+  userMessage?: string
 ): string {
-  const adaptation = analyzeEmotionAndAdapt(emotion, confidence, '');
+  // Pass user message to get context-aware simplification prompts
+  const adaptation = analyzeEmotionAndAdapt(emotion, confidence, userMessage || '');
   
   if (adaptation.additionalPrompt) {
     return `${basePrompt}\n\n${adaptation.additionalPrompt}`;

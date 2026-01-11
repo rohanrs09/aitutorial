@@ -135,15 +135,18 @@ export default function LearningSlidePanel({
     setShowQuizResult(false);
   }, [currentSlideIndex]);
 
+  // SYNCHRONIZATION FIX: Stop audio when manually changing slides
   const handlePrevSlide = () => {
     if (currentSlideIndex > 0) {
       onSlideChange(currentSlideIndex - 1);
+      // Audio will be stopped in parent component (TutorSession)
     }
   };
 
   const handleNextSlide = () => {
     if (currentSlideIndex < slides.length - 1) {
       onSlideChange(currentSlideIndex + 1);
+      // Audio will be stopped in parent component (TutorSession)
     }
   };
 

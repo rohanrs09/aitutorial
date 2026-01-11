@@ -9,6 +9,8 @@ import {
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import ResumeSession from '@/components/ResumeSession';
+import CourseCard from '@/components/CourseCard';
+import { getAllCourses } from '@/lib/course-data';
 
 // Dynamically import Clerk components to avoid build errors when keys aren't configured
 const SignedIn = dynamic(() => import('@clerk/nextjs').then(mod => mod.SignedIn), { ssr: false });
@@ -117,6 +119,7 @@ const pricingPlans = [
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hasClerk, setHasClerk] = useState(false);
+  const courses = getAllCourses();
 
   useEffect(() => {
     // Check if Clerk is configured (client-side only)
@@ -139,6 +142,7 @@ export default function LandingPage() {
 
             {/* Desktop Nav */}
             <div className="hidden md:flex items-center gap-6">
+              <a href="#courses" className="text-gray-400 hover:text-white transition-colors duration-200 animated-underline">Courses</a>
               <a href="#features" className="text-gray-400 hover:text-white transition-colors duration-200 animated-underline">Features</a>
               <a href="#topics" className="text-gray-400 hover:text-white transition-colors duration-200 animated-underline">Topics</a>
               <a href="#pricing" className="text-gray-400 hover:text-white transition-colors duration-200 animated-underline">Pricing</a>
@@ -149,6 +153,12 @@ export default function LandingPage() {
               {hasClerk ? (
                 <>
                   <SignedOut>
+                    <a 
+                      href="#courses"
+                      className="text-gray-400 hover:text-white transition-colors hidden sm:block"
+                    >
+                      Courses
+                    </a>
                     <SignInButton mode="modal">
                       <button className="text-gray-400 hover:text-white transition-colors hidden sm:block">
                         Sign In
@@ -162,6 +172,12 @@ export default function LandingPage() {
                     </Link>
                   </SignedOut>
                   <SignedIn>
+                    <a 
+                      href="#courses"
+                      className="text-gray-400 hover:text-white transition-colors hidden sm:block"
+                    >
+                      Courses
+                    </a>
                     <Link 
                       href="/dashboard"
                       className="btn-primary text-sm px-4 py-2"
@@ -172,12 +188,12 @@ export default function LandingPage() {
                   </SignedIn>
                 </>
               ) : (
-                <Link 
-                  href="/learn"
+                <a 
+                  href="#courses"
                   className="btn-primary text-sm px-4 py-2"
                 >
-                  Try Demo
-                </Link>
+                  Browse Courses
+                </a>
               )}
               
               {/* Mobile Menu Button */}
@@ -199,6 +215,7 @@ export default function LandingPage() {
             animate={{ opacity: 1, y: 0 }}
             className="md:hidden bg-surface-light border-t border-white/5 px-4 py-4 space-y-3"
           >
+            <a href="#courses" className="block text-gray-300 hover:text-white py-2">Courses</a>
             <a href="#features" className="block text-gray-300 hover:text-white py-2">Features</a>
             <a href="#topics" className="block text-gray-300 hover:text-white py-2">Topics</a>
             <a href="#pricing" className="block text-gray-300 hover:text-white py-2">Pricing</a>
@@ -243,39 +260,39 @@ export default function LandingPage() {
               {hasClerk ? (
                 <>
                   <SignedOut>
-                    <Link 
-                      href="/sign-up"
+                    <a 
+                      href="#courses"
                       className="btn-primary text-lg px-8 py-4 w-full sm:w-auto"
                     >
                       <Play size={20} className="mr-2" />
-                      Start Learning Free
-                    </Link>
+                      Browse Courses
+                    </a>
                     <Link 
-                      href="/learn"
+                      href="/sign-up"
                       className="btn-secondary text-lg px-8 py-4 w-full sm:w-auto"
                     >
-                      <Volume2 size={20} className="mr-2" />
-                      Try Demo
+                      <BookOpen size={20} className="mr-2" />
+                      Get Started
                     </Link>
                   </SignedOut>
                   <SignedIn>
-                    <Link 
-                      href="/learn"
+                    <a 
+                      href="#courses"
                       className="btn-primary text-lg px-8 py-4"
                     >
                       <Play size={20} className="mr-2" />
-                      Start Learning
-                    </Link>
+                      Browse Courses
+                    </a>
                   </SignedIn>
                 </>
               ) : (
-                <Link 
-                  href="/learn"
+                <a 
+                  href="#courses"
                   className="btn-primary text-lg px-8 py-4"
                 >
                   <Play size={20} className="mr-2" />
-                  Try Demo Now
-                </Link>
+                  Browse Courses
+                </a>
               )}
             </div>
 
@@ -348,7 +365,7 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
             {features.map((feature, index) => (
               <motion.div
                 key={index}
@@ -357,7 +374,7 @@ export default function LandingPage() {
                 whileHover={{ y: -4, transition: { duration: 0.2 } }}
                 transition={{ delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="card hover:border-primary-500/30 hover:shadow-lg hover:shadow-primary-500/10 transition-all duration-300 group cursor-default"
+                className="card hover:border-primary-500/30 hover:shadow-lg hover:shadow-primary-500/10 transition-all duration-300 group cursor-default p-6"
               >
                 <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center mb-4 group-hover:bg-primary-500/20 group-hover:scale-110 transition-all duration-300">
                   <feature.icon className="text-primary-400" size={24} />
@@ -370,42 +387,88 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Topics Section */}
-      <section id="topics" className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
+      {/* Courses Section - Udemy Style */}
+      <section id="courses" className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Master Any Subject</h2>
-            <p className="text-gray-400 text-lg">From algorithms to economics, we&apos;ve got you covered.</p>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+                Featured Courses
+              </h2>
+              <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+                Start learning with structured video courses from top educators. 
+                Get AI help whenever you need it.
+              </p>
+            </motion.div>
+          </div>
+
+          {/* Course Cards Grid - Responsive */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 mb-12">
+            {courses.map((course, index) => (
+              <CourseCard key={course.id} course={course} index={index} />
+            ))}
+          </div>
+
+          {/* Browse More CTA */}
+          <div className="text-center">
+            <p className="text-gray-400 mb-4">
+              More courses coming soon! Each course includes AI-powered tutoring support.
+            </p>
+            <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
+              {topics.slice(0, 6).map((topic, index) => (
+                <span
+                  key={index}
+                  className="px-4 py-2 bg-surface-light rounded-full text-gray-300 border border-white/10 text-sm"
+                >
+                  {topic}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Topics Section */}
+      <section id="topics" className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-surface-light/30">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Learn Any Subject</h2>
+            <p className="text-gray-400 text-lg">AI tutor ready to help with any topic you choose.</p>
           </div>
 
           <div className="flex flex-wrap justify-center gap-3 sm:gap-4 mb-12">
             {topics.map((topic, index) => (
-              <motion.span
-                key={index}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ delay: index * 0.05 }}
-                viewport={{ once: true }}
-                className="px-4 sm:px-6 py-2 sm:py-3 bg-surface-light rounded-full text-gray-300 border border-white/10 hover:border-primary-500/50 hover:text-white hover:bg-primary-500/10 transition-all duration-200 cursor-pointer text-sm sm:text-base select-none"
-              >
-                {topic}
-              </motion.span>
+              <a key={index} href="#courses">
+                <motion.span
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ delay: index * 0.05 }}
+                  viewport={{ once: true }}
+                  className="px-4 sm:px-6 py-2 sm:py-3 bg-surface-light rounded-full text-gray-300 border border-white/10 hover:border-primary-500/50 hover:text-white hover:bg-primary-500/10 transition-all duration-200 cursor-pointer text-sm sm:text-base select-none inline-block"
+                >
+                  {topic}
+                </motion.span>
+              </a>
             ))}
           </div>
 
           <div className="text-center">
-            <Link href="/learn" className="group inline-flex items-center gap-2 text-primary-400 hover:text-primary-300 font-medium transition-colors duration-200">
-              Explore All Topics
+            <a href="#courses" className="group inline-flex items-center gap-2 text-primary-400 hover:text-primary-300 font-medium transition-colors duration-200">
+              Browse All Courses
               <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform duration-200" />
-            </Link>
+            </a>
           </div>
         </div>
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-surface-light/30">
+      <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Loved by Learners</h2>
@@ -440,7 +503,7 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
+      <section id="pricing" className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-surface-light/30">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Simple, Transparent Pricing</h2>
@@ -480,16 +543,29 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Link 
-                  href={hasClerk ? "/sign-up" : "/learn"}
-                  className={`w-full text-center py-3 rounded-xl font-medium transition-all duration-200 inline-block ${
-                    plan.highlighted
-                      ? 'bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white shadow-lg shadow-primary-500/25 hover:shadow-xl hover:shadow-primary-500/30'
-                      : 'bg-surface-lighter hover:bg-surface text-white border border-white/10 hover:border-white/20'
-                  }`}
-                >
-                  {hasClerk ? plan.cta : 'Try Demo'}
-                </Link>
+                {hasClerk ? (
+                  <Link 
+                    href="/sign-up"
+                    className={`w-full text-center py-3 rounded-xl font-medium transition-all duration-200 inline-block ${
+                      plan.highlighted
+                        ? 'bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white shadow-lg shadow-primary-500/25 hover:shadow-xl hover:shadow-primary-500/30'
+                        : 'bg-surface-lighter hover:bg-surface text-white border border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    {plan.cta}
+                  </Link>
+                ) : (
+                  <a 
+                    href="#courses"
+                    className={`w-full text-center py-3 rounded-xl font-medium transition-all duration-200 inline-block ${
+                      plan.highlighted
+                        ? 'bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white shadow-lg shadow-primary-500/25 hover:shadow-xl hover:shadow-primary-500/30'
+                        : 'bg-surface-lighter hover:bg-surface text-white border border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    Browse Courses
+                  </a>
+                )}
               </motion.div>
             ))}
           </div>
@@ -509,13 +585,13 @@ export default function LandingPage() {
             <p className="text-gray-400 text-lg mb-8 max-w-xl mx-auto">
               Join thousands of learners who are mastering new skills with AI Voice Tutor.
             </p>
-            <Link 
-              href={hasClerk ? "/sign-up" : "/learn"}
+            <a 
+              href="#courses"
               className="btn-primary text-lg px-8 py-4 inline-flex items-center gap-2"
             >
-              {hasClerk ? 'Get Started for Free' : 'Try Demo'}
+              Browse Courses
               <ArrowRight size={20} />
-            </Link>
+            </a>
           </motion.div>
         </div>
       </section>

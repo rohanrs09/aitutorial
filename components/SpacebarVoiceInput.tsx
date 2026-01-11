@@ -63,9 +63,18 @@ export default function SpacebarVoiceInput({
       timerRef.current = setInterval(() => {
         setRecordingDuration(prev => prev + 1);
       }, 1000);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error starting recording:', error);
       isStartingRef.current = false; // Reset on error
+      
+      // Handle specific permission errors
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        alert('Microphone permission denied. Please allow microphone access in your browser settings.');
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        alert('No microphone found. Please connect a microphone and try again.');
+      } else {
+        console.error('Recording error:', error.message || error);
+      }
     }
   }, [isRecording]);
 
@@ -91,11 +100,26 @@ export default function SpacebarVoiceInput({
       });
 
       const data = await response.json();
-      if (data.success && data.text) {
+      
+      if (data.success && data.text && data.text.trim()) {
         onTranscript(data.text);
+      } else if (data.error) {
+        console.error('STT Error:', data.error);
+        // Show user-friendly error
+        if (data.error.includes('API key') || data.error.includes('401')) {
+          alert('Speech-to-text is not configured. Please add OPENAI_API_KEY to your environment.');
+        } else if (data.error.includes('rate limit') || data.error.includes('429')) {
+          alert('Rate limited. Please wait a moment and try again.');
+        } else {
+          console.error('STT failed:', data.error);
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('STT Error:', error);
+      // Network errors etc.
+      if (error.message) {
+        console.error('STT request failed:', error.message);
+      }
     }
   };
 

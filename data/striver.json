@@ -1,0 +1,2170 @@
+{
+    "course_id": "dsa_cpp_striver_course",
+    "course_name": "Data Structures & Algorithms in C++ (Striver Integrated)",
+    "version": "1.0",
+    "author": "SLM Curriculum Builder",
+    "source": "Striver – TakeUForward YouTube Channel",
+    "modules": [
+        {
+            "module_id": "module_00",
+            "module_number": 0,
+            "title": "Orientation & Mindset",
+            "topics": [
+                {
+                    "topic_id": "00_01",
+                    "title": "What is DSA & Why It Matters",
+                    "content": "DSA stands for Data Structures and Algorithms. Data Structures help organize data efficiently (like arrays, trees, graphs), while Algorithms define the steps to solve problems efficiently. Companies evaluate DSA skills to test logical thinking, optimization skills, and real-world problem solving ability.",
+                    "key_points": [
+                        "Data Structure = how data is stored",
+                        "Algorithm = how data is processed",
+                        "DSA improves problem solving ability",
+                        "Crucial for interviews and scalable systems"
+                    ],
+                    "prerequisites": [],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Why DSA is important | How to start DSA",
+                            "youtube_url": "https://www.youtube.com/watch?v=wn49bJOYAZM"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "00_02",
+                    "title": "How to Think Before Coding",
+                    "content": "Before writing code, one must analyze the problem, identify constraints, think of edge cases, choose the right data structure, design an approach, and then code. This prevents logical mistakes and improves efficiency.",
+                    "key_points": [
+                        "Understand problem deeply",
+                        "Think of brute force first",
+                        "Optimize step by step",
+                        "Write pseudocode",
+                        "Then code"
+                    ],
+                    "prerequisites": [],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "How to approach a Coding Problem",
+                            "youtube_url": "https://www.youtube.com/watch?v=ekx6H0M7F3k"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_01",
+            "module_number": 1,
+            "title": "C++ Foundations",
+            "topics": [
+                {
+                    "topic_id": "01_01",
+                    "title": "Basic Syntax & Structure",
+                    "content": "Every C++ program starts from main() function. Headers include libraries, and standard output is printed using cout.",
+                    "code_examples": [
+                        {
+                            "code": "#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << \"Hello World\";\n    return 0;\n}",
+                            "output": "Hello World"
+                        }
+                    ],
+                    "key_points": [
+                        "main() is entry point",
+                        "cout prints output",
+                        "return 0 ends program"
+                    ],
+                    "prerequisites": [],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "C++ Basics in One Shot – Strivers A2Z DSA Course – L1",
+                            "youtube_url": "https://www.youtube.com/watch?v=EAR7De6Goz4"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "01_02",
+                    "title": "Variables & Data Types",
+                    "content": "Variables store data and data types define what kind of data can be stored.",
+                    "code_examples": [
+                        {
+                            "code": "int age = 20;\ndouble price = 19.99;\nchar grade = 'A';\nbool isPass = true;",
+                            "output": "age=20, price=19.99, grade=A, isPass=true"
+                        }
+                    ],
+                    "key_points": [
+                        "int for integers",
+                        "double for decimals",
+                        "char for characters",
+                        "bool for true/false"
+                    ],
+                    "prerequisites": [
+                        "01_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "C++ Basics in One Shot – Strivers A2Z DSA Course – L1",
+                            "youtube_url": "https://www.youtube.com/watch?v=EAR7De6Goz4"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "01_03",
+                    "title": "C++ STL Introduction",
+                    "content": "STL provides ready-made data structures and algorithms like vector, map, set, and sort.",
+                    "key_points": [
+                        "vector for dynamic arrays",
+                        "map for key-value pairs",
+                        "sort() for sorting"
+                    ],
+                    "prerequisites": [
+                        "01_02"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Complete C++ STL in 1 Video",
+                            "youtube_url": "https://www.youtube.com/watch?v=TCuujWsoO9I"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_02",
+            "module_number": 2,
+            "title": "Time & Space Complexity",
+            "topics": [
+                {
+                    "topic_id": "02_01",
+                    "title": "Why Complexity Matters",
+                    "content": "Complexity measures performance of code with increasing input size. Efficient algorithms are necessary for large data.",
+                    "key_points": [
+                        "Time complexity = speed",
+                        "Space complexity = memory",
+                        "Lower is better"
+                    ],
+                    "prerequisites": [
+                        "01_02"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Time and Space Complexity – Strivers A2Z DSA Course",
+                            "youtube_url": "https://www.youtube.com/watch?v=FPu9Uld7W-E"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "02_02",
+                    "title": "Big-O Notation",
+                    "content": "Big-O represents worst case growth of algorithm with input size.",
+                    "key_points": [
+                        "O(1) constant",
+                        "O(n) linear",
+                        "O(n log n) sorting",
+                        "O(n^2) nested loops"
+                    ],
+                    "prerequisites": [
+                        "02_01"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Time and Space Complexity – Strivers A2Z DSA Course",
+                            "youtube_url": "https://www.youtube.com/watch?v=FPu9Uld7W-E"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_03",
+            "module_number": 3,
+            "title": "Arrays (1D & 2D)",
+            "topics": [
+                {
+                    "topic_id": "03_01",
+                    "title": "Array Basics & Memory",
+                    "content": "An array is a collection of elements stored in contiguous memory locations. Each element can be accessed using its index in constant time O(1). Arrays are useful when we know the size beforehand and need fast access.",
+                    "key_points": [
+                        "Contiguous memory allocation",
+                        "Index-based access",
+                        "Fixed size in static arrays",
+                        "Dynamic size using vector in C++"
+                    ],
+                    "prerequisites": [
+                        "01_02"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Rotate Array | Move Zeroes | Union & Intersection of Arrays",
+                            "youtube_url": "https://www.youtube.com/watch?v=wvcQg43_V8U"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "03_02",
+                    "title": "Leaders in an Array",
+                    "content": "An element is a leader if all elements to its right are smaller. We can solve this efficiently by scanning from right to left and keeping track of the maximum seen so far.",
+                    "key_points": [
+                        "Brute force O(n²)",
+                        "Optimized approach O(n)",
+                        "Scan from right"
+                    ],
+                    "prerequisites": [
+                        "03_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Leaders in an Array | Brute to Optimal",
+                            "youtube_url": "https://www.youtube.com/watch?v=cHrH9CQ8pmY"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "03_03",
+                    "title": "Subarray Sum Equals K",
+                    "content": "This problem finds the number of subarrays whose sum equals a given value K. It can be optimized using prefix sum and hashing.",
+                    "key_points": [
+                        "Prefix sum concept",
+                        "Use of unordered_map",
+                        "Time complexity O(n)"
+                    ],
+                    "prerequisites": [
+                        "02_02"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Count Subarray Sum Equals K | Brute, Better & Optimal",
+                            "youtube_url": "https://www.youtube.com/watch?v=xvNwoz-ufXA"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_04",
+            "module_number": 4,
+            "title": "Strings",
+            "topics": [
+                {
+                    "topic_id": "04_01",
+                    "title": "Introduction to Strings",
+                    "content": "A string is a sequence of characters. In C++, strings are managed using the string class which provides many built-in functions for manipulation.",
+                    "key_points": [
+                        "Use string instead of char array",
+                        "Supports dynamic size",
+                        "Provides useful functions like length(), substr(), find()"
+                    ],
+                    "prerequisites": [
+                        "01_02"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "String Basics in C++ | Complete Guide",
+                            "youtube_url": "https://www.youtube.com/watch?v=Wd4YoQdyxTg"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "04_02",
+                    "title": "Reverse a String",
+                    "content": "Reversing a string means changing the order of characters so that the first becomes last and vice versa. It is commonly solved using two pointers.",
+                    "key_points": [
+                        "Two pointer technique",
+                        "In-place reversal",
+                        "Time complexity O(n)"
+                    ],
+                    "prerequisites": [
+                        "04_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Reverse a String | Two Pointer Technique",
+                            "youtube_url": "https://www.youtube.com/watch?v=_uSG-FP8uS0"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "04_03",
+                    "title": "Valid Palindrome",
+                    "content": "A palindrome is a string that reads the same forward and backward after ignoring spaces and non-alphanumeric characters.",
+                    "key_points": [
+                        "Two pointer approach",
+                        "Ignore special characters",
+                        "Convert to lowercase"
+                    ],
+                    "prerequisites": [
+                        "04_02"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Valid Palindrome | Two Pointer Approach",
+                            "youtube_url": "https://www.youtube.com/watch?v=AK8_Bx5LadE"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_05",
+            "module_number": 5,
+            "title": "Binary Search",
+            "topics": [
+                {
+                    "topic_id": "05_01",
+                    "title": "Binary Search Introduction",
+                    "content": "Binary Search is an efficient algorithm to find an element in a sorted array by repeatedly dividing the search space into half.",
+                    "key_points": [
+                        "Works only on sorted arrays",
+                        "Time complexity O(log n)",
+                        "Uses divide and conquer"
+                    ],
+                    "prerequisites": [
+                        "03_01",
+                        "02_02"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "BS-1 Binary Search Introduction",
+                            "youtube_url": "https://www.youtube.com/watch?v=yQvCgBOP6js"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "05_02",
+                    "title": "First and Last Occurrence in Sorted Array",
+                    "content": "Find the first and last index of a target element using modified binary search.",
+                    "key_points": [
+                        "Use binary search twice",
+                        "Optimize from O(n) to O(log n)"
+                    ],
+                    "prerequisites": [
+                        "05_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "BS-3 First and Last Occurrence in Sorted Array",
+                            "youtube_url": "https://www.youtube.com/watch?v=9kYJS9MxKHg"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "05_03",
+                    "title": "Search in Rotated Sorted Array",
+                    "content": "Find an element in a rotated sorted array using binary search logic.",
+                    "key_points": [
+                        "Check sorted half",
+                        "Eliminate half every step"
+                    ],
+                    "prerequisites": [
+                        "05_01"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "BS-4 Search in Rotated Sorted Array I",
+                            "youtube_url": "https://www.youtube.com/watch?v=Hh8mC4qYhhE"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "05_04",
+                    "title": "Binary Search on Answer",
+                    "content": "Used when answer lies in a range and can be verified by a condition.",
+                    "key_points": [
+                        "Optimization problems",
+                        "Use isPossible(mid) pattern"
+                    ],
+                    "prerequisites": [
+                        "05_01"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Binary Search on Answer Pattern",
+                            "youtube_url": "https://www.youtube.com/watch?v=K0H0d7sK4eI"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_06",
+            "module_number": 6,
+            "title": "Recursion & Backtracking",
+            "topics": [
+                {
+                    "topic_id": "06_01",
+                    "title": "Introduction to Recursion",
+                    "content": "Recursion is when a function calls itself to solve smaller subproblems. It requires a base case to stop.",
+                    "key_points": [
+                        "Base case",
+                        "Recursive call",
+                        "Stack memory"
+                    ],
+                    "prerequisites": [
+                        "01_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Re-1 Introduction to Recursion",
+                            "youtube_url": "https://www.youtube.com/watch?v=2F8DrY3uZW0"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "06_02",
+                    "title": "Parameterized and Functional Recursion",
+                    "content": "Two ways of writing recursion: parameterized passes result via arguments, functional returns value.",
+                    "key_points": [
+                        "Parameterized: modify parameters",
+                        "Functional: return values"
+                    ],
+                    "prerequisites": [
+                        "06_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Re-3 Parameterized and Functional Recursion",
+                            "youtube_url": "https://www.youtube.com/watch?v=IuDZ3fh01jc"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "06_03",
+                    "title": "Subsequence Generation",
+                    "content": "Generate all subsequences of an array or string using recursion.",
+                    "key_points": [
+                        "Pick or not pick technique",
+                        "Time complexity O(2^n)"
+                    ],
+                    "prerequisites": [
+                        "06_01"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Print all Subsequences | Recursion",
+                            "youtube_url": "https://www.youtube.com/watch?v=odfS0kwj8sQ"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "06_04",
+                    "title": "Backtracking – Combination Sum",
+                    "content": "Backtracking explores all possibilities and removes invalid paths early.",
+                    "key_points": [
+                        "Decision tree",
+                        "Undo changes after recursion"
+                    ],
+                    "prerequisites": [
+                        "06_01"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Combination Sum | Backtracking",
+                            "youtube_url": "https://www.youtube.com/watch?v=OyZFFqQTu98"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_07",
+            "module_number": 7,
+            "title": "Stack",
+            "topics": [
+                {
+                    "topic_id": "07_01",
+                    "title": "Introduction to Stack",
+                    "content": "A Stack is a linear data structure that follows the LIFO (Last In First Out) principle. Elements are added and removed from the same end called the top.",
+                    "key_points": [
+                        "LIFO principle",
+                        "Push: insert element",
+                        "Pop: remove element",
+                        "Peek/Top: view top element"
+                    ],
+                    "prerequisites": [
+                        "03_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Introduction to Stack & Queue | Implementation",
+                            "youtube_url": "https://www.youtube.com/watch?v=tqQ5fTamIN4"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "07_02",
+                    "title": "Valid Parentheses Problem",
+                    "content": "Use a stack to check if the parentheses are balanced by matching opening and closing brackets.",
+                    "key_points": [
+                        "Use stack for matching",
+                        "Push opening brackets",
+                        "Pop on closing brackets"
+                    ],
+                    "prerequisites": [
+                        "07_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Valid Parentheses | Stack Problem",
+                            "youtube_url": "https://www.youtube.com/watch?v=3_yv3j4k2xQ"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "07_03",
+                    "title": "Next Greater Element",
+                    "content": "For each element, find the next element on the right which is greater. Stack is used to maintain decreasing order.",
+                    "key_points": [
+                        "Monotonic stack",
+                        "Traverse from right to left",
+                        "O(n) solution"
+                    ],
+                    "prerequisites": [
+                        "07_01"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Next Greater Element | Stack",
+                            "youtube_url": "https://www.youtube.com/watch?v=Du881K7Jtk8"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_08",
+            "module_number": 8,
+            "title": "Queue",
+            "topics": [
+                {
+                    "topic_id": "08_01",
+                    "title": "Introduction to Queue",
+                    "content": "A Queue is a linear data structure that follows FIFO (First In First Out). Insertion happens at the rear and deletion from the front.",
+                    "key_points": [
+                        "FIFO principle",
+                        "Enqueue: insert",
+                        "Dequeue: remove"
+                    ],
+                    "prerequisites": [
+                        "03_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Introduction to Stack & Queue | Implementation",
+                            "youtube_url": "https://www.youtube.com/watch?v=tqQ5fTamIN4"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "08_02",
+                    "title": "Queue Using Stack",
+                    "content": "Implement a queue using two stacks by reversing order of insertion.",
+                    "key_points": [
+                        "Use two stacks",
+                        "One for input, one for output",
+                        "Amortized O(1)"
+                    ],
+                    "prerequisites": [
+                        "07_01"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Queue using Stack",
+                            "youtube_url": "https://www.youtube.com/watch?v=nF1Uq0I4Pdo"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_09",
+            "module_number": 9,
+            "title": "Linked List",
+            "topics": [
+                {
+                    "topic_id": "09_01",
+                    "title": "Introduction to Linked List",
+                    "content": "A Linked List is a linear data structure where each node contains data and a reference to the next node.",
+                    "key_points": [
+                        "Dynamic size",
+                        "Non-contiguous memory",
+                        "Node contains data + next pointer"
+                    ],
+                    "prerequisites": [
+                        "03_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Introduction to Linked List | Traversal and Search",
+                            "youtube_url": "https://www.youtube.com/watch?v=Nq7ok-OyEpg"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "09_02",
+                    "title": "Reverse a Linked List",
+                    "content": "Reverse pointers of linked list nodes to change direction.",
+                    "key_points": [
+                        "Iterative and recursive approaches",
+                        "Use three pointers"
+                    ],
+                    "prerequisites": [
+                        "09_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Reverse a Linked List",
+                            "youtube_url": "https://www.youtube.com/watch?v=ZpHYjz9N8K0"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "09_03",
+                    "title": "Detect Cycle in Linked List",
+                    "content": "Use Floyd’s cycle detection algorithm (slow and fast pointers).",
+                    "key_points": [
+                        "Two pointer technique",
+                        "O(1) space",
+                        "O(n) time"
+                    ],
+                    "prerequisites": [
+                        "09_01"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Detect Cycle in Linked List",
+                            "youtube_url": "https://www.youtube.com/watch?v=gBTe7lFR3vc"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_10",
+            "module_number": 10,
+            "title": "Trees (Binary Tree)",
+            "topics": [
+                {
+                    "topic_id": "10_01",
+                    "title": "Introduction to Trees",
+                    "content": "A Tree is a hierarchical data structure. A Binary Tree is a tree where each node has at most two children: left and right.",
+                    "key_points": [
+                        "Hierarchical structure",
+                        "Root, parent, child, leaf nodes",
+                        "Binary tree: max 2 children"
+                    ],
+                    "prerequisites": [
+                        "09_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Binary Tree Introduction | Types of Trees",
+                            "youtube_url": "https://www.youtube.com/watch?v=_ANrF3FJm7I"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "10_02",
+                    "title": "Binary Tree Traversals (Preorder, Inorder, Postorder)",
+                    "content": "Tree traversal means visiting all nodes in a specific order. DFS traversals include preorder, inorder, and postorder.",
+                    "key_points": [
+                        "Preorder: Root → Left → Right",
+                        "Inorder: Left → Root → Right",
+                        "Postorder: Left → Right → Root"
+                    ],
+                    "prerequisites": [
+                        "10_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Binary Tree Traversals in One Video | DFS",
+                            "youtube_url": "https://www.youtube.com/watch?v=xlAH4dbMVnU"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "10_03",
+                    "title": "Level Order Traversal (BFS)",
+                    "content": "Level order traversal visits nodes level by level using a queue.",
+                    "key_points": [
+                        "Uses queue",
+                        "Breadth First Search",
+                        "O(n) time complexity"
+                    ],
+                    "prerequisites": [
+                        "10_01",
+                        "08_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Level Order Traversal | BFS in Binary Tree",
+                            "youtube_url": "https://www.youtube.com/watch?v=E3-oY5J0vJU"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_11",
+            "module_number": 11,
+            "title": "Binary Search Tree (BST)",
+            "topics": [
+                {
+                    "topic_id": "11_01",
+                    "title": "Introduction to BST",
+                    "content": "A Binary Search Tree is a binary tree where left subtree contains smaller values and right subtree contains greater values.",
+                    "key_points": [
+                        "Left < Root < Right",
+                        "Inorder traversal gives sorted order",
+                        "Efficient searching"
+                    ],
+                    "prerequisites": [
+                        "10_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Binary Search Tree Introduction",
+                            "youtube_url": "https://www.youtube.com/watch?v=9Jry5-82I68"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "11_02",
+                    "title": "Search and Insert in BST",
+                    "content": "Searching and inserting follow BST property recursively or iteratively.",
+                    "key_points": [
+                        "Compare at each node",
+                        "Go left or right accordingly",
+                        "O(h) time complexity"
+                    ],
+                    "prerequisites": [
+                        "11_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Search and Insert in BST",
+                            "youtube_url": "https://www.youtube.com/watch?v=p7-9UvZ2cN8"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "11_03",
+                    "title": "Validate a BST",
+                    "content": "Check if a binary tree follows BST properties using min-max range.",
+                    "key_points": [
+                        "Use range validation",
+                        "Avoid duplicates",
+                        "Recursive solution"
+                    ],
+                    "prerequisites": [
+                        "11_01"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Validate a Binary Search Tree",
+                            "youtube_url": "https://www.youtube.com/watch?v=f-sj7I5oXEI"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_12",
+            "module_number": 12,
+            "title": "Heap & Priority Queue",
+            "topics": [
+                {
+                    "topic_id": "12_01",
+                    "title": "Introduction to Heap",
+                    "content": "A Heap is a complete binary tree that satisfies heap property (min-heap or max-heap).",
+                    "key_points": [
+                        "Complete binary tree",
+                        "Min heap: parent ≤ children",
+                        "Max heap: parent ≥ children"
+                    ],
+                    "prerequisites": [
+                        "10_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Heap Introduction | Priority Queue",
+                            "youtube_url": "https://www.youtube.com/watch?v=HqPJF2L5h9U"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "12_02",
+                    "title": "Kth Largest Element",
+                    "content": "Use a min heap of size k to find the kth largest element efficiently.",
+                    "key_points": [
+                        "Min heap of size k",
+                        "Time complexity O(n log k)",
+                        "Space complexity O(k)"
+                    ],
+                    "prerequisites": [
+                        "12_01"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Kth Largest Element using Heap",
+                            "youtube_url": "https://www.youtube.com/watch?v=VkG5y5d6zDo"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_13",
+            "module_number": 13,
+            "title": "Hashing",
+            "topics": [
+                {
+                    "topic_id": "13_01",
+                    "title": "Introduction to Hashing",
+                    "content": "Hashing is a technique to store and retrieve data in constant time on average using a hash function. In C++, unordered_map and unordered_set are commonly used for hashing.",
+                    "key_points": [
+                        "Average time complexity O(1)",
+                        "Uses key-value pairs",
+                        "Collision handling is important"
+                    ],
+                    "prerequisites": [
+                        "01_03"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Hashing | Maps | Time Complexity | Collisions",
+                            "youtube_url": "https://www.youtube.com/watch?v=KEs5UyBJ39g"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "13_02",
+                    "title": "Frequency Counting",
+                    "content": "Hashing is widely used to count frequency of elements in arrays or strings efficiently.",
+                    "key_points": [
+                        "Use unordered_map",
+                        "Single traversal",
+                        "Very useful in interview problems"
+                    ],
+                    "prerequisites": [
+                        "13_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Count Frequency using Hashing",
+                            "youtube_url": "https://www.youtube.com/watch?v=ok7jZW7i4J4"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "13_03",
+                    "title": "Two Sum Problem using Hashing",
+                    "content": "Find two numbers that add up to a given target using hashing for O(n) solution.",
+                    "key_points": [
+                        "Store visited elements",
+                        "Check complement",
+                        "Avoid nested loops"
+                    ],
+                    "prerequisites": [
+                        "13_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Two Sum | Hashing Approach",
+                            "youtube_url": "https://www.youtube.com/watch?v=UXDSeD9mN-k"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_14",
+            "module_number": 14,
+            "title": "Graphs",
+            "topics": [
+                {
+                    "topic_id": "14_01",
+                    "title": "Introduction to Graphs",
+                    "content": "A graph is a collection of nodes (vertices) and edges. Graphs can be directed or undirected, weighted or unweighted.",
+                    "key_points": [
+                        "Vertices and edges",
+                        "Directed vs undirected",
+                        "Weighted vs unweighted"
+                    ],
+                    "prerequisites": [
+                        "03_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Graph Introduction | Types of Graph",
+                            "youtube_url": "https://www.youtube.com/watch?v=M3_pLsDdeuU"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "14_02",
+                    "title": "Graph Representation (Adjacency List & Matrix)",
+                    "content": "Graphs can be represented using adjacency matrix or adjacency list. Adjacency list is more space efficient.",
+                    "key_points": [
+                        "Adjacency list preferred",
+                        "Matrix uses O(n^2) space",
+                        "List uses O(V+E) space"
+                    ],
+                    "prerequisites": [
+                        "14_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Graph Representation in C++",
+                            "youtube_url": "https://www.youtube.com/watch?v=_JYONkFZvSE"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "14_03",
+                    "title": "Breadth First Search (BFS)",
+                    "content": "BFS traverses the graph level by level using a queue.",
+                    "key_points": [
+                        "Uses queue",
+                        "Shortest path in unweighted graph",
+                        "Time O(V+E)"
+                    ],
+                    "prerequisites": [
+                        "14_02",
+                        "08_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "BFS Traversal in Graph",
+                            "youtube_url": "https://www.youtube.com/watch?v=UeE67iCK2lQ"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "14_04",
+                    "title": "Depth First Search (DFS)",
+                    "content": "DFS explores a graph by going as deep as possible before backtracking.",
+                    "key_points": [
+                        "Uses recursion or stack",
+                        "Helpful in connected components",
+                        "Time O(V+E)"
+                    ],
+                    "prerequisites": [
+                        "14_02"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "DFS Traversal in Graph",
+                            "youtube_url": "https://www.youtube.com/watch?v=7fujbpJ0LB4"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_15",
+            "module_number": 15,
+            "title": "Dynamic Programming (DP)",
+            "topics": [
+                {
+                    "topic_id": "15_01",
+                    "title": "Introduction to Dynamic Programming",
+                    "content": "Dynamic Programming is an optimization technique used to solve problems by breaking them into overlapping subproblems and storing their results to avoid recomputation.",
+                    "key_points": [
+                        "Overlapping subproblems",
+                        "Optimal substructure",
+                        "Use memoization or tabulation",
+                        "Transforms exponential solutions to polynomial"
+                    ],
+                    "prerequisites": [
+                        "06_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "DP 1. Introduction to Dynamic Programming | Memoization & Tabulation",
+                            "youtube_url": "https://www.youtube.com/watch?v=oBt53YbR9Kk"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "15_02",
+                    "title": "Climbing Stairs Problem",
+                    "content": "Count the number of ways to reach the nth stair when you can climb 1 or 2 steps at a time. This is a basic 1D DP problem.",
+                    "key_points": [
+                        "dp[n] = dp[n-1] + dp[n-2]",
+                        "Similar to Fibonacci",
+                        "Time O(n), Space O(n)"
+                    ],
+                    "prerequisites": [
+                        "15_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "DP 2. Climbing Stairs | 1D DP",
+                            "youtube_url": "https://www.youtube.com/watch?v=ZaI2IlHwmgQ"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "15_03",
+                    "title": "Frog Jump (1D DP)",
+                    "content": "A frog needs to jump to the last stone with minimum energy cost. At each step, it can jump 1 or 2 positions ahead.",
+                    "key_points": [
+                        "State: dp[i] = minimum cost to reach i",
+                        "Transition: min(dp[i-1], dp[i-2])",
+                        "Classic 1D DP"
+                    ],
+                    "prerequisites": [
+                        "15_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "DP 3. Frog Jump | 1D DP",
+                            "youtube_url": "https://www.youtube.com/watch?v=7V2IvPTPh1M"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "15_04",
+                    "title": "Frog Jump with K Distance",
+                    "content": "Generalization of Frog Jump where the frog can jump up to K steps ahead.",
+                    "key_points": [
+                        "dp[i] = min(dp[i-j] + cost(i,i-j))",
+                        "Loop j from 1 to K",
+                        "Time O(n*K)"
+                    ],
+                    "prerequisites": [
+                        "15_03"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "DP 4. Frog Jump with K Distance",
+                            "youtube_url": "https://www.youtube.com/watch?v=i3ejWc-Zzhc"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "15_05",
+                    "title": "Maximum Sum of Non-Adjacent Elements (House Robber)",
+                    "content": "Find the maximum sum of elements such that no two chosen elements are adjacent.",
+                    "key_points": [
+                        "Pick or not pick",
+                        "Classic DP on array",
+                        "Similar to House Robber problem"
+                    ],
+                    "prerequisites": [
+                        "15_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "DP 5. Maximum Sum of Non-Adjacent Elements",
+                            "youtube_url": "https://www.youtube.com/watch?v=_9LhjxcxT0Y"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "15_06",
+                    "title": "Grid Unique Paths",
+                    "content": "Count number of ways to reach from top-left to bottom-right of a grid moving only right or down.",
+                    "key_points": [
+                        "2D DP problem",
+                        "dp[i][j] = dp[i-1][j] + dp[i][j-1]",
+                        "Base case: first row and column"
+                    ],
+                    "prerequisites": [
+                        "15_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "DP 8. Grid Unique Paths",
+                            "youtube_url": "https://www.youtube.com/watch?v=3AxoybkSPKI"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "15_07",
+                    "title": "Unique Paths with Obstacles",
+                    "content": "Same as unique paths but some cells are blocked and cannot be used.",
+                    "key_points": [
+                        "Check obstacle condition",
+                        "Return 0 for blocked cells",
+                        "2D DP with constraints"
+                    ],
+                    "prerequisites": [
+                        "15_06"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "DP 9. Unique Paths II (With Obstacles)",
+                            "youtube_url": "https://www.youtube.com/watch?v=I4gCwQqCGLs"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "15_08",
+                    "title": "Minimum Path Sum in Grid",
+                    "content": "Find the path with minimum sum from top-left to bottom-right of a grid.",
+                    "key_points": [
+                        "dp[i][j] = grid[i][j] + min(dp[i-1][j], dp[i][j-1])",
+                        "Classic grid DP",
+                        "2D DP optimization possible"
+                    ],
+                    "prerequisites": [
+                        "15_06"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "DP 10. Minimum Path Sum in Grid",
+                            "youtube_url": "https://www.youtube.com/watch?v=t1shZ8_s6jc"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_16",
+            "module_number": 16,
+            "title": "Greedy Algorithms",
+            "topics": [
+                {
+                    "topic_id": "16_01",
+                    "title": "Introduction to Greedy",
+                    "content": "Greedy algorithms make the locally optimal choice at each step hoping to find a global optimum. They are efficient and easy to implement but only work for problems that satisfy greedy choice property.",
+                    "key_points": [
+                        "Local optimum at each step",
+                        "Fast and simple",
+                        "Not applicable to all problems"
+                    ],
+                    "prerequisites": [
+                        "02_02"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Greedy Algorithms Introduction",
+                            "youtube_url": "https://www.youtube.com/watch?v=ARvQcqJ_-NY"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "16_02",
+                    "title": "Activity Selection Problem",
+                    "content": "Select the maximum number of activities that do not overlap using greedy sorting by finishing time.",
+                    "key_points": [
+                        "Sort by end time",
+                        "Pick first activity",
+                        "Pick next compatible activity"
+                    ],
+                    "prerequisites": [
+                        "16_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Activity Selection Problem | Greedy",
+                            "youtube_url": "https://www.youtube.com/watch?v=4lYy6I2N9L8"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_17",
+            "module_number": 17,
+            "title": "Bit Manipulation",
+            "topics": [
+                {
+                    "topic_id": "17_01",
+                    "title": "Introduction to Bit Manipulation",
+                    "content": "Bit manipulation uses bitwise operators to solve problems efficiently at binary level.",
+                    "key_points": [
+                        "AND, OR, XOR, NOT",
+                        "Left and Right shift",
+                        "Faster computations"
+                    ],
+                    "prerequisites": [
+                        "01_02"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Bit Manipulation Introduction",
+                            "youtube_url": "https://www.youtube.com/watch?v=8Jf1Gx6yZ_8"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "17_02",
+                    "title": "Check if a Number is Power of Two",
+                    "content": "Using bitwise AND operation to check if a number is power of two.",
+                    "key_points": [
+                        "n & (n-1) == 0",
+                        "Works for n > 0",
+                        "O(1) time"
+                    ],
+                    "prerequisites": [
+                        "17_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Check Power of Two using Bit Manipulation",
+                            "youtube_url": "https://www.youtube.com/watch?v=6s0Z4P6N1KQ"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_18",
+            "module_number": 18,
+            "title": "Interview Patterns",
+            "topics": [
+                {
+                    "topic_id": "18_01",
+                    "title": "Two Pointer Technique",
+                    "content": "Two pointers reduce time complexity by scanning array from both ends or sliding window style.",
+                    "key_points": [
+                        "Used in arrays and strings",
+                        "Reduces nested loops",
+                        "O(n) complexity"
+                    ],
+                    "prerequisites": [
+                        "03_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Two Pointer Technique Explained",
+                            "youtube_url": "https://www.youtube.com/watch?v=Onw8Z3yZKzY"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "18_02",
+                    "title": "Sliding Window Technique",
+                    "content": "Efficiently process subarrays or substrings by maintaining a moving window.",
+                    "key_points": [
+                        "Expand and shrink window",
+                        "O(n) time",
+                        "Useful for substring problems"
+                    ],
+                    "prerequisites": [
+                        "03_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Sliding Window Technique",
+                            "youtube_url": "https://www.youtube.com/watch?v=MK-NZ4hN7rs"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_19",
+            "module_number": 19,
+            "title": "QA Pairs (Revision)",
+            "topics": [
+                {
+                    "topic_id": "19_01",
+                    "title": "What is DSA?",
+                    "content": "DSA stands for Data Structures and Algorithms. It is used to write efficient and optimized programs.",
+                    "difficulty": "beginner"
+                },
+                {
+                    "topic_id": "19_02",
+                    "title": "What is Time Complexity?",
+                    "content": "Time complexity tells how execution time increases with input size.",
+                    "difficulty": "beginner"
+                }
+            ]
+        },
+        {
+            "module_id": "module_20",
+            "module_number": 20,
+            "title": "Common Mistakes",
+            "topics": [
+                {
+                    "topic_id": "20_01",
+                    "title": "Forgetting Base Case in Recursion",
+                    "content": "Without a base case, recursion leads to infinite calls and stack overflow.",
+                    "difficulty": "beginner"
+                },
+                {
+                    "topic_id": "20_02",
+                    "title": "Using Wrong Data Structure",
+                    "content": "Choosing an inefficient data structure leads to high time complexity.",
+                    "difficulty": "beginner"
+                }
+            ]
+        },
+        {
+            "module_id": "module_21",
+            "module_number": 21,
+            "title": "Sorting Algorithms",
+            "topics": [
+                {
+                    "topic_id": "21_01",
+                    "title": "Introduction to Sorting",
+                    "content": "Sorting arranges elements in increasing or decreasing order. It is a fundamental concept that improves searching efficiency and is used in many algorithms.",
+                    "key_points": [
+                        "Helps in faster searching",
+                        "Used in binary search",
+                        "Improves data organization"
+                    ],
+                    "prerequisites": [
+                        "03_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Why Sorting is Important | DSA Basics",
+                            "youtube_url": "https://www.youtube.com/watch?v=4z9I6ZPjG3A"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "21_02",
+                    "title": "Bubble Sort",
+                    "content": "Bubble sort repeatedly swaps adjacent elements if they are in the wrong order. It is simple but inefficient.",
+                    "key_points": [
+                        "Brute force sorting",
+                        "Time complexity O(n^2)",
+                        "Used only for learning"
+                    ],
+                    "prerequisites": [
+                        "21_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Bubble Sort Algorithm Explained",
+                            "youtube_url": "https://www.youtube.com/watch?v=HGk_ypEuS24"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "21_03",
+                    "title": "Selection Sort",
+                    "content": "Selection sort selects the minimum element and places it at the beginning of the array.",
+                    "key_points": [
+                        "Always selects minimum",
+                        "Time complexity O(n^2)",
+                        "In-place sorting"
+                    ],
+                    "prerequisites": [
+                        "21_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Selection Sort Algorithm",
+                            "youtube_url": "https://www.youtube.com/watch?v=Hn2YrfE3l1g"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "21_04",
+                    "title": "Insertion Sort",
+                    "content": "Insertion sort builds the sorted array one element at a time by inserting elements into their correct position.",
+                    "key_points": [
+                        "Efficient for small datasets",
+                        "Best case O(n)",
+                        "Used in hybrid algorithms"
+                    ],
+                    "prerequisites": [
+                        "21_01"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Insertion Sort Algorithm",
+                            "youtube_url": "https://www.youtube.com/watch?v=JU767SDMDvA"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "21_05",
+                    "title": "Merge Sort",
+                    "content": "Merge sort is a divide and conquer algorithm that divides the array into halves and merges them in sorted order.",
+                    "key_points": [
+                        "Divide and conquer",
+                        "Time complexity O(n log n)",
+                        "Stable sorting algorithm"
+                    ],
+                    "prerequisites": [
+                        "21_01"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Merge Sort Algorithm | Complete Explanation",
+                            "youtube_url": "https://www.youtube.com/watch?v=ogjf7ORKfd8"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "21_06",
+                    "title": "Quick Sort",
+                    "content": "Quick sort selects a pivot and partitions the array around the pivot. It is very fast in practice.",
+                    "key_points": [
+                        "Pivot based partition",
+                        "Average O(n log n)",
+                        "Worst case O(n^2)"
+                    ],
+                    "prerequisites": [
+                        "21_01"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Quick Sort Algorithm | Complete Explanation",
+                            "youtube_url": "https://www.youtube.com/watch?v=WIrA4YexLRQ"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_22",
+            "module_number": 22,
+            "title": "Advanced Graph Algorithms",
+            "topics": [
+                {
+                    "topic_id": "22_01",
+                    "title": "Detect Cycle in Undirected Graph",
+                    "content": "Cycle detection in an undirected graph can be done using BFS or DFS by keeping track of visited nodes and parent nodes.",
+                    "key_points": [
+                        "Use visited array",
+                        "Track parent to avoid false cycle",
+                        "Time complexity O(V + E)"
+                    ],
+                    "prerequisites": [
+                        "14_03",
+                        "14_04"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Detect Cycle in Undirected Graph using BFS",
+                            "youtube_url": "https://www.youtube.com/watch?v=BPlrALf1LDU"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "22_02",
+                    "title": "Detect Cycle in Directed Graph",
+                    "content": "Cycle detection in directed graph is done using DFS and a recursion stack (or Kahn’s algorithm).",
+                    "key_points": [
+                        "Use recursion stack",
+                        "Back-edge detection",
+                        "Time complexity O(V + E)"
+                    ],
+                    "prerequisites": [
+                        "14_04"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Detect Cycle in Directed Graph using DFS",
+                            "youtube_url": "https://www.youtube.com/watch?v=9twcmtQj4DU"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "22_03",
+                    "title": "Topological Sort (Kahn’s Algorithm)",
+                    "content": "Topological sorting orders vertices such that for every directed edge u → v, u comes before v.",
+                    "key_points": [
+                        "Applicable only on DAG",
+                        "Uses indegree array",
+                        "Uses queue"
+                    ],
+                    "prerequisites": [
+                        "22_02"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Topological Sort using Kahn’s Algorithm",
+                            "youtube_url": "https://www.youtube.com/watch?v=73sneFXuTEg"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "22_04",
+                    "title": "Shortest Path in Unweighted Graph",
+                    "content": "BFS is used to find the shortest path in an unweighted graph.",
+                    "key_points": [
+                        "Use queue",
+                        "Distance array",
+                        "Time complexity O(V + E)"
+                    ],
+                    "prerequisites": [
+                        "14_03"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Shortest Path in Unweighted Graph using BFS",
+                            "youtube_url": "https://www.youtube.com/watch?v=UeE67iCK2lQ"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "22_05",
+                    "title": "Dijkstra’s Algorithm",
+                    "content": "Dijkstra’s algorithm finds the shortest path from a source node to all other nodes in a weighted graph with non-negative weights.",
+                    "key_points": [
+                        "Uses priority queue",
+                        "Greedy approach",
+                        "Time complexity O(E log V)"
+                    ],
+                    "prerequisites": [
+                        "12_01",
+                        "14_02"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Dijkstra’s Algorithm using Priority Queue",
+                            "youtube_url": "https://www.youtube.com/watch?v=PATgD6K1M7s"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_23",
+            "module_number": 23,
+            "title": "Trie (Prefix Tree)",
+            "topics": [
+                {
+                    "topic_id": "23_01",
+                    "title": "Introduction to Trie",
+                    "content": "A Trie is a tree-like data structure used to store strings efficiently, especially useful for prefix-based searching such as autocomplete and dictionary problems.",
+                    "key_points": [
+                        "Each node represents a character",
+                        "Efficient prefix search",
+                        "Search and insert in O(L) where L is word length"
+                    ],
+                    "prerequisites": [
+                        "04_01"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Trie Data Structure Introduction",
+                            "youtube_url": "https://www.youtube.com/watch?v=AXjmTQ8LEoI"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "23_02",
+                    "title": "Insert and Search in Trie",
+                    "content": "Learn how to insert words into a Trie and search for complete words or prefixes.",
+                    "key_points": [
+                        "Traverse character by character",
+                        "Create nodes if not present",
+                        "Use end-of-word flag"
+                    ],
+                    "prerequisites": [
+                        "23_01"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Insert and Search in Trie",
+                            "youtube_url": "https://www.youtube.com/watch?v=KxkY4v4cZ8I"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "23_03",
+                    "title": "Longest Word with All Prefixes",
+                    "content": "Find the longest word in a dictionary such that all its prefixes exist in the Trie.",
+                    "key_points": [
+                        "Trie traversal",
+                        "Prefix validation",
+                        "DFS over Trie"
+                    ],
+                    "prerequisites": [
+                        "23_01"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Longest Word with All Prefixes | Trie Problem",
+                            "youtube_url": "https://www.youtube.com/watch?v=6bfC9Lh2ZJg"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_24",
+            "module_number": 24,
+            "title": "Advanced Dynamic Programming",
+            "topics": [
+                {
+                    "topic_id": "24_01",
+                    "title": "Longest Increasing Subsequence (LIS)",
+                    "content": "Find the length of the longest increasing subsequence in an array. It can be solved using DP in O(n²) or optimized to O(n log n).",
+                    "key_points": [
+                        "Classic DP problem",
+                        "O(n²) and O(n log n) approaches",
+                        "Binary search optimization"
+                    ],
+                    "prerequisites": [
+                        "15_01"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "DP 41. Longest Increasing Subsequence | LIS",
+                            "youtube_url": "https://www.youtube.com/watch?v=ekcwMsSIzVc"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "24_02",
+                    "title": "Longest Common Subsequence (LCS)",
+                    "content": "Find the length of the longest subsequence common to two strings using 2D DP.",
+                    "key_points": [
+                        "2D DP table",
+                        "Compare characters",
+                        "Foundation for many string DP problems"
+                    ],
+                    "prerequisites": [
+                        "15_01"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "DP 25. Longest Common Subsequence",
+                            "youtube_url": "https://www.youtube.com/watch?v=NPZn9jBrX8U"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "24_03",
+                    "title": "0/1 Knapsack Problem",
+                    "content": "Choose items such that total value is maximum without exceeding capacity. Each item can be chosen once.",
+                    "key_points": [
+                        "Weight vs value tradeoff",
+                        "2D DP",
+                        "Base of many optimization problems"
+                    ],
+                    "prerequisites": [
+                        "15_01"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "DP 19. 0/1 Knapsack Problem",
+                            "youtube_url": "https://www.youtube.com/watch?v=GqOmJHQZivw"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_25",
+            "module_number": 25,
+            "title": "Segment Tree & Fenwick Tree (Binary Indexed Tree)",
+            "topics": [
+                {
+                    "topic_id": "25_01",
+                    "title": "Introduction to Segment Tree",
+                    "content": "A Segment Tree is a data structure that allows efficient range queries and updates on an array, such as range sum, minimum, or maximum queries.",
+                    "key_points": [
+                        "Divide array into segments",
+                        "Supports range queries",
+                        "Build time O(n), Query time O(log n)"
+                    ],
+                    "prerequisites": [
+                        "03_01"
+                    ],
+                    "difficulty": "advanced",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Segment Tree Introduction | Range Queries",
+                            "youtube_url": "https://www.youtube.com/watch?v=2FShdqn-Oz8"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "25_02",
+                    "title": "Range Minimum Query using Segment Tree",
+                    "content": "Using a segment tree to find the minimum element in a given range efficiently.",
+                    "key_points": [
+                        "Tree stores minimum of ranges",
+                        "Divide and conquer",
+                        "Query in O(log n)"
+                    ],
+                    "prerequisites": [
+                        "25_01"
+                    ],
+                    "difficulty": "advanced",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Range Minimum Query | Segment Tree",
+                            "youtube_url": "https://www.youtube.com/watch?v=GvYy6ZEl4p4"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "25_03",
+                    "title": "Introduction to Fenwick Tree (BIT)",
+                    "content": "Fenwick Tree or Binary Indexed Tree is used for prefix sum queries and point updates in logarithmic time.",
+                    "key_points": [
+                        "Simpler than segment tree",
+                        "Efficient for prefix sums",
+                        "Update and query in O(log n)"
+                    ],
+                    "prerequisites": [
+                        "03_01"
+                    ],
+                    "difficulty": "advanced",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Fenwick Tree / Binary Indexed Tree",
+                            "youtube_url": "https://www.youtube.com/watch?v=DPiY9wFxGIw"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_26",
+            "module_number": 26,
+            "title": "Disjoint Set Union (Union Find)",
+            "topics": [
+                {
+                    "topic_id": "26_01",
+                    "title": "Introduction to Disjoint Set",
+                    "content": "Disjoint Set Union (DSU) is a data structure that supports union and find operations to manage connected components efficiently.",
+                    "key_points": [
+                        "Used in graph problems",
+                        "Supports union and find",
+                        "Optimized with path compression"
+                    ],
+                    "prerequisites": [
+                        "14_01"
+                    ],
+                    "difficulty": "advanced",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Disjoint Set Union (Union Find) | Introduction",
+                            "youtube_url": "https://www.youtube.com/watch?v=1mhjB0G8s98"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "26_02",
+                    "title": "Union by Rank & Path Compression",
+                    "content": "Optimizations that make DSU operations almost constant time.",
+                    "key_points": [
+                        "Attach smaller tree to larger tree",
+                        "Compress path during find",
+                        "Amortized O(α(n))"
+                    ],
+                    "prerequisites": [
+                        "26_01"
+                    ],
+                    "difficulty": "advanced",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Union by Rank & Path Compression",
+                            "youtube_url": "https://www.youtube.com/watch?v=wU6udHRIkcc"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "26_03",
+                    "title": "Cycle Detection using DSU",
+                    "content": "DSU can be used to detect cycles in an undirected graph efficiently.",
+                    "key_points": [
+                        "Check parent before union",
+                        "If same parent → cycle exists",
+                        "Useful in Kruskal’s Algorithm"
+                    ],
+                    "prerequisites": [
+                        "26_01"
+                    ],
+                    "difficulty": "advanced",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Detect Cycle in Graph using DSU",
+                            "youtube_url": "https://www.youtube.com/watch?v=3gbO7FDYNFQ"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_27",
+            "module_number": 27,
+            "title": "String Algorithms (Advanced)",
+            "topics": [
+                {
+                    "topic_id": "27_01",
+                    "title": "Pattern Matching – Naive vs Optimized",
+                    "content": "Pattern matching is the process of finding occurrences of a pattern string inside a larger text. The naive approach checks for a match starting at every position, while optimized algorithms reduce unnecessary comparisons.",
+                    "key_points": [
+                        "Naive approach: O(n*m)",
+                        "Optimized algorithms reduce time",
+                        "Used in text searching"
+                    ],
+                    "prerequisites": [
+                        "04_01"
+                    ],
+                    "difficulty": "intermediate",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Pattern Matching Algorithms Overview",
+                            "youtube_url": "https://www.youtube.com/watch?v=GTJr8OvyEVQ"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "27_02",
+                    "title": "KMP Algorithm (Knuth-Morris-Pratt)",
+                    "content": "KMP algorithm uses the LPS (Longest Prefix Suffix) array to avoid redundant comparisons and performs pattern searching in linear time.",
+                    "key_points": [
+                        "Preprocess pattern using LPS array",
+                        "Time complexity O(n + m)",
+                        "No backtracking in text"
+                    ],
+                    "prerequisites": [
+                        "27_01"
+                    ],
+                    "difficulty": "advanced",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "KMP Algorithm | Pattern Matching",
+                            "youtube_url": "https://www.youtube.com/watch?v=V5-7GzOfADQ"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "27_03",
+                    "title": "Rabin-Karp Algorithm",
+                    "content": "Rabin-Karp uses hashing to find pattern matches. It compares hash values of the pattern and substrings of the text.",
+                    "key_points": [
+                        "Rolling hash technique",
+                        "Average time O(n + m)",
+                        "Collision handling required"
+                    ],
+                    "prerequisites": [
+                        "27_01",
+                        "13_01"
+                    ],
+                    "difficulty": "advanced",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Rabin Karp Algorithm",
+                            "youtube_url": "https://www.youtube.com/watch?v=H4VrKHVG5qI"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_28",
+            "module_number": 28,
+            "title": "Backtracking (Advanced Problems)",
+            "topics": [
+                {
+                    "topic_id": "28_01",
+                    "title": "N-Queens Problem",
+                    "content": "Place N queens on an N×N chessboard such that no two queens attack each other. Backtracking is used to try all possibilities safely.",
+                    "key_points": [
+                        "Try row by row",
+                        "Check column and diagonals",
+                        "Backtrack on invalid placement"
+                    ],
+                    "prerequisites": [
+                        "06_01"
+                    ],
+                    "difficulty": "advanced",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "N-Queens Problem | Backtracking",
+                            "youtube_url": "https://www.youtube.com/watch?v=i05Ju7AftcM"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "28_02",
+                    "title": "Sudoku Solver",
+                    "content": "Solve a partially filled 9×9 Sudoku board using backtracking by trying numbers from 1 to 9 in empty cells.",
+                    "key_points": [
+                        "Check row, column, and 3x3 grid",
+                        "Recursive solution",
+                        "Classic backtracking example"
+                    ],
+                    "prerequisites": [
+                        "06_01"
+                    ],
+                    "difficulty": "advanced",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Sudoku Solver | Backtracking",
+                            "youtube_url": "https://www.youtube.com/watch?v=FWAIf_EVUKE"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_29",
+            "module_number": 29,
+            "title": "Mathematics for DSA (Number Theory & Combinatorics)",
+            "topics": [
+                {
+                    "topic_id": "29_01",
+                    "title": "Prime Numbers & Sieve of Eratosthenes",
+                    "content": "Prime numbers are numbers greater than 1 that have no divisors other than 1 and itself. Sieve of Eratosthenes efficiently finds all primes up to N.",
+                    "key_points": [
+                        "Initialize boolean array",
+                        "Mark multiples as non-prime",
+                        "Time complexity O(n log log n)"
+                    ],
+                    "prerequisites": [
+                        "01_02"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Sieve of Eratosthenes | Prime Numbers",
+                            "youtube_url": "https://www.youtube.com/watch?v=klcIklsWzrY"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "29_02",
+                    "title": "GCD & Euclidean Algorithm",
+                    "content": "Greatest Common Divisor (GCD) of two numbers can be efficiently computed using Euclid’s algorithm.",
+                    "key_points": [
+                        "gcd(a, b) = gcd(b, a % b)",
+                        "Time complexity O(log n)",
+                        "Useful in many math problems"
+                    ],
+                    "prerequisites": [
+                        "01_02"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "GCD using Euclidean Algorithm",
+                            "youtube_url": "https://www.youtube.com/watch?v=JUzYl1TYMcU"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "29_03",
+                    "title": "Modular Arithmetic Basics",
+                    "content": "Modular arithmetic is used to prevent overflow and manage large numbers in programming problems.",
+                    "key_points": [
+                        "a % m operation",
+                        "Modulo addition, subtraction, multiplication",
+                        "Very common in competitive programming"
+                    ],
+                    "prerequisites": [
+                        "01_02"
+                    ],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Modular Arithmetic Basics",
+                            "youtube_url": "https://www.youtube.com/watch?v=H0E5a6k6N4s"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "module_id": "module_30",
+            "module_number": 30,
+            "title": "Final Revision & Interview Preparation",
+            "topics": [
+                {
+                    "topic_id": "30_01",
+                    "title": "DSA Revision Strategy",
+                    "content": "How to revise DSA effectively before interviews using patterns, revision sheets, and mock problems.",
+                    "key_points": [
+                        "Revise patterns not problems",
+                        "Practice daily",
+                        "Analyze mistakes"
+                    ],
+                    "prerequisites": [],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "How to Revise DSA for Interviews",
+                            "youtube_url": "https://www.youtube.com/watch?v=R3sY1w0k0Z8"
+                        }
+                    ]
+                },
+                {
+                    "topic_id": "30_02",
+                    "title": "How to Approach Coding Interviews",
+                    "content": "Learn how to think, communicate, and write code during real interviews.",
+                    "key_points": [
+                        "Think out loud",
+                        "Explain approach",
+                        "Handle edge cases"
+                    ],
+                    "prerequisites": [],
+                    "difficulty": "beginner",
+                    "videos": [
+                        {
+                            "source": "Striver - TakeUForward",
+                            "title": "Coding Interview Strategy by Striver",
+                            "youtube_url": "https://www.youtube.com/watch?v=K6bL6kJ0F7k"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

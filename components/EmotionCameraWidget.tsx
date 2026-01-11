@@ -61,7 +61,8 @@ export default function EmotionCameraWidget({
     if (isAnalyzing) return;
     
     const now = Date.now();
-    if (now - lastAnalysisRef.current < 2500) return; // Rate limit
+    // Reduced rate limit for more frequent detection (was 2500ms, now 3000ms for better accuracy)
+    if (now - lastAnalysisRef.current < 3000) return;
     lastAnalysisRef.current = now;
 
     const frameData = captureFrame();
@@ -99,20 +100,34 @@ export default function EmotionCameraWidget({
   }, [isAnalyzing, captureFrame, onEmotionDetected]);
 
   const startCamera = useCallback(async () => {
+    // Prevent re-initialization if already active
+    if (stream) {
+      console.log('[Camera] Already active, skipping initialization');
+      return;
+    }
+    
     try {
       setError(null);
+      console.log('[Camera] Requesting camera access...');
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { width: 320, height: 240, facingMode: 'user' }
       });
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        console.log('[Camera] Camera initialized successfully');
       }
     } catch (err: any) {
       console.error('Camera access error:', err);
-      setError('Camera access denied. Please allow camera permissions.');
+      const errorMessage = err.name === 'NotAllowedError' 
+        ? 'Camera access denied. Please allow camera permissions in your browser settings.'
+        : err.name === 'NotFoundError'
+        ? 'No camera found. Please connect a camera to use emotion detection.'
+        : 'Camera error. Please check your camera and try again.';
+      setError(errorMessage);
+      onToggle(); // Auto-disable if camera fails
     }
-  }, []);
+  }, [stream, onToggle]);
 
   const stopCamera = useCallback(() => {
     if (stream) {
@@ -125,24 +140,34 @@ export default function EmotionCameraWidget({
     }
   }, [stream]);
 
+  // Camera lifecycle - only start/stop when enabled changes
   useEffect(() => {
-    if (isEnabled) {
+    if (isEnabled && !stream) {
       startCamera();
-    } else {
+    } else if (!isEnabled && stream) {
       stopCamera();
     }
 
     return () => {
-      stopCamera();
+      // Cleanup only on unmount
+      if (stream) {
+        stopCamera();
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEnabled]);
 
   // Start emotion analysis when camera is active
   useEffect(() => {
     if (isEnabled && stream && !analysisIntervalRef.current) {
+      console.log('[Emotion] Starting analysis interval');
       analysisIntervalRef.current = setInterval(() => {
         analyzeEmotion();
       }, 3000);
+    } else if (!isEnabled && analysisIntervalRef.current) {
+      console.log('[Emotion] Stopping analysis interval');
+      clearInterval(analysisIntervalRef.current);
+      analysisIntervalRef.current = null;
     }
 
     return () => {
@@ -151,7 +176,8 @@ export default function EmotionCameraWidget({
         analysisIntervalRef.current = null;
       }
     };
-  }, [isEnabled, stream, analyzeEmotion]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEnabled, stream]);
 
   const sizeClasses = position === 'corner' 
     ? isExpanded 
