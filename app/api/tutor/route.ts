@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import OpenAI from 'openai';
 import { getTutorSystemPrompt } from '@/lib/tutor-prompts';
 import { EmotionType } from '@/lib/utils';
 import { analyzeEmotionAndAdapt, enhancePromptForEmotion } from '@/lib/adaptive-response';
-import { aiAdapter, isAIConfigured, type AIMessage } from '@/lib/ai-adapter';
 
 interface GeneratedSlide {
   id: string;
@@ -29,20 +29,23 @@ interface GeneratedSlide {
   spokenContent?: string;  // The portion of audio that corresponds to this slide
 }
 
-// AI configuration is now handled by the adapter
-// No direct OpenAI dependency here
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || '',
+});
+
+// Check if OpenAI API key is configured
+const isOpenAIConfigured = () => {
+  return !!process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'sk-your-openai-api-key-here';
+};
 
 export async function POST(request: NextRequest) {
   try {
-    // Validate AI configuration
-    if (!isAIConfigured()) {
-      const providerInfo = aiAdapter.getProviderInfo();
+    // Validate API key configuration
+    if (!isOpenAIConfigured()) {
       return NextResponse.json(
         { 
-          error: `AI (${providerInfo.provider}) not configured. Please add required API keys to your environment variables.`,
-          code: 'API_KEY_MISSING',
-          provider: providerInfo.provider,
-          isTemporary: providerInfo.isTemporary // Indicates if using temporary OpenAI for dev
+          error: 'OpenAI API key not configured. Please add OPENAI_API_KEY to your environment variables.',
+          code: 'API_KEY_MISSING'
         },
         { status: 503 }
       );
@@ -97,13 +100,13 @@ IMPORTANT: This is a custom learning topic. Focus your teaching on the descripti
     }
 
     // Build conversation history
-    const messages: AIMessage[] = [
+    const messages: any[] = [
       {
         role: 'system',
         content: systemPrompt,
       },
       ...history.map((msg: any) => ({
-        role: msg.role as 'user' | 'assistant',
+        role: msg.role,
         content: msg.content,
       })),
       {
@@ -115,14 +118,15 @@ IMPORTANT: This is a custom learning topic. Focus your teaching on the descripti
     // Adjust temperature based on emotion
     const temperature = emotion === 'confused' || emotion === 'frustrated' ? 0.5 : 0.7;
 
-    // Call AI through adapter (model-agnostic)
-    const completion = await aiAdapter.generateCompletion({
-      messages,
-      temperature,
-      maxTokens: adaptiveResponse.simplificationLevel === 'basic' ? 800 : 1000,
+    // Call OpenAI GPT-4
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: messages,
+      temperature: temperature,
+      max_tokens: adaptiveResponse.simplificationLevel === 'basic' ? 800 : 1000,
     });
 
-    const responseMessage = completion.content || '';
+    const responseMessage = completion.choices[0].message.content || '';
 
     // Extract notes (key points) from response
     const notes = extractKeyPoints(responseMessage);
@@ -231,7 +235,8 @@ async function generateLearningSlides(
          Include simple flowchart diagrams using Mermaid syntax.`
       : `Generate clear, educational learning slides with visual diagrams for the topic.`;
 
-    const completion = await aiAdapter.generateCompletion({
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
       messages: [
         {
           role: 'system',
@@ -267,11 +272,11 @@ Generate ${slideCount} slides with diagrams and audio sync markers.`
         }
       ],
       temperature: 0.7,
-      maxTokens: 2500,
-      responseFormat: 'json'
+      max_tokens: 2500,
+      response_format: { type: "json_object" }
     });
 
-    const content = completion.content || '{}';
+    const content = completion.choices[0].message.content || '{}';
     const parsed = JSON.parse(content);
     const slides = parsed.slides || [];
 
