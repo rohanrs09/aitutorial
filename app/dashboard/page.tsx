@@ -12,6 +12,7 @@ import dynamic from 'next/dynamic';
 import { SkeletonStats, SkeletonSessionList } from '@/components/ui/Skeleton';
 import { NoSessionsEmpty } from '@/components/ui/EmptyState';
 import { Tooltip } from '@/components/ui/Tooltip';
+import AchievementNotification from '@/components/AchievementNotification';
 
 // Check if Clerk is configured
 const isClerkConfigured = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
@@ -65,6 +66,8 @@ function UserButton(props: { afterSignOutUrl?: string }) {
 // Import user data service
 import { getUserStats, getRecentSessions, type UserStats } from '@/lib/user-data';
 import { analyzeEmotionPatterns, generateEmotionInsights, getSessionEmotionHistory } from '@/lib/emotion-analytics';
+import { getUserAchievements, checkAchievements, type Achievement } from '@/lib/achievements';
+import { getComparativeStats, formatTrendPercentage, getTrendColor, getTrendIcon, type ComparativeStats } from '@/lib/analytics';
 
 // Default stats for new users
 const defaultStats: UserStats = {
@@ -81,12 +84,22 @@ const defaultStats: UserStats = {
   }
 };
 
-const mockAchievements = [
-  { icon: Flame, label: '7-Day Streak', unlocked: true },
-  { icon: Award, label: 'First Quiz Ace', unlocked: true },
-  { icon: Brain, label: 'Deep Thinker', unlocked: true },
-  { icon: Zap, label: 'Speed Learner', unlocked: false },
-];
+// Icon mapping for achievements
+const getAchievementIcon = (icon: string) => {
+  const iconMap: Record<string, any> = {
+    '🎯': Target,
+    '🚀': Zap,
+    '📚': BookOpen,
+    '🏆': Award,
+    '🔥': Flame,
+    '👑': Award,
+    '⚡': Zap,
+    '💯': Target,
+    '⭐': Award,
+    '⏰': Clock,
+  };
+  return iconMap[icon] || Award;
+};
 
 export default function DashboardPage() {
   // User state
@@ -107,6 +120,10 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [showInsights, setShowInsights] = useState(false);
   const [emotionInsights, setEmotionInsights] = useState<any[]>([]);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [newlyUnlocked, setNewlyUnlocked] = useState<Achievement[]>([]);
+  const [comparativeStats, setComparativeStats] = useState<ComparativeStats | null>(null);
+  const [learningEffectiveness, setLearningEffectiveness] = useState<number>(0);
 
   // Load user from Clerk or demo mode with retry logic
   useEffect(() => {
@@ -159,12 +176,32 @@ export default function DashboardPage() {
   // Load user data - works with or without Clerk
   const loadUserData = useCallback(async () => {
     try {
-      const [userStats, sessions] = await Promise.all([
-        getUserStats(), // Works from localStorage if no Supabase
-        getRecentSessions(undefined, 5)
+      const userId = user?.id;
+      const [userStats, sessions, userAchievements, compStats] = await Promise.all([
+        getUserStats(userId), // Works from localStorage if no Supabase
+        getRecentSessions(userId, 5),
+        getUserAchievements(userId),
+        getComparativeStats(userId, 'week')
       ]);
       setStats(userStats);
       setRecentSessions(sessions);
+      setAchievements(userAchievements);
+      setComparativeStats(compStats);
+      
+      // Check for newly unlocked achievements
+      if (userId) {
+        const newAchievements = await checkAchievements(userId, {
+          totalSessions: userStats.totalSessions,
+          currentStreak: userStats.currentStreak,
+          averageScore: userStats.averageScore,
+          totalMinutes: userStats.totalMinutes,
+        });
+        
+        if (newAchievements.length > 0) {
+          setNewlyUnlocked(newAchievements);
+          console.log('[Achievements] 🎉 Newly unlocked:', newAchievements.map(a => a.name));
+        }
+      }
       
       // Load emotion insights from recent sessions
       if (sessions.length > 0) {
@@ -173,6 +210,11 @@ export default function DashboardPage() {
           const patterns = analyzeEmotionPatterns(allEvents, 7);
           const insights = generateEmotionInsights(patterns);
           setEmotionInsights(insights.slice(0, 3)); // Top 3 insights
+          
+          // Calculate learning effectiveness from emotion patterns
+          const { calculateLearningEffectiveness } = await import('@/lib/emotion-analytics');
+          const effectiveness = calculateLearningEffectiveness(allEvents);
+          setLearningEffectiveness(effectiveness);
         }
       }
     } catch (error) {
@@ -181,7 +223,7 @@ export default function DashboardPage() {
       setIsLoadingData(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     loadUserData();
@@ -209,6 +251,14 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-surface">
+      {/* Achievement Notification */}
+      {newlyUnlocked.length > 0 && (
+        <AchievementNotification 
+          achievements={newlyUnlocked}
+          onClose={() => setNewlyUnlocked([])}
+        />
+      )}
+      
       {/* Top Navigation */}
       <nav className="sticky top-0 z-50 bg-surface/80 backdrop-blur-lg border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -303,10 +353,15 @@ export default function DashboardPage() {
                 whileHover={{ y: -2, transition: { duration: 0.2 } }}
                 className="card hover:border-blue-500/30 transition-all duration-300"
               >
-                <div className="flex items-center gap-3 mb-2">
+                <div className="flex items-center justify-between mb-2">
                   <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
                     <MessageSquare size={20} className="text-blue-400" />
                   </div>
+                  {comparativeStats && comparativeStats.trends.sessions.trend !== 'stable' && (
+                    <span className={`text-xs font-semibold ${getTrendColor(comparativeStats.trends.sessions)}`}>
+                      {getTrendIcon(comparativeStats.trends.sessions)} {formatTrendPercentage(comparativeStats.trends.sessions)}
+                    </span>
+                  )}
                 </div>
                 <p className="text-2xl font-bold text-white">{stats.totalSessions}</p>
                 <p className="text-gray-500 text-sm">Total Sessions</p>
@@ -316,10 +371,15 @@ export default function DashboardPage() {
                 whileHover={{ y: -2, transition: { duration: 0.2 } }}
                 className="card hover:border-green-500/30 transition-all duration-300"
               >
-                <div className="flex items-center gap-3 mb-2">
+                <div className="flex items-center justify-between mb-2">
                   <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
                     <Clock size={20} className="text-green-400" />
                   </div>
+                  {comparativeStats && comparativeStats.trends.minutes.trend !== 'stable' && (
+                    <span className={`text-xs font-semibold ${getTrendColor(comparativeStats.trends.minutes)}`}>
+                      {getTrendIcon(comparativeStats.trends.minutes)} {formatTrendPercentage(comparativeStats.trends.minutes)}
+                    </span>
+                  )}
                 </div>
                 <p className="text-2xl font-bold text-white">{Math.floor(stats.totalMinutes / 60)}h {stats.totalMinutes % 60}m</p>
                 <p className="text-gray-500 text-sm">Time Learned</p>
@@ -329,10 +389,15 @@ export default function DashboardPage() {
                 whileHover={{ y: -2, transition: { duration: 0.2 } }}
                 className="card hover:border-orange-500/30 transition-all duration-300"
               >
-                <div className="flex items-center gap-3 mb-2">
+                <div className="flex items-center justify-between mb-2">
                   <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
                     <Flame size={20} className="text-orange-400" />
                   </div>
+                  {comparativeStats && comparativeStats.trends.streak.trend !== 'stable' && (
+                    <span className={`text-xs font-semibold ${getTrendColor(comparativeStats.trends.streak)}`}>
+                      {getTrendIcon(comparativeStats.trends.streak)} {formatTrendPercentage(comparativeStats.trends.streak)}
+                    </span>
+                  )}
                 </div>
                 <p className="text-2xl font-bold text-white">{stats.currentStreak}</p>
                 <p className="text-gray-500 text-sm">Day Streak</p>
@@ -342,10 +407,15 @@ export default function DashboardPage() {
                 whileHover={{ y: -2, transition: { duration: 0.2 } }}
                 className="card hover:border-purple-500/30 transition-all duration-300"
               >
-                <div className="flex items-center gap-3 mb-2">
+                <div className="flex items-center justify-between mb-2">
                   <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
                     <Target size={20} className="text-purple-400" />
                   </div>
+                  {comparativeStats && comparativeStats.trends.score.trend !== 'stable' && (
+                    <span className={`text-xs font-semibold ${getTrendColor(comparativeStats.trends.score)}`}>
+                      {getTrendIcon(comparativeStats.trends.score)} {formatTrendPercentage(comparativeStats.trends.score)}
+                    </span>
+                  )}
                 </div>
                 <p className="text-2xl font-bold text-white">{stats.averageScore}%</p>
                 <p className="text-gray-500 text-sm">Avg. Score</p>
@@ -379,14 +449,14 @@ export default function DashboardPage() {
                 ) : (
                   <AnimatePresence>
                     {recentSessions.map((session, index) => (
-                      <motion.div
-                        key={session.id}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        whileHover={{ x: 4, backgroundColor: 'rgba(255,255,255,0.05)' }}
-                        transition={{ delay: 0.4 + index * 0.1 }}
-                        className="flex items-center justify-between p-3 bg-surface rounded-xl hover:bg-surface-lighter transition-all duration-200 cursor-pointer"
-                      >
+                      <Link key={session.id} href={`/session/${session.id}`}>
+                        <motion.div
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          whileHover={{ x: 4, backgroundColor: 'rgba(255,255,255,0.05)' }}
+                          transition={{ delay: 0.4 + index * 0.1 }}
+                          className="flex items-center justify-between p-3 bg-surface rounded-xl hover:bg-surface-lighter transition-all duration-200 cursor-pointer"
+                        >
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center">
                             <BookOpen size={18} className="text-primary-400" />
@@ -410,7 +480,8 @@ export default function DashboardPage() {
                           </p>
                           <p className="text-gray-500 text-xs capitalize">{session.emotion}</p>
                         </div>
-                      </motion.div>
+                        </motion.div>
+                      </Link>
                     ))}
                   </AnimatePresence>
                 )}
@@ -489,6 +560,77 @@ export default function DashboardPage() {
               )}
             </motion.div>
 
+            {/* Learning Effectiveness */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.45 }}
+              className="card"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp size={18} className="text-green-400" />
+                <h2 className="text-lg font-semibold text-white">Learning Effectiveness</h2>
+              </div>
+              {isLoadingData ? (
+                <div className="h-32 bg-surface/50 rounded-xl animate-pulse" />
+              ) : learningEffectiveness > 0 ? (
+                <div>
+                  <div className="flex items-center justify-center mb-4">
+                    <div className="relative w-32 h-32">
+                      <svg className="transform -rotate-90 w-32 h-32">
+                        <circle
+                          cx="64"
+                          cy="64"
+                          r="56"
+                          stroke="currentColor"
+                          strokeWidth="8"
+                          fill="transparent"
+                          className="text-surface"
+                        />
+                        <circle
+                          cx="64"
+                          cy="64"
+                          r="56"
+                          stroke="currentColor"
+                          strokeWidth="8"
+                          fill="transparent"
+                          strokeDasharray={`${2 * Math.PI * 56}`}
+                          strokeDashoffset={`${2 * Math.PI * 56 * (1 - learningEffectiveness / 100)}`}
+                          className={`${
+                            learningEffectiveness >= 75 ? 'text-green-500' :
+                            learningEffectiveness >= 50 ? 'text-yellow-500' :
+                            'text-red-500'
+                          } transition-all duration-1000`}
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-3xl font-bold text-white">{learningEffectiveness}%</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-400">Engagement</span>
+                      <span className="text-white font-medium">{Math.min(100, learningEffectiveness + 5)}%</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-400">Focus</span>
+                      <span className="text-white font-medium">{Math.max(0, learningEffectiveness - 5)}%</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-400">Retention</span>
+                      <span className="text-white font-medium">{learningEffectiveness}%</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-400 text-sm">Complete sessions to see your effectiveness score</p>
+                </div>
+              )}
+            </motion.div>
+
             {/* Achievements */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -496,34 +638,61 @@ export default function DashboardPage() {
               transition={{ delay: 0.5 }}
               className="card"
             >
-              <div className="flex items-center gap-2 mb-4">
-                <Award size={18} className="text-yellow-400" />
-                <h2 className="text-lg font-semibold text-white">Achievements</h2>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Award size={18} className="text-yellow-400" />
+                  <h2 className="text-lg font-semibold text-white">Achievements</h2>
+                </div>
+                <span className="text-xs text-gray-400">
+                  {achievements.filter(a => a.unlocked).length}/{achievements.length}
+                </span>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                {mockAchievements.map((achievement, index) => (
-                  <div 
-                    key={index}
-                    className={`p-3 rounded-xl text-center ${
-                      achievement.unlocked 
-                        ? 'bg-surface' 
-                        : 'bg-surface opacity-50'
-                    }`}
-                  >
-                    <achievement.icon 
-                      size={24} 
-                      className={`mx-auto mb-1 ${
-                        achievement.unlocked ? 'text-yellow-400' : 'text-gray-600'
-                      }`} 
-                    />
-                    <p className={`text-xs ${
-                      achievement.unlocked ? 'text-gray-300' : 'text-gray-600'
-                    }`}>
-                      {achievement.label}
-                    </p>
-                  </div>
-                ))}
-              </div>
+              {isLoadingData ? (
+                <div className="grid grid-cols-2 gap-3">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="h-20 bg-surface/50 rounded-xl animate-pulse" />
+                  ))}
+                </div>
+              ) : achievements.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-4">Complete sessions to unlock achievements!</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  {achievements.slice(0, 6).map((achievement) => {
+                    const IconComponent = getAchievementIcon(achievement.icon);
+                    const progress = achievement.progress || 0;
+                    
+                    return (
+                      <Tooltip key={achievement.id} content={achievement.description}>
+                        <div 
+                          className={`p-3 rounded-xl text-center relative overflow-hidden ${
+                            achievement.unlocked 
+                              ? 'bg-surface border border-yellow-500/30' 
+                              : 'bg-surface/50 border border-gray-700'
+                          }`}
+                        >
+                          {!achievement.unlocked && progress > 0 && (
+                            <div 
+                              className="absolute bottom-0 left-0 h-1 bg-primary-500/30"
+                              style={{ width: `${progress}%` }}
+                            />
+                          )}
+                          <div className="text-2xl mb-1">{achievement.icon}</div>
+                          <p className={`text-xs font-medium ${
+                            achievement.unlocked ? 'text-gray-200' : 'text-gray-500'
+                          }`}>
+                            {achievement.name}
+                          </p>
+                          {achievement.unlocked && achievement.unlockedAt && (
+                            <p className="text-[10px] text-gray-600 mt-1">
+                              {new Date(achievement.unlockedAt).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              )}
             </motion.div>
 
             {/* Progress Chart Placeholder */}

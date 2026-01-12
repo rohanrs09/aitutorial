@@ -52,7 +52,9 @@ export default function CoursesPage() {
     setCourses(allCourses);
     setFilteredCourses(allCourses);
     
-    const uniqueCategories = Array.from(new Set(allCourses.map(c => c.category)));
+    // Extract unique tags from all courses
+    const allTags = allCourses.flatMap(c => c.tags);
+    const uniqueCategories = Array.from(new Set(allTags));
     setCategories(uniqueCategories);
   }, []);
 
@@ -62,12 +64,13 @@ export default function CoursesPage() {
     if (searchQuery) {
       filtered = filtered.filter(course =>
         course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        course.description.toLowerCase().includes(searchQuery.toLowerCase())
+        course.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        course.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     }
     
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(course => course.category === selectedCategory);
+      filtered = filtered.filter(course => course.tags.includes(selectedCategory));
     }
     
     setFilteredCourses(filtered);
@@ -172,7 +175,7 @@ export default function CoursesPage() {
             </div>
           ) : (
             filteredCourses.map((course, index) => {
-              const CategoryIcon = categoryIcons[course.category] || categoryIcons.default;
+              const CategoryIcon = categoryIcons[course.tags[0]] || categoryIcons.default;
               
               return (
                 <motion.div
@@ -211,7 +214,7 @@ export default function CoursesPage() {
                         </div>
                         <div className="flex items-center gap-1">
                           <Users size={14} />
-                          <span>{course.students}</span>
+                          <span>{course.enrollmentCount || 0}</span>
                         </div>
                       </div>
 

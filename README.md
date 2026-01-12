@@ -1,132 +1,68 @@
 # AI Voice Tutor
 
-An advanced, adaptive, emotion-aware AI tutoring application with voice interaction, real-time emotion detection, and personalized learning experiences. Built with Next.js 14, TypeScript, and powered by cutting-edge AI technologies.
+Emotion-aware AI tutoring with voice interaction, real-time emotion detection, and adaptive learning. Built with Next.js 14, TypeScript, and AI.
 
-## Table of Contents
-
-- [Features](#features)
-- [Architecture Overview](#architecture-overview)
-- [Technology Stack](#technology-stack)
-- [Quick Start](#quick-start)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Environment Configuration](#environment-configuration)
-- [Core Components](#core-components)
-- [API Endpoints](#api-endpoints)
-- [Project Structure](#project-structure)
-- [Usage Guide](#usage-guide)
-- [Development Workflow](#development-workflow)
-- [Deployment](#deployment)
-- [Troubleshooting](#troubleshooting)
-- [License](#license)
-
-## Features
-
-### Core Learning Features
-
-- **Voice Interaction**: Natural conversation with AI tutor using spacebar voice input or text chat
-- **Emotion Detection**: Real-time facial emotion analysis via camera for adaptive teaching
-- **Adaptive Learning**: Content automatically simplifies when confusion is detected, accelerates when confidence is high
-- **Learning Slides**: Auto-generated educational slides with diagrams, synchronized with audio explanations
-- **Progress Tracking**: Comprehensive session statistics and concept mastery visualization
-- **Custom Topics**: Create personalized learning paths with custom goals and difficulty levels
-- **Notes System**: Auto-generated structured notes (concepts, examples, tips) with download capability
-- **Quiz Integration**: Interactive quizzes embedded in learning slides for knowledge reinforcement
-
-### Technical Features
-
-- **Responsive Design**: Fully mobile-first responsive UI with touch-friendly interactions
-- **Real-time Audio Processing**: Low-latency speech-to-text and text-to-speech conversion
-- **Visual Feedback**: Animated tutor orb with emotion indicators and speaking/listening states
-- **Offline Capability**: Local storage for session data when Supabase is not configured
-- **Multi-modal Input**: Support for both voice and text input methods
-- **Accessibility**: Keyboard navigation, screen reader support, and reduced motion options
-
-## Architecture Overview
-
-The AI Voice Tutor follows a client-server architecture with the following key components:
-
-### Client-Side (Frontend)
-
-- **Next.js App Router**: Modern React framework with server-side rendering capabilities
-- **Component-Based UI**: Modular React components for reusable UI elements
-- **State Management**: React hooks for local state, with optional Supabase integration for persistence
-- **Real-time Media Processing**: Web Audio API and MediaDevices API for microphone and camera access
-- **Animations**: Framer Motion for smooth UI transitions and micro-interactions
-
-### Server-Side (Backend)
-
-- **Next.js API Routes**: Serverless functions for handling API requests
-- **AI Service Integration**: Direct integration with OpenAI APIs (GPT-4o, Whisper, TTS)
-- **Business Logic**: Adaptive teaching algorithms and emotion processing
-- **Data Persistence**: Optional Supabase integration for user data and session history
-
-### Data Flow
-
-1. **User Input**: Voice captured via microphone or text entered in chat
-2. **Speech Processing**: Audio converted to text using Whisper STT
-3. **Emotion Analysis**: Camera feed analyzed for facial expressions using GPT-4o Vision
-4. **AI Response Generation**: GPT-4o generates contextual responses considering emotional state
-5. **Audio Output**: Response converted to speech using TTS
-6. **Visual Content**: Learning slides and diagrams generated dynamically
-7. **Data Storage**: Session data persisted locally or in Supabase
-
-### Adaptive Teaching Engine
-
-The core intelligence lies in the adaptive teaching system:
-
-- **Emotion Detection**: Analyzes 7 emotions (neutral, confused, confident, frustrated, bored, excited, curious)
-- **Content Adjustment**: Modifies explanation complexity based on detected emotions
-- **Pacing Control**: Adjusts teaching speed based on user engagement levels
-- **Concept Mastery Tracking**: Tracks understanding of learning objectives over time
-
-## Quick Start
-
-### Prerequisites
-
-- Node.js 18+ (LTS recommended)
-- npm or yarn package manager
-- Modern web browser (Chrome, Firefox, Safari, Edge)
-- Microphone for voice interaction
-- Camera for emotion detection (optional but recommended)
-
-### Installation
+## 🚀 Quick Start
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd ai-voice-tutor
-
-# Install dependencies
+# Install
 npm install
 
-# Configure environment
+# Setup environment
 cp .env.example .env.local
-# Edit .env.local with your API keys (see Environment Configuration below)
+# Add your API keys to .env.local
 
-# Run development server
+# Run
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open http://localhost:3000
 
-### Environment Configuration
+## 📦 Features
 
-Create a `.env.local` file in the root directory with the following variables:
+✅ **Real Achievements System** - Gamification with auto-unlock  
+✅ **Comparative Analytics** - Week-over-week trends  
+✅ **Learning Effectiveness** - AI-powered scoring  
+✅ **Session Deep Dive** - Full session analysis  
+✅ **Voice Interaction** - Spacebar to speak  
+✅ **Emotion Detection** - Camera-based adaptation  
+✅ **Adaptive Learning** - Content adjusts to emotions  
+✅ **Course System** - YouTube-based courses
 
-```env
-# Required - OpenAI API key for core functionality
-OPENAI_API_KEY=sk-...
+## 🗄️ Database Setup
 
-# Optional - Enhanced text-to-speech
-ELEVENLABS_API_KEY=...
-
-# Optional - User authentication and data persistence
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=...
-CLERK_SECRET_KEY=...
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+```bash
+# Run migration in Supabase SQL Editor:
+migrations/005_achievements_and_goals.sql
 ```
+
+## 🚀 Deploy to Production
+
+See **[Deploy to Vercel](docs/00-DEPLOY-TO-VERCEL.md)** for production deployment guide.
+
+## 📚 Documentation
+
+All docs are in the **`docs/`** folder:
+
+- **[Deploy to Vercel](docs/00-DEPLOY-TO-VERCEL.md)** - 🚀 Production deployment
+- **[Getting Started](docs/01-GETTING-STARTED.md)** - Setup & API keys
+- **[Supabase](docs/02-SUPABASE.md)** - Database setup
+- **[SLM Configuration](docs/03-SLM-CONFIGURATION.md)** - AI model setup
+- **[Architecture](docs/04-ARCHITECTURE.md)** - System design
+- **[System Analysis](docs/05-SYSTEM-ANALYSIS.md)** - Data flow
+- **[Missing Features](docs/06-MISSING-FEATURES.md)** - Roadmap
+- **[End-to-End Flow](docs/07-END-TO-END-FLOW.md)** - User journey
+
+## 🧪 Test
+
+```bash
+npm run build  # Check for errors
+npm run dev    # Start dev server
+```
+
+## 📦 Tech Stack
+
+Next.js 14 • TypeScript • Tailwind CSS • Framer Motion • Supabase • OpenAI • ElevenLabs • Deepgram
 
 #### API Key Requirements
 

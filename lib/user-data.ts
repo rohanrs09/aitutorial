@@ -250,7 +250,7 @@ export async function updateSession(
   }
 }
 
-export async function endSession(sessionId: string): Promise<void> {
+export async function endSession(sessionId: string, userId?: string): Promise<void> {
   const endTime = new Date();
   
   // Update localStorage
@@ -280,6 +280,24 @@ export async function endSession(sessionId: string): Promise<void> {
         
         // Update stats
         updateLocalStats(session);
+        
+        // Check achievements after session ends
+        if (userId) {
+          try {
+            const { checkAchievements } = await import('./achievements');
+            const updatedStats = await getUserStats(userId);
+            await checkAchievements(userId, {
+              totalSessions: updatedStats.totalSessions,
+              currentStreak: updatedStats.currentStreak,
+              averageScore: updatedStats.averageScore,
+              totalMinutes: updatedStats.totalMinutes,
+              maxQuizScore: session.quizScore || undefined,
+              lastSessionDuration: session.durationMinutes,
+            });
+          } catch (error) {
+            console.warn('[Achievements] Error checking achievements:', error);
+          }
+        }
         
         // Clear current session
         localStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION);
