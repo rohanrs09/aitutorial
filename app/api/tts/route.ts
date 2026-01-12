@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { APIServiceFactory } from '@/lib/services/api-service';
 import { shouldRateLimit, trackRequestStart, trackRequestComplete, generateRequestKey } from '@/lib/api-rate-limiter';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 const isTTSConfigured = () => {
   return !!(process.env.ELEVENLABS_API_KEY || process.env.OPENAI_API_KEY);
 };
