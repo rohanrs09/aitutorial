@@ -468,6 +468,54 @@ export async function trackAnalyticsEvent(
     });
 }
 
+// Query cache
+interface CacheEntry<T> { data: T; timestamp: number; }
+const queryCache = new Map<string, CacheEntry<any>>();
+
+export async function cachedQuery<T>(
+  queryFn: () => Promise<T>,
+  cacheKey: string,
+  ttlMs: number = 60000
+): Promise<T> {
+  const cached = queryCache.get(cacheKey);
+  const now = Date.now();
+  
+  if (cached && now - cached.timestamp < ttlMs) {
+    return cached.data;
+  }
+  
+  const data = await queryFn();
+  queryCache.set(cacheKey, { data, timestamp: now });
+  return data;
+}
+
+export function clearCache(cacheKey?: string): void {
+  if (cacheKey) {
+    queryCache.delete(cacheKey);
+  } else {
+    queryCache.clear();
+  }
+}
+
+export async function batchInsertSessions(
+  sessions: Partial<LearningSession>[]
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase
+      .from('learning_sessions')
+      .insert(sessions);
+    
+    if (error) {
+      console.error('[Supabase] Batch insert failed:', error);
+      return { success: false, error: error.message };
+    }
+    
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 export async function getUserStats(userId: string): Promise<{
   totalSessions: number;
   totalMinutes: number;
@@ -475,33 +523,39 @@ export async function getUserStats(userId: string): Promise<{
   averageScore: number;
   topicsCompleted: number;
 }> {
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('streak_days, sessions_this_month')
-    .eq('id', userId)
-    .maybeSingle();
+  return cachedQuery(
+    async () => {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('streak_days, sessions_this_month')
+        .eq('id', userId)
+        .maybeSingle();
 
-  const { data: sessions } = await supabase
-    .from('learning_sessions')
-    .select('duration_minutes, quiz_score')
-    .eq('user_id', userId);
+      const { data: sessions } = await supabase
+        .from('learning_sessions')
+        .select('duration_minutes, quiz_score')
+        .eq('user_id', userId);
 
-  const { count: topicsCount } = await supabase
-    .from('user_progress')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .gte('mastery_level', 70);
+      const { count: topicsCount } = await supabase
+        .from('user_progress')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('mastery_level', 70);
 
-  const totalSessions = sessions?.length || 0;
-  const totalMinutes = sessions?.reduce((sum, s) => sum + (s.duration_minutes || 0), 0) || 0;
-  const scores = sessions?.filter(s => s.quiz_score !== null).map(s => s.quiz_score!) || [];
-  const averageScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+      const totalSessions = sessions?.length || 0;
+      const totalMinutes = sessions?.reduce((sum, s) => sum + (s.duration_minutes || 0), 0) || 0;
+      const scores = sessions?.filter(s => s.quiz_score !== null).map(s => s.quiz_score!) || [];
+      const averageScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
 
-  return {
-    totalSessions,
-    totalMinutes,
-    currentStreak: profile?.streak_days || 0,
-    averageScore,
-    topicsCompleted: topicsCount || 0,
-  };
+      return {
+        totalSessions,
+        totalMinutes,
+        currentStreak: profile?.streak_days || 0,
+        averageScore,
+        topicsCompleted: topicsCount || 0,
+      };
+    },
+    `user_stats_${userId}`,
+    60000
+  );
 }

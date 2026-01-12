@@ -64,6 +64,7 @@ function UserButton(props: { afterSignOutUrl?: string }) {
 
 // Import user data service
 import { getUserStats, getRecentSessions, type UserStats } from '@/lib/user-data';
+import { analyzeEmotionPatterns, generateEmotionInsights, getSessionEmotionHistory } from '@/lib/emotion-analytics';
 
 // Default stats for new users
 const defaultStats: UserStats = {
@@ -104,6 +105,8 @@ export default function DashboardPage() {
   }>>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showInsights, setShowInsights] = useState(false);
+  const [emotionInsights, setEmotionInsights] = useState<any[]>([]);
 
   // Load user from Clerk or demo mode with retry logic
   useEffect(() => {
@@ -162,6 +165,16 @@ export default function DashboardPage() {
       ]);
       setStats(userStats);
       setRecentSessions(sessions);
+      
+      // Load emotion insights from recent sessions
+      if (sessions.length > 0) {
+        const allEvents = sessions.flatMap(s => getSessionEmotionHistory(s.id));
+        if (allEvents.length > 0) {
+          const patterns = analyzeEmotionPatterns(allEvents, 7);
+          const insights = generateEmotionInsights(patterns);
+          setEmotionInsights(insights.slice(0, 3)); // Top 3 insights
+        }
+      }
     } catch (error) {
       console.error('Error loading user data:', error);
     } finally {
@@ -257,7 +270,7 @@ export default function DashboardPage() {
           transition={{ delay: 0.1 }}
           className="mb-8"
         >
-          <Link href="/learn">
+          <Link href="/courses">
             <div className="card bg-gradient-to-br from-primary-500/20 via-pink-500/10 to-purple-500/20 border-primary-500/30 hover:border-primary-500/50 hover:shadow-xl hover:shadow-primary-500/20 transition-all cursor-pointer group">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -266,7 +279,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold text-white mb-1">Start Learning Session</h3>
-                    <p className="text-gray-400 text-sm">Pick up where you left off or explore new topics</p>
+                    <p className="text-gray-400 text-sm">Choose a course and start learning with AI guidance</p>
                   </div>
                 </div>
                 <ChevronRight className="text-gray-400 group-hover:text-primary-400 group-hover:translate-x-1 transition-all" size={24} />
@@ -353,7 +366,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-white">Recent Sessions</h2>
                 {recentSessions.length > 0 && (
-                  <Link href="/learn" className="text-primary-400 hover:text-primary-300 text-sm">
+                  <Link href="/courses" className="text-primary-400 hover:text-primary-300 text-sm">
                     New Session
                   </Link>
                 )}
@@ -362,7 +375,7 @@ export default function DashboardPage() {
                 {isLoadingData ? (
                   <SkeletonSessionList count={3} />
                 ) : recentSessions.length === 0 ? (
-                  <NoSessionsEmpty onStartSession={() => window.location.href = '/learn'} />
+                  <NoSessionsEmpty onStartSession={() => window.location.href = '/courses'} />
                 ) : (
                   <AnimatePresence>
                     {recentSessions.map((session, index) => (
@@ -414,32 +427,66 @@ export default function DashboardPage() {
               transition={{ delay: 0.4 }}
               className="card"
             >
-              <div className="flex items-center gap-2 mb-4">
-                <Brain size={18} className="text-primary-400" />
-                <h2 className="text-lg font-semibold text-white">Learning Insights</h2>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Brain size={18} className="text-primary-400" />
+                  <h2 className="text-lg font-semibold text-white">Learning Insights</h2>
+                </div>
+                {emotionInsights.length > 0 && (
+                  <button
+                    onClick={() => setShowInsights(!showInsights)}
+                    className="text-xs text-primary-400 hover:text-primary-300"
+                  >
+                    {showInsights ? 'Show Stats' : 'Show Insights'}
+                  </button>
+                )}
               </div>
-              <div className="space-y-3">
-                {Object.entries(stats.emotionInsights).map(([emotion, percentage]) => (
-                  <div key={emotion}>
-                    <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="text-gray-400 capitalize">{emotion}</span>
-                      <span className="text-white">{percentage as number}%</span>
+              {!showInsights ? (
+                <div className="space-y-3">
+                  {Object.entries(stats.emotionInsights).map(([emotion, percentage]) => (
+                    <div key={emotion}>
+                      <div className="flex items-center justify-between text-sm mb-1">
+                        <span className="text-gray-400 capitalize">{emotion}</span>
+                        <span className="text-white">{percentage as number}%</span>
+                      </div>
+                      <div className="h-2 bg-surface rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${percentage as number}%` }}
+                          transition={{ delay: 0.5, duration: 0.5 }}
+                          className={`h-full rounded-full ${
+                            emotion === 'engaged' ? 'bg-green-500' :
+                            emotion === 'curious' ? 'bg-blue-500' :
+                            emotion === 'confused' ? 'bg-yellow-500' : 'bg-purple-500'
+                          }`}
+                        />
+                      </div>
                     </div>
-                    <div className="h-2 bg-surface rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${percentage as number}%` }}
-                        transition={{ delay: 0.5, duration: 0.5 }}
-                        className={`h-full rounded-full ${
-                          emotion === 'engaged' ? 'bg-green-500' :
-                          emotion === 'curious' ? 'bg-blue-500' :
-                          emotion === 'confused' ? 'bg-yellow-500' : 'bg-purple-500'
-                        }`}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {emotionInsights.length === 0 ? (
+                    <p className="text-gray-400 text-sm">Complete more sessions to see personalized insights</p>
+                  ) : (
+                    emotionInsights.map((insight, idx) => (
+                      <div key={idx} className={`p-3 rounded-lg border ${
+                        insight.type === 'warning' ? 'border-yellow-500/30 bg-yellow-500/10' :
+                        insight.type === 'success' ? 'border-green-500/30 bg-green-500/10' :
+                        'border-blue-500/30 bg-blue-500/10'
+                      }`}>
+                        <h4 className={`text-sm font-semibold mb-1 ${
+                          insight.type === 'warning' ? 'text-yellow-400' :
+                          insight.type === 'success' ? 'text-green-400' : 'text-blue-400'
+                        }`}>
+                          {insight.title}
+                        </h4>
+                        <p className="text-xs text-gray-400">{insight.description}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </motion.div>
 
             {/* Achievements */}

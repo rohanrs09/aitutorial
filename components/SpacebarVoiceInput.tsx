@@ -24,6 +24,8 @@ export default function SpacebarVoiceInput({
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const isStartingRef = useRef(false); // Lock to prevent duplicate starts
+  const lastSTTCallRef = useRef<number>(0); // Track last STT API call
+  const sttDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const startRecording = useCallback(async () => {
     // Prevent duplicate recording starts
@@ -90,7 +92,23 @@ export default function SpacebarVoiceInput({
   }, []);
 
   const sendToSTT = async (audioBlob: Blob) => {
+    // RATE LIMITING: Prevent STT calls within 2 seconds of each other
+    const now = Date.now();
+    const timeSinceLastCall = now - lastSTTCallRef.current;
+    if (timeSinceLastCall < 2000) {
+      console.log('[STT] Rate limited - too frequent (wait 2s between calls)');
+      return;
+    }
+    
+    // Clear any pending debounce
+    if (sttDebounceTimeoutRef.current) {
+      clearTimeout(sttDebounceTimeoutRef.current);
+    }
+    
+    lastSTTCallRef.current = now;
+    
     try {
+      console.log('[STT] Sending audio to API...');
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
 

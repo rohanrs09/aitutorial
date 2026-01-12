@@ -59,10 +59,15 @@ export default function EmotionCameraWidget({
   // Analyze emotion using OpenAI Vision API
   const analyzeEmotion = useCallback(async () => {
     if (isAnalyzing) return;
-    
     const now = Date.now();
-    // Reduced rate limit for more frequent detection (was 2500ms, now 3000ms for better accuracy)
-    if (now - lastAnalysisRef.current < 3000) return;
+    
+    // RATE LIMITING: Minimum 3 seconds between emotion API calls
+    const timeSinceLastAnalysis = now - lastAnalysisRef.current;
+    if (timeSinceLastAnalysis < 3000) {
+      console.log(`[Emotion] Throttled - wait ${Math.ceil((3000 - timeSinceLastAnalysis) / 1000)}s`);
+      return;
+    }
+    
     lastAnalysisRef.current = now;
 
     const frameData = captureFrame();
