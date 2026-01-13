@@ -1,14 +1,38 @@
 'use client';
 
+/**
+ * IMPROVED Courses Page
+ * 
+ * UI/UX Improvements:
+ * - Uses PageHeader for consistent navigation
+ * - Better responsive grid (1/2/3 columns)
+ * - Cleaner filter UI with badges
+ * - Improved card design with shadcn Card
+ * - Better hover states
+ * - Proper loading and empty states
+ * - Mobile-first approach
+ */
+
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { 
-  BookOpen, Clock, Users, Star, ArrowLeft, Search, Filter,
+  BookOpen, Clock, Users, Star, Search, X,
   TrendingUp, Code, Brain, Database, Palette, Globe
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
+
+// Layout Components
+import { PageHeader } from '@/components/layout/PageHeader';
+import { PageContainer, PageSection } from '@/components/layout/PageContainer';
+
+// UI Components
+import { Card, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { Input } from '@/components/ui/Input';
+
+// Data (NO CHANGES)
 import { getAllCourses, type Course } from '@/lib/course-data';
 
 const isClerkConfigured = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
@@ -36,28 +60,33 @@ const categoryIcons: Record<string, any> = {
   'Design': Palette,
   'Business': TrendingUp,
   'Languages': Globe,
+  'DSA': Code,
+  'Algorithms': Brain,
   'default': Brain
 };
 
 export default function CoursesPage() {
-  const router = useRouter();
   const [courses, setCourses] = useState<Course[]>([]);
   const [filteredCourses, setFilteredCourses] = useState<Course[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [categories, setCategories] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Load courses (NO LOGIC CHANGES)
   useEffect(() => {
     const allCourses = getAllCourses();
     setCourses(allCourses);
     setFilteredCourses(allCourses);
     
-    // Extract unique tags from all courses
     const allTags = allCourses.flatMap(c => c.tags);
     const uniqueCategories = Array.from(new Set(allTags));
     setCategories(uniqueCategories);
+    
+    setIsLoading(false);
   }, []);
 
+  // Filter courses (NO LOGIC CHANGES)
   useEffect(() => {
     let filtered = courses;
     
@@ -78,179 +107,245 @@ export default function CoursesPage() {
 
   const getDifficultyColor = (level: string) => {
     switch (level) {
-      case 'Beginner': return 'text-green-400 bg-green-500/10';
-      case 'Intermediate': return 'text-yellow-400 bg-yellow-500/10';
-      case 'Advanced': return 'text-red-400 bg-red-500/10';
-      default: return 'text-gray-400 bg-gray-500/10';
+      case 'beginner': return 'bg-green-500/10 text-green-400 border-green-500/20';
+      case 'intermediate': return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
+      case 'advanced': return 'bg-red-500/10 text-red-400 border-red-500/20';
+      default: return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
     }
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setSelectedCategory('all');
   };
 
   return (
     <div className="min-h-screen bg-surface">
-      {/* Header */}
-      <nav className="sticky top-0 z-50 bg-surface/80 backdrop-blur-lg border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Link href="/dashboard" className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
-                <ArrowLeft size={20} />
-                <span className="hidden sm:inline">Back to Dashboard</span>
-              </Link>
-            </div>
-            <UserButton />
-          </div>
-        </div>
-      </nav>
+      {/* Header - Using PageHeader Component */}
+      <PageHeader
+        title="Courses"
+        backHref="/dashboard"
+        backLabel="Back"
+        transparent
+        actions={<UserButton />}
+      />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Page Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
-            Choose Your Course
-          </h1>
-          <p className="text-gray-400 text-lg">
-            Select a course to start your learning journey with AI-powered guidance
-          </p>
-        </motion.div>
-
-        {/* Search and Filter */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-8 space-y-4"
-        >
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder="Search courses..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-surface-light border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-primary-500/50 transition-colors"
-            />
-          </div>
-
-          {/* Category Filter */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2">
-            <Filter className="text-gray-400 flex-shrink-0" size={20} />
-            <button
-              onClick={() => setSelectedCategory('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                selectedCategory === 'all'
-                  ? 'bg-primary-500 text-white'
-                  : 'bg-surface-light text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              All Courses
-            </button>
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                  selectedCategory === category
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-surface-light text-gray-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Course Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCourses.length === 0 ? (
-            <div className="col-span-full text-center py-12">
-              <BookOpen className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-400 text-lg">No courses found</p>
-              <p className="text-gray-500 text-sm mt-2">Try adjusting your search or filters</p>
-            </div>
-          ) : (
-            filteredCourses.map((course, index) => {
-              const CategoryIcon = categoryIcons[course.tags[0]] || categoryIcons.default;
-              
-              return (
-                <motion.div
-                  key={course.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 + index * 0.05 }}
+      {/* Main Content - Using PageContainer */}
+      <PageContainer maxWidth="xl">
+        {/* Search and Filters Section */}
+        <PageSection>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4"
+          >
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
+              <Input
+                type="text"
+                placeholder="Search courses by name, description, or tags..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-12 pr-12"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
                 >
-                  <Link href={`/course/${course.id}`}>
-                    <div className="card hover:border-primary-500/50 hover:shadow-xl hover:shadow-primary-500/10 transition-all duration-300 cursor-pointer group h-full">
-                      {/* Course Image/Icon */}
-                      <div className="w-full h-40 bg-gradient-to-br from-primary-500/20 to-purple-500/20 rounded-lg mb-4 flex items-center justify-center group-hover:scale-105 transition-transform">
-                        <CategoryIcon size={48} className="text-primary-400" />
-                      </div>
+                  <X size={18} />
+                </button>
+              )}
+            </div>
 
-                      {/* Course Info */}
-                      <div className="flex items-start justify-between mb-2">
-                        <h3 className="text-lg font-semibold text-white group-hover:text-primary-400 transition-colors">
-                          {course.title}
-                        </h3>
-                        <div className="flex items-center gap-1 text-yellow-400">
-                          <Star size={14} fill="currentColor" />
-                          <span className="text-sm">{course.rating}</span>
-                        </div>
-                      </div>
+            {/* Category Pills - Simplified */}
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant={selectedCategory === 'all' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => setSelectedCategory('all')}
+              >
+                All
+              </Button>
+              
+              {categories.slice(0, 5).map((category) => (
+                <Button
+                  key={category}
+                  variant={selectedCategory === category ? 'primary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setSelectedCategory(category)}
+                >
+                  {category}
+                </Button>
+              ))}
+            </div>
+          </motion.div>
+        </PageSection>
 
-                      <p className="text-gray-400 text-sm mb-4 line-clamp-2">
-                        {course.description}
-                      </p>
-
-                      {/* Course Meta */}
-                      <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
-                        <div className="flex items-center gap-1">
-                          <Clock size={14} />
-                          <span>{course.duration}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Users size={14} />
-                          <span>{course.enrollmentCount || 0}</span>
-                        </div>
-                      </div>
-
-                      {/* Difficulty Badge */}
-                      <div className="flex items-center justify-between">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getDifficultyColor(course.level)}`}>
-                          {course.level}
-                        </span>
-                        <span className="text-primary-400 text-sm font-medium group-hover:translate-x-1 transition-transform">
-                          Start Course →
-                        </span>
-                      </div>
+        {/* Courses Grid */}
+        <PageSection>
+          {isLoading ? (
+            // Loading State
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Card key={i} variant="elevated" padding="none">
+                  <div className="animate-pulse">
+                    <div className="h-40 bg-surface-lighter rounded-t-2xl" />
+                    <div className="p-4 space-y-3">
+                      <div className="h-4 bg-surface-lighter rounded w-3/4" />
+                      <div className="h-3 bg-surface-lighter rounded w-full" />
+                      <div className="h-3 bg-surface-lighter rounded w-2/3" />
                     </div>
-                  </Link>
-                </motion.div>
-              );
-            })
-          )}
-        </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : filteredCourses.length === 0 ? (
+            // Empty State
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center py-16"
+            >
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-surface-lighter flex items-center justify-center">
+                <BookOpen className="w-10 h-10 text-gray-500" />
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-2">
+                No courses found
+              </h3>
+              <p className="text-gray-400 mb-6 max-w-md mx-auto">
+                {searchQuery || selectedCategory !== 'all'
+                  ? 'Try adjusting your search or filters to find what you\'re looking for.'
+                  : 'No courses are available at the moment.'}
+              </p>
+              {(searchQuery || selectedCategory !== 'all') && (
+                <Button onClick={clearFilters}>
+                  Clear Filters
+                </Button>
+              )}
+            </motion.div>
+          ) : (
+            // Courses Grid
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              <AnimatePresence mode="popLayout">
+                {filteredCourses.map((course, index) => {
+                  const CategoryIcon = categoryIcons[course.tags[0]] || categoryIcons.default;
+                  
+                  return (
+                    <motion.div
+                      key={course.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ 
+                        delay: index * 0.05,
+                        layout: { duration: 0.3 }
+                      }}
+                    >
+                      <Link href={`/course/${course.id}`}>
+                        <Card 
+                          variant="elevated" 
+                          padding="none"
+                          hover
+                          className="h-full group overflow-hidden"
+                        >
+                          {/* Course Icon/Image */}
+                          <div className="relative h-40 bg-gradient-to-br from-primary-500/20 to-purple-500/20 flex items-center justify-center overflow-hidden">
+                            <CategoryIcon 
+                              size={64} 
+                              className="text-primary-400 group-hover:scale-110 transition-transform duration-300" 
+                            />
+                            {/* Difficulty Badge */}
+                            <div className="absolute top-3 right-3">
+                              <Badge 
+                                variant="outline"
+                                className={getDifficultyColor(course.level)}
+                              >
+                                {course.level}
+                              </Badge>
+                            </div>
+                          </div>
 
-        {/* Quick Start Option */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="mt-12 text-center"
-        >
-          <p className="text-gray-400 mb-4">Want to practice with a custom topic?</p>
-          <Link href="/learn">
-            <button className="btn-secondary">
-              <Brain size={18} />
-              Start Free Practice Session
-            </button>
-          </Link>
-        </motion.div>
-      </main>
+                          {/* Course Info */}
+                          <CardContent className="p-4 space-y-3">
+                            {/* Title and Rating */}
+                            <div className="space-y-1">
+                              <div className="flex items-start justify-between gap-2">
+                                <h3 className="text-base font-semibold text-white group-hover:text-primary-400 transition-colors line-clamp-2">
+                                  {course.title}
+                                </h3>
+                                {course.rating && (
+                                  <div className="flex items-center gap-1 text-yellow-400 shrink-0">
+                                    <Star size={14} fill="currentColor" />
+                                    <span className="text-sm font-medium">{course.rating}</span>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <p className="text-sm text-gray-400 line-clamp-2">
+                                {course.description}
+                              </p>
+                            </div>
+
+                            {/* Meta Info */}
+                            <div className="flex items-center gap-4 text-xs text-gray-500">
+                              <div className="flex items-center gap-1">
+                                <Clock size={12} />
+                                <span>{course.duration}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <BookOpen size={12} />
+                                <span>{course.lectureCount} lectures</span>
+                              </div>
+                              {course.enrollmentCount && (
+                                <div className="flex items-center gap-1">
+                                  <Users size={12} />
+                                  <span>{course.enrollmentCount}</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Tags */}
+                            <div className="flex flex-wrap gap-1.5">
+                              {course.tags.slice(0, 3).map((tag) => (
+                                <Badge 
+                                  key={tag}
+                                  variant="outline"
+                                  className="text-xs bg-surface border-white/10 text-gray-400"
+                                >
+                                  {tag}
+                                </Badge>
+                              ))}
+                              {course.tags.length > 3 && (
+                                <Badge 
+                                  variant="outline"
+                                  className="text-xs bg-surface border-white/10 text-gray-400"
+                                >
+                                  +{course.tags.length - 3}
+                                </Badge>
+                              )}
+                            </div>
+
+                            {/* CTA */}
+                            <div className="pt-2">
+                              <div className="text-primary-400 text-sm font-medium group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                                Start Course
+                                <span className="text-lg">→</span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+          )}
+        </PageSection>
+      </PageContainer>
     </div>
   );
 }

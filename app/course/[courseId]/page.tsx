@@ -189,68 +189,75 @@ export default function CoursePage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface">
-      {/* Top Navigation */}
-      <nav className="sticky top-0 z-30 bg-surface/90 backdrop-blur-lg border-b border-white/10">
-        <div className="flex items-center justify-between px-4 h-14">
-          {/* Back Button & Course Title */}
-          <div className="flex items-center gap-3 min-w-0">
-            <Link
-              href="/"
-              className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-all flex-shrink-0"
-            >
-              <ArrowLeft size={20} />
-            </Link>
-            <div className="min-w-0">
-              <h1 className="font-semibold text-white truncate">{course.title}</h1>
-              <p className="text-xs text-gray-500 truncate hidden sm:block">
-                {course.instructor}
-              </p>
+    <div className="min-h-screen bg-surface flex flex-col">
+      {/* Header - Mobile Optimized */}
+      <nav className="sticky top-0 z-50 bg-surface/95 backdrop-blur-lg border-b border-white/5">
+        <div className="w-full px-4 sm:px-6">
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            {/* Back Button & Course Title */}
+            <div className="flex items-center gap-3 min-w-0">
+              <Link
+                href="/"
+                className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-all flex-shrink-0"
+              >
+                <ArrowLeft size={20} />
+              </Link>
+              <div className="min-w-0">
+                <h1 className="font-semibold text-white truncate">{course.title}</h1>
+                <p className="text-xs text-gray-500 truncate hidden sm:block">
+                  {course.instructor}
+                </p>
+              </div>
             </div>
-          </div>
 
-          {/* Course Stats & User */}
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex items-center gap-4 text-xs text-gray-500">
-              <div className="flex items-center gap-1">
-                <Clock size={14} />
-                <span>{course.duration}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <BookOpen size={14} />
-                <span>{course.lectureCount} lectures</span>
-              </div>
-              {course.rating && (
+            {/* Course Stats & User */}
+            <div className="flex items-center gap-3">
+              <div className="hidden md:flex items-center gap-3 text-xs text-gray-500">
                 <div className="flex items-center gap-1">
-                  <Star size={14} className="text-yellow-400" />
-                  <span>{course.rating}</span>
+                  <Clock size={14} />
+                  <span>{course.duration}</span>
                 </div>
+                <div className="flex items-center gap-1">
+                  <BookOpen size={14} />
+                  <span>{course.lectureCount} lectures</span>
+                </div>
+                {course.rating && (
+                  <div className="flex items-center gap-1">
+                    <Star size={14} className="text-yellow-400" />
+                    <span>{course.rating}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* User Button */}
+              {hasClerk && (
+                <>
+                  <SignedIn>
+                    <UserButton afterSignOutUrl="/" />
+                  </SignedIn>
+                  <SignedOut>
+                    <SignInButton mode="modal">
+                      <button className="text-sm text-gray-400 hover:text-white transition-colors">
+                        Sign In
+                      </button>
+                    </SignInButton>
+                  </SignedOut>
+                </>
               )}
             </div>
-
-            {/* User Button */}
-            {hasClerk && (
-              <>
-                <SignedIn>
-                  <UserButton afterSignOutUrl="/" />
-                </SignedIn>
-                <SignedOut>
-                  <SignInButton mode="modal">
-                    <button className="text-sm text-gray-400 hover:text-white transition-colors">
-                      Sign In
-                    </button>
-                  </SignInButton>
-                </SignedOut>
-              </>
-            )}
           </div>
         </div>
       </nav>
 
       {/* Main Content - Udemy-style Layout */}
       <div className="flex h-[calc(100vh-56px)] relative">
-        {/* Course Player - Always full width, tutor overlays */}
-        <div className="flex-1 min-w-0 w-full">
+        {/* Course Player - Full Width on Mobile */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="w-full"
+        >
           <CoursePlayer
             course={course}
             initialLectureId={lastLectureId}
@@ -259,7 +266,7 @@ export default function CoursePage() {
             completedLectures={completedLectures}
             onToggleComplete={handleToggleComplete}
           />
-        </div>
+        </motion.div>
 
         {/* AI Tutor Panel - Overlays on right side */}
         <AITutorPanel

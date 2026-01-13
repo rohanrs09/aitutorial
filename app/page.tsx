@@ -355,32 +355,31 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-surface-light/30">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12 sm:mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Why Choose AI Voice Tutor?</h2>
-            <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-              Experience learning that adapts to you, not the other way around.
+      {/* Features Section - Simplified to 3 */}
+      <section id="features" className="py-16 sm:py-20 px-4 sm:px-6 lg:px-8 bg-surface-light/30">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">Why AI Voice Tutor?</h2>
+            <p className="text-gray-400 max-w-xl mx-auto">
+              Learning that adapts to you
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
-            {features.map((feature, index) => (
+          <div className="grid sm:grid-cols-3 gap-6">
+            {features.slice(0, 3).map((feature, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                whileHover={{ y: -4, transition: { duration: 0.2 } }}
                 transition={{ delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="card hover:border-primary-500/30 hover:shadow-lg hover:shadow-primary-500/10 transition-all duration-300 group cursor-default p-6"
+                className="card p-6 text-center"
               >
-                <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center mb-4 group-hover:bg-primary-500/20 group-hover:scale-110 transition-all duration-300">
+                <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center mb-4 mx-auto">
                   <feature.icon className="text-primary-400" size={24} />
                 </div>
-                <h3 className="text-lg font-semibold text-white mb-2">{feature.title}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed">{feature.description}</p>
+                <h3 className="text-base font-semibold text-white mb-2">{feature.title}</h3>
+                <p className="text-gray-400 text-sm">{feature.description}</p>
               </motion.div>
             ))}
           </div>
@@ -432,15 +431,15 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Topics Section */}
-      <section id="topics" className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-surface-light/30">
+      {/* Topics Section - Removed, integrated into courses */}
+      <section id="topics" className="py-12 sm:py-16 px-4 sm:px-6 lg:px-8 bg-surface-light/30">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Learn Any Subject</h2>
-            <p className="text-gray-400 text-lg">AI tutor ready to help with any topic you choose.</p>
+          <div className="text-center mb-8">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">Popular Topics</h2>
+            <p className="text-gray-400">Choose what you want to learn</p>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-3 sm:gap-4 mb-12">
+          <div className="flex flex-wrap justify-center gap-3 mb-8">
             {topics.map((topic, index) => (
               <a key={index} href="#courses">
                 <motion.span
@@ -459,118 +458,14 @@ export default function LandingPage() {
           </div>
 
           <div className="text-center">
-            <a href="#courses" className="group inline-flex items-center gap-2 text-primary-400 hover:text-primary-300 font-medium transition-colors duration-200">
+            <a href="#courses" className="btn-primary inline-flex items-center gap-2">
               Browse All Courses
-              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform duration-200" />
+              <ArrowRight size={18} />
             </a>
           </div>
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Loved by Learners</h2>
-            <p className="text-gray-400 text-lg">See what our students have to say.</p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6 sm:gap-8">
-            {testimonials.map((testimonial, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                whileHover={{ y: -4 }}
-                transition={{ delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="card hover:border-white/10 hover:shadow-lg transition-all duration-300"
-              >
-                <div className="flex gap-1 mb-4">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} size={16} className="text-yellow-400 fill-yellow-400" />
-                  ))}
-                </div>
-                <p className="text-gray-300 mb-4 italic leading-relaxed">&ldquo;{testimonial.content}&rdquo;</p>
-                <div>
-                  <p className="text-white font-medium">{testimonial.name}</p>
-                  <p className="text-gray-500 text-sm">{testimonial.role}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section id="pricing" className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 bg-surface-light/30">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Simple, Transparent Pricing</h2>
-            <p className="text-gray-400 text-lg">Start free. Upgrade when you&apos;re ready.</p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
-            {pricingPlans.map((plan, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                whileHover={{ y: -6, transition: { duration: 0.2 } }}
-                transition={{ delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className={`card relative transition-all duration-300 ${
-                  plan.highlighted 
-                    ? 'border-primary-500 bg-primary-500/5 shadow-lg shadow-primary-500/20 hover:shadow-xl hover:shadow-primary-500/25' 
-                    : 'hover:border-white/20 hover:shadow-lg'
-                }`}
-              >
-                {plan.highlighted && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-primary-500 text-white text-xs font-medium rounded-full shadow-lg">
-                    Most Popular
-                  </div>
-                )}
-                <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
-                <div className="mb-6">
-                  <span className="text-4xl font-bold text-white">{plan.price}</span>
-                  <span className="text-gray-400">{plan.period}</span>
-                </div>
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2 text-gray-300 text-sm">
-                      <CheckCircle size={16} className="text-green-400 flex-shrink-0" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                {hasClerk ? (
-                  <Link 
-                    href="/sign-up"
-                    className={`w-full text-center py-3 rounded-xl font-medium transition-all duration-200 inline-block ${
-                      plan.highlighted
-                        ? 'bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white shadow-lg shadow-primary-500/25 hover:shadow-xl hover:shadow-primary-500/30'
-                        : 'bg-surface-lighter hover:bg-surface text-white border border-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    {plan.cta}
-                  </Link>
-                ) : (
-                  <a 
-                    href="#courses"
-                    className={`w-full text-center py-3 rounded-xl font-medium transition-all duration-200 inline-block ${
-                      plan.highlighted
-                        ? 'bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white shadow-lg shadow-primary-500/25 hover:shadow-xl hover:shadow-primary-500/30'
-                        : 'bg-surface-lighter hover:bg-surface text-white border border-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    Browse Courses
-                  </a>
-                )}
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* CTA Section */}
       <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8">

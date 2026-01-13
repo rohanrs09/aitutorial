@@ -153,21 +153,21 @@ export default function CoursePlayer({
   const isLectureCompleted = (lectureId: string) => completedLectures.includes(lectureId);
 
   return (
-    <div className="flex h-full bg-[#1a1a1f] overflow-hidden">
-      {/* Sidebar - Always visible (Udemy-style) */}
-      <div className="w-80 lg:w-96 flex-shrink-0 border-r border-white/5 bg-[#1e1e24] flex flex-col">
-        {/* Course Title Header */}
-        <div className="p-5 border-b border-white/5 bg-[#16161a]">
-          <h3 className="text-base font-semibold text-white mb-1 line-clamp-2">
+    <div className="flex flex-col lg:flex-row h-full bg-[#1a1a1f] overflow-hidden">
+      {/* Sidebar - Bottom sheet on mobile, side panel on desktop */}
+      <div className="w-full lg:w-80 xl:w-96 lg:flex-shrink-0 border-t lg:border-t-0 lg:border-r border-white/5 bg-[#1e1e24] flex flex-col order-2 lg:order-1 max-h-[40vh] lg:max-h-full">
+        {/* Course Title Header - Compact on mobile */}
+        <div className="p-3 sm:p-4 lg:p-5 border-b border-white/5 bg-[#16161a]">
+          <h3 className="text-sm sm:text-base font-semibold text-white mb-1 line-clamp-1 lg:line-clamp-2">
             {course.title}
           </h3>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 hidden sm:block">
             {course.sections.length} sections • {totalLectures} lectures • {course.duration}
           </p>
         </div>
 
-        {/* Sections List */}
-        <div className="flex-1 overflow-y-auto">
+        {/* Sections List - Scrollable */}
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
           {course.sections.map((section, sectionIndex) => {
             const isExpanded = expandedSections.has(section.id);
             const sectionCompleted = section.lectures.every(l => isLectureCompleted(l.id));
@@ -178,9 +178,9 @@ export default function CoursePlayer({
                 {/* Section Header */}
                 <button
                   onClick={() => toggleSection(section.id)}
-                  className="w-full px-5 py-4 flex items-center gap-3 hover:bg-white/[0.02] transition-colors"
+                  className="w-full px-3 sm:px-4 lg:px-5 py-3 sm:py-4 flex items-center gap-2 sm:gap-3 hover:bg-white/[0.02] transition-colors touch-target"
                 >
-                  <div className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-semibold flex-shrink-0 ${
+                  <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-md flex items-center justify-center text-xs font-semibold flex-shrink-0 ${
                     sectionCompleted 
                       ? 'bg-green-500/15 text-green-400' 
                       : 'bg-white/5 text-gray-400'
@@ -188,14 +188,14 @@ export default function CoursePlayer({
                     {sectionCompleted ? <CheckCircle2 size={14} /> : sectionIndex + 1}
                   </div>
                   <div className="flex-1 min-w-0 text-left">
-                    <h4 className="font-medium text-white text-sm leading-snug line-clamp-2">{section.title}</h4>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <h4 className="font-medium text-white text-xs sm:text-sm leading-snug line-clamp-1 sm:line-clamp-2">{section.title}</h4>
+                    <p className="text-xs text-gray-500 mt-0.5 hidden sm:block">
                       {sectionProgress}/{section.lectures.length} completed
                     </p>
                   </div>
                   <ChevronDown 
-                    size={16} 
-                    className={`text-gray-500 flex-shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} 
+                    size={14} 
+                    className={`sm:w-4 sm:h-4 text-gray-500 flex-shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} 
                   />
                 </button>
 
