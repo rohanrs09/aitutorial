@@ -85,14 +85,23 @@ export default function EmotionCameraWidget({
 
       const data = await response.json();
       
-      if (data.success && data.emotion) {
+      console.log('[Emotion] API Response:', data);
+      
+      if (!response.ok) {
+        console.error('[Emotion] API Error:', data.error || 'Unknown error');
+        setError(data.error || 'Emotion detection failed');
+      } else if (data.success && data.emotion) {
         const detectedEmotion = data.emotion.charAt(0).toUpperCase() + data.emotion.slice(1);
+        console.log('[Emotion] Detected:', detectedEmotion, 'Confidence:', data.confidence);
         setCurrentEmotion(detectedEmotion);
         setConfidence(data.confidence || 0.8);
         onEmotionDetected(data.emotion.toLowerCase(), data.confidence || 0.8);
+      } else {
+        console.warn('[Emotion] No emotion detected in response');
       }
     } catch (err) {
-      console.error('Emotion analysis error:', err);
+      console.error('[Emotion] Analysis error:', err);
+      setError('Emotion detection unavailable');
       // Fallback to basic detection based on time patterns
       const emotions = ['Concentrating', 'Engaged', 'Neutral'];
       const fallbackEmotion = emotions[Math.floor(Math.random() * emotions.length)];

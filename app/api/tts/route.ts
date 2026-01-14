@@ -23,7 +23,11 @@ async function callElevenLabs(text: string, apiKey: string): Promise<ArrayBuffer
   });
 
   if (!response.ok) {
-    throw new Error(`ElevenLabs API error: ${response.status}`);
+    const errorText = await response.text().catch(() => '');
+    if (response.status === 429 || response.status === 402) {
+      throw new Error(`QUOTA_EXCEEDED:${response.status}`);
+    }
+    throw new Error(`ElevenLabs API error: ${response.status} ${errorText}`);
   }
 
   return response.arrayBuffer();
@@ -44,7 +48,11 @@ async function callOpenAI(text: string, apiKey: string): Promise<ArrayBuffer> {
   });
 
   if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status}`);
+    const errorText = await response.text().catch(() => '');
+    if (response.status === 429 || response.status === 402) {
+      throw new Error(`QUOTA_EXCEEDED:${response.status}`);
+    }
+    throw new Error(`OpenAI API error: ${response.status} ${errorText}`);
   }
 
   return response.arrayBuffer();
@@ -66,9 +74,15 @@ export async function POST(request: NextRequest) {
     const elevenLabsKey = process.env.ELEVENLABS_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
 
+    console.log('[TTS] API Keys available:', {
+      elevenLabs: elevenLabsKey ? `${elevenLabsKey.substring(0, 10)}...` : 'NOT SET',
+      openai: openaiKey ? `${openaiKey.substring(0, 10)}...` : 'NOT SET'
+    });
+
     if (!elevenLabsKey && !openaiKey) {
+      console.error('[TTS] No API keys configured');
       return NextResponse.json(
-        { error: 'TTS unavailable', code: 'TTS_NOT_CONFIGURED' },
+        { error: 'TTS unavailable - no API keys configured', code: 'TTS_NOT_CONFIGURED' },
         { status: 503 }
       );
     }
@@ -76,8 +90,10 @@ export async function POST(request: NextRequest) {
     let audioBuffer: ArrayBuffer;
 
     if (elevenLabsKey) {
+      console.log('[TTS] Using ElevenLabs API');
       audioBuffer = await callElevenLabs(text, elevenLabsKey);
     } else if (openaiKey) {
+      console.log('[TTS] Using OpenAI API');
       audioBuffer = await callOpenAI(text, openaiKey);
     } else {
       return NextResponse.json({ error: 'No TTS service available' }, { status: 503 });
@@ -90,9 +106,23 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('[TTS] Error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[TTS] Error:', errorMessage);
+    
+    // Check if error is quota/rate limit related
+    if (errorMessage.includes('QUOTA_EXCEEDED') || errorMessage.includes('429') || errorMessage.includes('402')) {
+      return NextResponse.json(
+        { 
+          error: 'Voice service quota exceeded or rate limited', 
+          voiceUnavailable: true,
+          code: 'QUOTA_EXCEEDED'
+        },
+        { status: 429 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'TTS generation failed', details: error instanceof Error ? error.message : String(error) },
+      { error: 'TTS generation failed', details: errorMessage },
       { status: 500 }
     );
   }

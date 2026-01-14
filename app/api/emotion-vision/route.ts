@@ -12,8 +12,11 @@ const isOpenAIConfigured = () => {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('[Emotion Vision] Request received');
+    
     // If API key not configured, return neutral emotion fallback
     if (!isOpenAIConfigured()) {
+      console.warn('[Emotion Vision] OpenAI API key not configured - using fallback');
       return NextResponse.json({
         success: true,
         emotion: 'neutral',
@@ -27,15 +30,18 @@ export async function POST(request: NextRequest) {
     const { image } = body;
 
     if (!image) {
+      console.error('[Emotion Vision] No image data provided');
       return NextResponse.json(
         { error: 'No image data provided' },
         { status: 400 }
       );
     }
+    
+    console.log('[Emotion Vision] Analyzing image with OpenAI Vision...');
 
     // Use OpenAI Vision to analyze facial expressions
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o',
       messages: [
         {
           role: 'system',
@@ -88,12 +94,14 @@ export async function POST(request: NextRequest) {
     });
 
     const content = response.choices[0]?.message?.content || '';
+    console.log('[Emotion Vision] Raw response:', content);
     
     // Parse the JSON response
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
+        console.log('[Emotion Vision] Parsed result:', parsed);
         return NextResponse.json({
           success: true,
           emotion: parsed.emotion || 'neutral',
@@ -102,10 +110,11 @@ export async function POST(request: NextRequest) {
         });
       }
     } catch (parseError) {
-      console.error('Failed to parse emotion response:', content);
+      console.error('[Emotion Vision] Failed to parse emotion response:', content, parseError);
     }
 
     // Fallback if parsing fails
+    console.warn('[Emotion Vision] Using fallback - parsing failed');
     return NextResponse.json({
       success: true,
       emotion: 'neutral',
@@ -113,14 +122,15 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Emotion Vision API Error:', error);
+    console.error('[Emotion Vision] API Error:', error.message || error);
     
     // Return fallback response instead of error to keep UI working
     return NextResponse.json({
       success: true,
       emotion: 'neutral',
       confidence: 0.5,
-      fallback: true
+      fallback: true,
+      error: error.message || 'Unknown error'
     });
   }
 }

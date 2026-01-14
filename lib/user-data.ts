@@ -345,12 +345,23 @@ export async function endSession(sessionId: string, userId?: string): Promise<vo
       }
     }
 
+    // Prepare user ID payload
+    const userPayload: Record<string, unknown> = {};
+    if (userId) {
+      if (userId.startsWith('user_')) {
+        userPayload.clerk_user_id = userId;
+      } else {
+        userPayload.user_id = userId;
+      }
+    }
+
     const response = await supabase
       .from('learning_sessions')
       .upsert(
         {
           session_id: sessionId,
           topic_name: topicName,
+          ...userPayload,
           ended_at: endTime.toISOString(),
           duration_minutes: durationMinutes ?? null,
           updated_at: new Date().toISOString(),

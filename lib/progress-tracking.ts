@@ -41,7 +41,7 @@ function sanitizeProgressForSupabase(progressData: Partial<LearningProgress> & R
   const cleaned: Partial<LearningProgress> = {};
 
   if (typeof progressData.progress_percentage === 'number') {
-    cleaned.progress_percentage = progressData.progress_percentage;
+    cleaned.progress_percentage = Math.round(progressData.progress_percentage);
   }
   if (typeof progressData.status === 'string') {
     cleaned.status = progressData.status as LearningProgress['status'];

@@ -268,9 +268,9 @@ export default function TutorSession() {
         await progressTracking.completeCurrentSession();
       }
 
-      // End session in database
+      // End session in database with user ID
       if (sessionId) {
-        await endSession(sessionId);
+        await endSession(sessionId, user?.id);
       }
       
       // AUTO REDIRECT: If came from course, go back to course (PRIORITY)
