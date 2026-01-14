@@ -64,17 +64,16 @@ Your responses should help test whether the SLM can correctly teach, debug, and 
 // Emotion-based teaching guidance
 function getEmotionGuidance(emotion: EmotionType): string {
   const guidance: Record<EmotionType, string> = {
-    neutral: 'Continue with balanced pacing and clear explanations.',
-    confused: `The student is confused. IMMEDIATELY SIMPLIFY YOUR APPROACH:
-- Use the MOST BASIC language possible
-- Break the concept into the SMALLEST possible steps
-- Provide MULTIPLE simple examples from everyday life
-- Use analogies that a child could understand
-- Ask simple yes/no questions to gauge understanding
-- Repeat key points in different ways
-- If needed, go back to foundational concepts first
-- DO NOT use technical jargon or complex terminology`,
-    confident: 'The student is confident and understanding well. You can introduce slightly more challenging concepts or deeper explanations. Ask probing questions.',
+    neutral: 'The student appears neutral. Make the content more engaging with interesting examples, fun facts, or practical applications to spark interest.',
+    confused: `The student is confused. ADAPT YOUR TEACHING IMMEDIATELY:
+- STOP and acknowledge their confusion
+- Ask them what specifically is unclear
+- Provide a completely different explanation using simpler language
+- Use concrete examples and analogies they can relate to
+- Break down the concept into smaller, digestible pieces
+- Check understanding after each small piece
+- Be patient and encouraging - confusion is a normal part of learning`,
+    confident: 'The student is confident! Validate their understanding, then challenge them with slightly more advanced concepts or applications. This is a great time to explore deeper.',
     frustrated: `The student is frustrated. ADAPT YOUR TEACHING IMMEDIATELY:
 - STOP and acknowledge their frustration
 - Offer strong encouragement and reassurance
@@ -85,9 +84,8 @@ function getEmotionGuidance(emotion: EmotionType): string {
 - Remind them learning is a process and it's okay to struggle
 - Suggest taking a break if needed
 - Avoid anything that might increase complexity`,
-    bored: 'The student seems bored. Make the content more engaging with interesting examples, fun facts, or practical applications. Add energy to your explanations.',
-    excited: 'The student is excited! Match their energy, provide enriching details, and encourage their enthusiasm. This is a great time to explore related topics.',
-    curious: 'The student is curious. Encourage their questions, provide deeper insights, and explore "why" and "how" aspects. This is an excellent learning moment.'
+    curious: 'The student is curious. Encourage their questions, provide deeper insights, and explore "why" and "how" aspects. This is an excellent learning moment.',
+    engaged: 'The student is engaged. Maintain their interest with clear explanations and relevant examples. Build on their understanding.'
   };
   
   return guidance[emotion] || guidance.neutral;

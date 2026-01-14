@@ -32,8 +32,8 @@ export function analyzeEmotionAndAdapt(
     };
   }
   
-  // Bored emotion needs engagement boost
-  if (emotion === 'bored' && confidence > 0.5) {
+  // Neutral/low engagement needs boost
+  if (emotion === 'neutral' && confidence > 0.5) {
     return {
       message: '',
       shouldRegenerateSimplified: false,
