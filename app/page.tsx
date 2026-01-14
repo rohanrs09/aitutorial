@@ -156,12 +156,12 @@ export default function LandingPage() {
               {hasClerk ? (
                 <>
                   <SignedOut>
-                    <a 
+                    {/* <a 
                       href="#courses"
                       className="text-gray-400 hover:text-white transition-colors hidden sm:block"
                     >
                       Courses
-                    </a>
+                    </a> */}
                     <SignInButton mode="modal">
                       <button className="text-gray-400 hover:text-white transition-colors hidden sm:block">
                         Sign In
@@ -175,12 +175,12 @@ export default function LandingPage() {
                     </Link>
                   </SignedOut>
                   <SignedIn>
-                    <a 
+                    {/* <a 
                       href="#courses"
                       className="text-gray-400 hover:text-white transition-colors hidden sm:block"
                     >
                       Courses
-                    </a>
+                    </a> */}
                     <Link 
                       href="/dashboard"
                       className="btn-primary text-sm px-4 py-2"
