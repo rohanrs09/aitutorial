@@ -11,6 +11,9 @@ import dynamic from 'next/dynamic';
 import ResumeSession from '@/components/ResumeSession';
 import CourseCard from '@/components/CourseCard';
 import { getAllCourses } from '@/lib/course-data';
+import { Card, CardContent } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 
 // Dynamically import Clerk components to avoid build errors when keys aren't configured
 const SignedIn = dynamic(() => import('@clerk/nextjs').then(mod => mod.SignedIn), { ssr: false });
@@ -224,8 +227,11 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-24 sm:pt-32 pb-16 sm:pb-24 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
+      <section className="relative pt-32 sm:pt-40 pb-20 sm:pb-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
+        {/* Subtle background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-primary-500/5 via-transparent to-transparent pointer-events-none" />
+        
+        <div className="max-w-6xl mx-auto relative">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -237,26 +243,29 @@ export default function LandingPage() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.4, delay: 0.1 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-500/10 border border-primary-500/20 text-primary-400 text-sm mb-6 hover:bg-primary-500/15 hover:border-primary-500/30 transition-all duration-300 cursor-default"
+              className="mb-8 inline-block"
             >
-              <Sparkles size={16} className="animate-pulse-slow" />
-              <span>AI-Powered Adaptive Learning</span>
+              <Badge variant="outline" className="px-3 py-1.5 text-sm font-medium border-primary-500/20 bg-primary-500/10 text-primary-400">
+                <Sparkles size={14} className="mr-2" />
+                AI-Powered Adaptive Learning
+              </Badge>
             </motion.div>
 
             {/* Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-6 leading-[1.1] tracking-tight">
               Learn Smarter with
-              <span className="gradient-text"> Voice AI</span>
+              <br />
+              <span className="bg-gradient-to-r from-primary-400 via-pink-400 to-primary-400 bg-clip-text text-transparent">Voice AI Tutor</span>
             </h1>
 
             {/* Subheadline */}
-            <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto mb-8">
-              Experience the future of education. Speak naturally, learn adaptively, 
-              and master any subject with an AI tutor that understands you.
+            <p className="text-xl sm:text-2xl text-gray-400 max-w-3xl mx-auto mb-10 leading-relaxed font-light">
+              Speak naturally, learn adaptively. Your AI tutor understands context, 
+              detects emotions, and adapts to your learning style in real-time.
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
               {hasClerk ? (
                 <>
                   <SignedOut>
@@ -355,17 +364,17 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Features Section - Simplified to 3 */}
-      <section id="features" className="py-16 sm:py-20 px-4 sm:px-6 lg:px-8 bg-surface-light/30">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">Why AI Voice Tutor?</h2>
-            <p className="text-gray-400 max-w-xl mx-auto">
-              Learning that adapts to you
+      {/* Features Section */}
+      <section id="features" className="py-24 sm:py-32 px-4 sm:px-6 lg:px-8 border-t border-white/5">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 tracking-tight">Why AI Voice Tutor?</h2>
+            <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+              Everything you need for effective, adaptive learning
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-3 gap-8">
             {features.slice(0, 3).map((feature, index) => (
               <motion.div
                 key={index}
@@ -373,34 +382,37 @@ export default function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="card p-6 text-center"
+                className="group"
               >
-                <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center mb-4 mx-auto">
-                  <feature.icon className="text-primary-400" size={24} />
-                </div>
-                <h3 className="text-base font-semibold text-white mb-2">{feature.title}</h3>
-                <p className="text-gray-400 text-sm">{feature.description}</p>
+                <Card className="h-full hover:border-primary-500/30 transition-all duration-300">
+                  <CardContent className="p-8">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500/20 to-pink-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                      <feature.icon className="text-primary-400" size={28} />
+                    </div>
+                    <h3 className="text-lg font-semibold text-white mb-3">{feature.title}</h3>
+                    <p className="text-gray-400 leading-relaxed">{feature.description}</p>
+                  </CardContent>
+                </Card>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Courses Section - Udemy Style */}
-      <section id="courses" className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
+      {/* Courses Section */}
+      <section id="courses" className="py-24 sm:py-32 px-4 sm:px-6 lg:px-8 bg-surface-light/30">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
+          <div className="text-center mb-16">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 tracking-tight">
                 Featured Courses
               </h2>
-              <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-                Start learning with structured video courses from top educators. 
-                Get AI help whenever you need it.
+              <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+                Start learning with structured courses. Get AI-powered tutoring support whenever you need it.
               </p>
             </motion.div>
           </div>
@@ -413,30 +425,31 @@ export default function LandingPage() {
           </div>
 
           {/* Browse More CTA */}
-          <div className="text-center">
-            <p className="text-gray-400 mb-4">
-              More courses coming soon! Each course includes AI-powered tutoring support.
+          <div className="text-center mt-12">
+            <p className="text-gray-400 mb-6">
+              More courses coming soon. Each includes AI-powered tutoring support.
             </p>
-            <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
+            <div className="flex flex-wrap justify-center gap-3">
               {topics.slice(0, 6).map((topic, index) => (
-                <span
+                <Badge
                   key={index}
-                  className="px-4 py-2 bg-surface-light rounded-full text-gray-300 border border-white/10 text-sm"
+                  variant="outline"
+                  className="px-4 py-2 text-sm font-medium hover:border-primary-500/30 transition-colors cursor-default"
                 >
                   {topic}
-                </span>
+                </Badge>
               ))}
             </div>
           </div>
         </div>
       </section>
 
-      {/* Topics Section - Removed, integrated into courses */}
-      <section id="topics" className="py-12 sm:py-16 px-4 sm:px-6 lg:px-8 bg-surface-light/30">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">Popular Topics</h2>
-            <p className="text-gray-400">Choose what you want to learn</p>
+      {/* Topics Section */}
+      <section id="topics" className="py-20 sm:py-24 px-4 sm:px-6 lg:px-8 border-t border-white/5">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 tracking-tight">Popular Topics</h2>
+            <p className="text-lg text-gray-400">Choose what you want to learn</p>
           </div>
 
           <div className="flex flex-wrap justify-center gap-3 mb-8">
@@ -468,71 +481,82 @@ export default function LandingPage() {
 
 
       {/* CTA Section */}
-      <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto text-center">
+      <section className="py-24 sm:py-32 px-4 sm:px-6 lg:px-8 border-t border-white/5">
+        <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="card bg-gradient-to-br from-primary-500/10 to-pink-500/10 border-primary-500/20 py-12 sm:py-16"
           >
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Ready to Transform Your Learning?</h2>
-            <p className="text-gray-400 text-lg mb-8 max-w-xl mx-auto">
-              Join thousands of learners who are mastering new skills with AI Voice Tutor.
-            </p>
-            <a 
-              href="#courses"
-              className="btn-primary text-lg px-8 py-4 inline-flex items-center gap-2"
-            >
-              Browse Courses
-              <ArrowRight size={20} />
-            </a>
+            <Card className="bg-gradient-to-br from-primary-500/10 to-pink-500/10 border-primary-500/20">
+              <CardContent className="p-12 sm:p-16 text-center">
+                <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 tracking-tight">
+                  Ready to Transform Your Learning?
+                </h2>
+                <p className="text-lg text-gray-400 mb-8 max-w-xl mx-auto">
+                  Join thousands of learners mastering new skills with AI Voice Tutor.
+                </p>
+                <a href="#courses">
+                  <Button size="lg" className="text-lg inline-flex items-center gap-2">
+                    Browse Courses
+                    <ArrowRight size={20} />
+                  </Button>
+                </a>
+              </CardContent>
+            </Card>
           </motion.div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t border-white/5">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+      <footer className="py-16 sm:py-20 px-4 sm:px-6 lg:px-8 border-t border-white/5 bg-surface-light/30">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
             <div>
-              <div className="flex items-center gap-2 mb-4">
+              <Link href="/" className="flex items-center gap-2 mb-4">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-pink-500 flex items-center justify-center">
                   <Mic size={18} className="text-white" />
                 </div>
-                <span className="font-bold text-lg text-white">AI Voice Tutor</span>
-              </div>
-              <p className="text-gray-500 text-sm">
+                <span className="font-semibold text-white">AI Voice Tutor</span>
+              </Link>
+              <p className="text-gray-400 text-sm leading-relaxed">
                 AI-powered voice learning for the modern student.
               </p>
             </div>
             <div>
-              <h4 className="font-medium text-white mb-4">Product</h4>
-              <ul className="space-y-2">
-                <li><a href="#features" className="text-gray-400 hover:text-white text-sm">Features</a></li>
-                <li><a href="#pricing" className="text-gray-400 hover:text-white text-sm">Pricing</a></li>
-                <li><a href="#topics" className="text-gray-400 hover:text-white text-sm">Topics</a></li>
+              <h4 className="font-semibold text-white mb-4 text-sm">Product</h4>
+              <ul className="space-y-3">
+                <li><a href="#features" className="text-gray-400 hover:text-white text-sm transition-colors">Features</a></li>
+                <li><a href="#pricing" className="text-gray-400 hover:text-white text-sm transition-colors">Pricing</a></li>
+                <li><a href="#topics" className="text-gray-400 hover:text-white text-sm transition-colors">Topics</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-medium text-white mb-4">Company</h4>
-              <ul className="space-y-2">
-                <li><a href="#" className="text-gray-400 hover:text-white text-sm">About</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white text-sm">Blog</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white text-sm">Careers</a></li>
+              <h4 className="font-semibold text-white mb-4 text-sm">Company</h4>
+              <ul className="space-y-3">
+                <li><a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">About</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Blog</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Careers</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-medium text-white mb-4">Legal</h4>
-              <ul className="space-y-2">
-                <li><a href="#" className="text-gray-400 hover:text-white text-sm">Privacy</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white text-sm">Terms</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white text-sm">Contact</a></li>
+              <h4 className="font-semibold text-white mb-4 text-sm">Legal</h4>
+              <ul className="space-y-3">
+                <li><a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Privacy</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Terms</a></li>
+                <li><a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Contact</a></li>
               </ul>
             </div>
           </div>
-          <div className="pt-8 border-t border-white/5 text-center text-gray-500 text-sm">
-            © {new Date().getFullYear()} AI Voice Tutor. All rights reserved.
+          <div className="pt-8 border-t border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <p className="text-gray-400 text-sm">
+              © {new Date().getFullYear()} AI Voice Tutor. All rights reserved.
+            </p>
+            <div className="flex items-center gap-6">
+              <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Twitter</a>
+              <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">GitHub</a>
+              <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">Discord</a>
+            </div>
           </div>
         </div>
       </footer>
