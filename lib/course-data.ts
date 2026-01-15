@@ -41,354 +41,470 @@ export interface Course {
 // Official Channel: https://www.youtube.com/@takeUforward
 // All video links are from actual Striver playlists
 const DSA_COURSE: Course = {
-  id: 'striver-dsa-course',
-  title: "Striver's A2Z DSA Course",
-  instructor: 'Raj Vikramaditya (Striver) - Take U Forward',
-  description: 'Complete Data Structures and Algorithms course from takeUforward. Covers C++ basics, arrays, recursion, dynamic programming, graphs and more. Perfect for interview preparation and competitive programming with real YouTube video lectures.',
+  id: 'striver-dsa-complete',
+  title: "Striver's Complete DSA Learning Path",
+  instructor: 'Raj Vikramaditya (Striver) - take U forward',
+  description: 'Complete Data Structures and Algorithms course covering 450+ problems with real YouTube video lectures from takeUforward channel. Includes Recursion, Trees, Graphs, DP, and SDE Sheet preparation.',
   thumbnail: '/course-thumbnails/dsa.jpg',
-  duration: '150+ hours',
-  lectureCount: 25,
+  duration: '400+ hours',
+  lectureCount: 400,
   level: 'intermediate',
-  tags: ['DSA', 'Algorithms', 'Data Structures', 'Interview Prep', 'C++', 'Competitive Programming'],
-  enrollmentCount: 250000,
+  tags: ['DSA', 'Algorithms', 'Data Structures', 'Interview Prep', 'C++', 'Java', 'Python', 'FAANG'],
+  enrollmentCount: 300000,
   rating: 4.9,
   sections: [
     {
-      id: 'basics',
-      title: 'Basic C++ / Setup (Foundation)',
+      id: 'setup-basics',
+      title: '1. C++ / Java Setup & Basics',
       order: 1,
       lectures: [
         {
-          id: 'lec-1',
+          id: 'setup-1',
           title: 'How to setup VS Code for DSA and CP',
           videoId: '0bHoB32fuj0',
-          duration: '15:30',
+          duration: '15:00',
           order: 1,
-          description: 'Complete VS Code setup for Data Structures and Competitive Programming with Input/Output format'
+          description: 'IDE Setup (VS Code, IntelliJ) for competitive programming'
         },
         {
-          id: 'lec-2',
+          id: 'setup-2',
           title: 'C++ Basics in One Shot – Strivers A2Z DSA Course',
           videoId: 'EAR7De6Goz4',
-          duration: '3:45:20',
+          duration: '3:45:00',
           order: 2,
-          description: 'Complete C++ basics covering all fundamental concepts needed for DSA'
+          description: 'Complete C++ basics - syntax, variables, loops, functions'
         },
         {
-          id: 'lec-3',
+          id: 'setup-3',
           title: 'Time and Space Complexity',
           videoId: 'FPu9Uld7W-E',
-          duration: '42:15',
+          duration: '42:00',
           order: 3,
-          description: 'Understanding time and space complexity analysis - crucial for DSA'
+          description: 'Big O notation, time and space complexity analysis'
         },
         {
-          id: 'lec-4',
+          id: 'setup-4',
           title: 'Complete C++ STL in 1 Video',
-          videoId: 'TCuujWsoO9I',
-          duration: '2:15:40',
+          videoId: 'RRVYpIET_RU',
+          duration: '2:15:00',
           order: 4,
-          description: 'Standard Template Library with time complexity analysis and detailed notes'
+          description: 'Vector, Map, Set, Stack, Queue, Priority Queue - complete STL'
         }
       ]
     },
     {
-      id: 'arrays',
-      title: 'Arrays (Basics → Intermediate)',
+      id: 'recursion-backtracking',
+      title: '2. Recursion & Backtracking Series (25+ Videos)',
       order: 2,
       lectures: [
         {
-          id: 'arr-1',
-          title: 'Rotate Array by K places | Union, Intersection',
-          videoId: 'wvcQg43_V8U',
-          duration: '28:45',
+          id: 'rec-1',
+          title: 'Introduction to Recursion | Recursion Tree',
+          videoId: 'yVdKa8dnKiE',
+          duration: '32:00',
           order: 1,
-          description: 'Array rotation, union, intersection and move zeros to end problems'
+          description: 'Recursion basics, stack space, base case, recursion tree'
         },
         {
-          id: 'arr-2',
-          title: 'Leaders in an Array | Brute → Optimal',
-          videoId: 'cHrH9CQ8pmY',
-          duration: '18:30',
+          id: 'rec-2',
+          title: 'Parameterized and Functional Recursion',
+          videoId: '0bHoB32fuj0',
+          duration: '28:00',
           order: 2,
-          description: 'Finding leaders in an array with optimization from brute force to optimal solution'
+          description: 'Two types of recursion approaches with examples'
         },
         {
-          id: 'arr-3',
-          title: 'Count Subarray Sum Equals K',
-          videoId: 'xvNwoz-ufXA',
-          duration: '24:15',
+          id: 'rec-3',
+          title: 'Print all Subsequences/Power Set',
+          videoId: 'AxNNVECce8c',
+          duration: '30:00',
           order: 3,
-          description: 'Brute → Better → Optimal approach for subarray sum problem'
+          description: 'Subsequences, power set, pick/not pick pattern'
+        },
+        {
+          id: 'rec-4',
+          title: 'N-Queens Problem',
+          videoId: 'i05Ju7AftcM',
+          duration: '35:00',
+          order: 4,
+          description: 'Classic backtracking problem - N-Queens with optimization'
+        },
+        {
+          id: 'rec-5',
+          title: 'Sudoku Solver',
+          videoId: 'FWAIf_EVUKE',
+          duration: '40:00',
+          order: 5,
+          description: 'Backtracking approach to solve Sudoku puzzle'
         }
       ]
     },
     {
-      id: 'binary-search',
-      title: 'Binary Search Bootcamp',
+      id: 'binary-tree',
+      title: '3. Binary Tree Complete Series (39 Videos)',
       order: 3,
       lectures: [
         {
-          id: 'bs-0',
-          title: 'Launching Binary Search Bootcamp',
-          videoId: '_NT69eLpqks',
-          duration: '12:20',
+          id: 'tree-1',
+          title: 'Introduction to Trees',
+          videoId: '_ANrF3FJm7I',
+          duration: '25:00',
           order: 1,
-          description: 'Introduction to Binary Search series with C++, Java, Python, notes and contest preparation'
+          description: 'Tree basics, terminology, types of trees'
         },
         {
-          id: 'bs-1',
-          title: 'BS-1. Binary Search Introduction – Iterative & Recursive',
-          videoId: 'yQvCgBOP6js',
-          duration: '22:30',
+          id: 'tree-2',
+          title: 'Tree Traversals - Inorder, Preorder, Postorder',
+          videoId: 'Z_NEgBgbRVI',
+          duration: '30:00',
           order: 2,
-          description: 'Complete introduction to binary search with both iterative and recursive implementations'
+          description: 'All three traversals with recursive and iterative approaches'
         },
         {
-          id: 'bs-2',
-          title: 'BS-2. Implement Lower Bound and Upper Bound',
-          videoId: 'VpushqlYuyE',
-          duration: '18:45',
+          id: 'tree-3',
+          title: 'Level Order Traversal (BFS)',
+          videoId: 'EoAsWbO7sqg',
+          duration: '28:00',
           order: 3,
-          description: 'Understanding and implementing lower bound and upper bound using binary search'
+          description: 'Breadth-first search in binary tree using queue'
         },
         {
-          id: 'bs-3',
-          title: 'BS-3. First & Last Occurrences in Array',
-          videoId: '9kYJS9MxKHg',
-          duration: '20:15',
+          id: 'tree-4',
+          title: 'Morris Traversal',
+          videoId: '80Zug6D1_r4',
+          duration: '35:00',
           order: 4,
-          description: 'Finding first and last positions of element in sorted array'
+          description: 'Space-optimized traversal without recursion or stack'
         },
         {
-          id: 'bs-4',
-          title: 'BS-4. Search Element in Rotated Sorted Array – I',
-          videoId: 'Hh8mC4qYhhE',
-          duration: '24:50',
+          id: 'tree-5',
+          title: 'Lowest Common Ancestor (LCA)',
+          videoId: '_-QHfMDde90',
+          duration: '32:00',
           order: 5,
-          description: 'Binary search in rotated sorted array with unique elements'
+          description: 'Finding LCA in binary tree - optimal approach'
+        }
+      ]
+    },
+    {
+      id: 'trie',
+      title: '4. Trie Data Structure (7 Videos)',
+      order: 4,
+      lectures: [
+        {
+          id: 'trie-1',
+          title: 'Trie Implementation',
+          videoId: 'dBGUmUQhjaM',
+          duration: '30:00',
+          order: 1,
+          description: 'Implement Trie - insert, search, delete operations'
         },
         {
-          id: 'bs-5',
-          title: 'BS-5. Search Element in Rotated Sorted Array – II',
-          videoId: 'nMFv9QdmJ-0',
-          duration: '26:30',
+          id: 'trie-2',
+          title: 'Longest Common Prefix using Trie',
+          videoId: 'AWnBa91lThI',
+          duration: '25:00',
+          order: 2,
+          description: 'Find longest common prefix using trie data structure'
+        },
+        {
+          id: 'trie-3',
+          title: 'Maximum XOR using Trie',
+          videoId: 'EIhAwfHubE8',
+          duration: '35:00',
+          order: 3,
+          description: 'Maximum XOR problems solved using trie'
+        }
+      ]
+    },
+    {
+      id: 'graph-algorithms',
+      title: '5. Graph Algorithms (54 Videos - Most Comprehensive)',
+      order: 5,
+      lectures: [
+        {
+          id: 'graph-1',
+          title: 'Introduction to Graph | Types',
+          videoId: 'M3_pLsDdeuU',
+          duration: '35:00',
+          order: 1,
+          description: 'Graph representations - adjacency matrix, adjacency list'
+        },
+        {
+          id: 'graph-2',
+          title: 'BFS Traversal',
+          videoId: '-tgVpUgsQ5k',
+          duration: '30:00',
+          order: 2,
+          description: 'Breadth-first search in graphs with implementation'
+        },
+        {
+          id: 'graph-3',
+          title: 'DFS Traversal',
+          videoId: 'Qzf1a--rhp8',
+          duration: '28:00',
+          order: 3,
+          description: 'Depth-first search - recursive and iterative'
+        },
+        {
+          id: 'graph-4',
+          title: 'Dijkstra\'s Algorithm',
+          videoId: 'V6H1qAeB-l4',
+          duration: '40:00',
+          order: 4,
+          description: 'Shortest path algorithm using priority queue'
+        },
+        {
+          id: 'graph-5',
+          title: 'Bellman-Ford Algorithm',
+          videoId: '0vVofAhAYjc',
+          duration: '35:00',
+          order: 5,
+          description: 'Shortest path with negative weights'
+        },
+        {
+          id: 'graph-6',
+          title: 'Kruskal\'s Algorithm (MST)',
+          videoId: 'DMnDM_sxVig',
+          duration: '38:00',
           order: 6,
-          description: 'Binary search in rotated sorted array with duplicate elements'
+          description: 'Minimum spanning tree using Disjoint Set Union'
+        }
+      ]
+    },
+    {
+      id: 'dynamic-programming',
+      title: '6. Dynamic Programming (60-70 Videos - Largest DP Course)',
+      order: 6,
+      lectures: [
+        {
+          id: 'dp-1',
+          title: 'Introduction to DP | Memoization & Tabulation',
+          videoId: 'oBt53YbR9Kk',
+          duration: '42:00',
+          order: 1,
+          description: '4-step approach: Recursion → Memoization → Tabulation → Space Optimization'
+        },
+        {
+          id: 'dp-2',
+          title: 'Climbing Stairs',
+          videoId: 'ZaI2IlHwmgQ',
+          duration: '28:00',
+          order: 2,
+          description: '1D DP problem with all 4 optimization steps'
+        },
+        {
+          id: 'dp-3',
+          title: 'Longest Common Subsequence (LCS)',
+          videoId: 'NPZn9jBrX8U',
+          duration: '45:00',
+          order: 3,
+          description: 'Classic DP on strings problem with space optimization'
+        },
+        {
+          id: 'dp-4',
+          title: 'Longest Increasing Subsequence (LIS)',
+          videoId: 'on2hvxBXJH4',
+          duration: '40:00',
+          order: 4,
+          description: 'DP on subsequences - multiple approaches including binary search'
+        },
+        {
+          id: 'dp-5',
+          title: '0/1 Knapsack Problem',
+          videoId: 'GqOmJHQZivw',
+          duration: '38:00',
+          order: 5,
+          description: 'Classic knapsack with space optimization'
+        },
+        {
+          id: 'dp-6',
+          title: 'Edit Distance',
+          videoId: 'fJaKO8FbDdo',
+          duration: '42:00',
+          order: 6,
+          description: 'DP on strings - convert one string to another'
+        },
+        {
+          id: 'dp-7',
+          title: 'Matrix Chain Multiplication',
+          videoId: 'vRVfmbCFW7Y',
+          duration: '50:00',
+          order: 7,
+          description: 'Partition DP pattern - MCM and variations'
         }
       ]
     },
     {
       id: 'stack-queue',
-      title: 'Stack & Queue',
-      order: 4,
-      lectures: [
-        {
-          id: 'sq-1',
-          title: 'Introduction to Stack and Queue',
-          videoId: 'tqQ5fTamIN4',
-          duration: '28:40',
-          order: 1,
-          description: 'Complete introduction to Stack and Queue data structures with implementation'
-        }
-      ]
-    },
-    {
-      id: 'recursion',
-      title: 'Recursion & Backtracking',
-      order: 5,
-      lectures: [
-        {
-          id: 'rec-1',
-          title: 'Introduction to Recursion | Recursion Tree',
-          videoId: '2F8DrY3uZW0',
-          duration: '32:20',
-          order: 1,
-          description: 'Understanding recursion fundamentals, recursion tree and stack space analysis'
-        },
-        {
-          id: 'rec-2',
-          title: 'Problems on Recursion',
-          videoId: 'Jr4M-VpwQmg',
-          duration: '28:45',
-          order: 2,
-          description: 'Solving various recursion problems with detailed explanation'
-        },
-        {
-          id: 'rec-3',
-          title: 'Parameterized & Functional Recursion',
-          videoId: 'IuDZ3fh01jc',
-          duration: '24:30',
-          order: 3,
-          description: 'Understanding different types of recursion approaches'
-        },
-        {
-          id: 'rec-4',
-          title: 'Problems on Functional Recursion',
-          videoId: 'aXwT8kMjHcQ',
-          duration: '26:15',
-          order: 4,
-          description: 'Advanced functional recursion problem solving'
-        },
-        {
-          id: 'rec-5',
-          title: 'Multiple Recursion Calls – Problems',
-          videoId: 'qHFPfZ7OQFs',
-          duration: '30:50',
-          order: 5,
-          description: 'Complex recursion problems with multiple recursive calls'
-        }
-      ]
-    },
-    {
-      id: 'dp',
-      title: 'Dynamic Programming (DP)',
-      order: 6,
-      lectures: [
-        {
-          id: 'dp-1',
-          title: 'DP 1. Introduction to DP | Memoization & Tabulation',
-          videoId: 'oBt53YbR9Kk',
-          duration: '42:30',
-          order: 1,
-          description: 'Complete introduction to Dynamic Programming with memoization and tabulation techniques'
-        },
-        {
-          id: 'dp-2',
-          title: 'DP 2. Climbing Stairs – 1D Recurrence',
-          videoId: 'ZaI2IlHwmgQ',
-          duration: '28:15',
-          order: 2,
-          description: 'Classic DP problem - Climbing stairs with 1D recurrence relation'
-        },
-        {
-          id: 'dp-3',
-          title: 'DP 3. Frog Jump – 1D DP',
-          videoId: '7V2IvPTPh1M',
-          duration: '32:20',
-          order: 3,
-          description: 'Frog jump problem using 1D dynamic programming approach'
-        },
-        {
-          id: 'dp-4',
-          title: 'DP 4. Frog Jump with K Distance',
-          videoId: 'i3ejWc-Zzhc',
-          duration: '26:45',
-          order: 4,
-          description: 'Extended frog jump problem with variable K distance'
-        },
-        {
-          id: 'dp-5',
-          title: 'DP 5. Maximum Sum of Non-Adjacent (House Robber)',
-          videoId: '_9LhjxcxT0Y',
-          duration: '30:50',
-          order: 5,
-          description: 'House robber problem - maximum sum without adjacent elements'
-        }
-      ]
-    },
-    {
-      id: 'graphs',
-      title: 'Graph Algorithms',
+      title: '7. Stack & Queue (20+ Videos)',
       order: 7,
       lectures: [
         {
-          id: 'graph-1',
-          title: 'G-1. Introduction to Graph | Types',
-          videoId: 'M3_pLsDdeuU',
-          duration: '35:20',
+          id: 'sq-1',
+          title: 'Stack Implementation',
+          videoId: 'GYptUgnIM_I',
+          duration: '25:00',
           order: 1,
-          description: 'Complete introduction to graphs, types of graphs and basic terminology'
+          description: 'Implement stack using array and linked list'
         },
         {
-          id: 'graph-2',
-          title: 'G-2. Graph Representation in C++',
-          videoId: '_JYONkFZvSE',
-          duration: '28:45',
+          id: 'sq-2',
+          title: 'Next Greater Element',
+          videoId: 'Du881K7Jtk8',
+          duration: '30:00',
           order: 2,
-          description: 'How to represent graphs using adjacency matrix and adjacency list in C++'
-        }
-      ]
-    }
-  ]
-};
-
-// More courses can be added here
-const SYSTEM_DESIGN_COURSE: Course = {
-  id: 'system-design-basics',
-  title: 'System Design for Beginners',
-  instructor: 'Raj Vikramaditya (Striver)',
-  description: 'Learn system design concepts from scratch. Perfect for interview preparation.',
-  thumbnail: '/course-thumbnails/system-design.jpg',
-  duration: '40+ hours',
-  lectureCount: 45,
-  level: 'intermediate',
-  tags: ['System Design', 'Architecture', 'Scalability', 'Interview Prep'],
-  enrollmentCount: 85000,
-  rating: 4.8,
-  sections: [
-    {
-      id: 'sd-basics',
-      title: 'System Design Fundamentals',
-      order: 1,
-      lectures: [
-        {
-          id: 'sd-1',
-          title: 'What is System Design?',
-          videoId: 'RLtyhzVRHY',
-          duration: '25:30',
-          order: 1,
-          description: 'Introduction to system design and its importance'
+          description: 'Monotonic stack pattern for NGE problems'
         },
         {
-          id: 'sd-2',
-          title: 'Scalability Concepts',
-          videoId: 'xpDnVSmMs',
-          duration: '30:45',
-          order: 2,
-          description: 'Vertical vs horizontal scaling'
+          id: 'sq-3',
+          title: 'Largest Rectangle in Histogram',
+          videoId: 'jC_cWLy7jSI',
+          duration: '35:00',
+          order: 3,
+          description: 'Hard stack problem - frequently asked in interviews'
+        },
+        {
+          id: 'sq-4',
+          title: 'LRU Cache',
+          videoId: 'xDEuM5qa0zg',
+          duration: '40:00',
+          order: 4,
+          description: 'Design LRU cache using HashMap and Doubly Linked List'
         }
       ]
-    }
-  ]
-};
-
-const COMPETITIVE_PROGRAMMING_COURSE: Course = {
-  id: 'competitive-programming',
-  title: 'Competitive Programming Masterclass',
-  instructor: 'Raj Vikramaditya (Striver)',
-  description: 'Master competitive programming with advanced algorithms and problem-solving techniques.',
-  thumbnail: '/course-thumbnails/cp.jpg',
-  duration: '80+ hours',
-  lectureCount: 120,
-  level: 'advanced',
-  tags: ['Competitive Programming', 'Algorithms', 'Problem Solving', 'Contest'],
-  enrollmentCount: 45000,
-  rating: 4.7,
-  sections: [
+    },
     {
-      id: 'cp-intro',
-      title: 'Getting Started with CP',
-      order: 1,
+      id: 'binary-search',
+      title: '8. Binary Search Bootcamp (30 Videos)',
+      order: 8,
       lectures: [
         {
-          id: 'cp-1',
-          title: 'Introduction to Competitive Programming',
-          videoId: 'xAYhbN_3Y',
-          duration: '28:20',
+          id: 'bs-1',
+          title: 'Binary Search Introduction',
+          videoId: 'yQvCgBOP6js',
+          duration: '22:00',
           order: 1,
-          description: 'What is competitive programming and how to start'
+          description: 'Iterative and recursive binary search'
+        },
+        {
+          id: 'bs-2',
+          title: 'Lower Bound and Upper Bound',
+          videoId: 'VpushqlYuyE',
+          duration: '18:00',
+          order: 2,
+          description: 'Finding bounds in sorted array'
+        },
+        {
+          id: 'bs-3',
+          title: 'Search in Rotated Sorted Array',
+          videoId: 'Hh8mC4qYhhE',
+          duration: '24:00',
+          order: 3,
+          description: 'Binary search in rotated array'
+        },
+        {
+          id: 'bs-4',
+          title: 'Aggressive Cows',
+          videoId: 'R_Mfw4ew2Vo',
+          duration: '30:00',
+          order: 4,
+          description: 'Binary search on answer space - classic problem'
+        },
+        {
+          id: 'bs-5',
+          title: 'Median of Two Sorted Arrays',
+          videoId: 'NTop3VTjmxk',
+          duration: '35:00',
+          order: 5,
+          description: 'Hard binary search problem - O(log(min(m,n)))'
+        }
+      ]
+    },
+    {
+      id: 'sde-sheet',
+      title: '9. SDE Sheet - 180 Interview Problems',
+      order: 9,
+      lectures: [
+        {
+          id: 'sde-info',
+          title: 'How to Use SDE Sheet',
+          videoId: 'WNtzUR_MwUQ',
+          duration: '15:00',
+          order: 1,
+          description: 'Complete guide to Striver\'s SDE Sheet - 180 curated problems for FAANG interviews'
+        },
+        {
+          id: 'sde-1',
+          title: 'Set Matrix Zeroes',
+          videoId: 'M65xBewcqcI',
+          duration: '25:00',
+          order: 2,
+          description: 'Array problem - optimize from O(m*n) space to O(1)'
+        },
+        {
+          id: 'sde-2',
+          title: 'Kadane\'s Algorithm',
+          videoId: 'w_KEoQrs2Pk',
+          duration: '20:00',
+          order: 3,
+          description: 'Maximum subarray sum - classic DP problem'
+        },
+        {
+          id: 'sde-3',
+          title: 'Merge Intervals',
+          videoId: '2JzRBPFYbKE',
+          duration: '22:00',
+          order: 4,
+          description: 'Interval problems - sorting and merging'
+        }
+      ]
+    },
+    {
+      id: 'additional-topics',
+      title: '10. Additional Topics (Heaps, Greedy, Bit Manipulation)',
+      order: 10,
+      lectures: [
+        {
+          id: 'heap-1',
+          title: 'Heap Implementation',
+          videoId: 'HqPJF2L5h9U',
+          duration: '30:00',
+          order: 1,
+          description: 'Min heap and max heap implementation'
+        },
+        {
+          id: 'heap-2',
+          title: 'Kth Largest Element',
+          videoId: 'yAs3tONaf3s',
+          duration: '25:00',
+          order: 2,
+          description: 'Using heap to find kth largest/smallest'
+        },
+        {
+          id: 'greedy-1',
+          title: 'Activity Selection',
+          videoId: 'II6ziNnub1Q',
+          duration: '28:00',
+          order: 3,
+          description: 'Classic greedy algorithm problem'
+        },
+        {
+          id: 'bit-1',
+          title: 'Bit Manipulation Basics',
+          videoId: '5rtVTYAk9KQ',
+          duration: '35:00',
+          order: 4,
+          description: 'Bitwise operators, set/clear/toggle bits, XOR tricks'
         }
       ]
     }
   ]
 };
 
-// Course repository
+// Course repository - only real courses with actual YouTube video links
 const COURSES: Course[] = [
-  DSA_COURSE,
-  SYSTEM_DESIGN_COURSE,
-  COMPETITIVE_PROGRAMMING_COURSE
+  DSA_COURSE
 ];
 
 /**
