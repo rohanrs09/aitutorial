@@ -99,10 +99,60 @@ export default function ProductionDashboard() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8"><QuickActions /></motion.div>
         <div className="mb-8">
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="analytics">Analytics</TabsTrigger><TabsTrigger value="activity">Activity</TabsTrigger></TabsList>
-            <TabsContent value="overview" className="space-y-6"><div className="grid lg:grid-cols-3 gap-6"><motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="lg:col-span-2"><ActivityChart data={dashboardData.activityChart} isLoading={dashboardData.isLoading} /></motion.div><motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}><InsightsCard stats={dashboardData.stats} topicProgress={dashboardData.topicProgress} isLoading={dashboardData.isLoading} /></motion.div></div></TabsContent>
-            <TabsContent value="analytics" className="space-y-6"><div className="grid lg:grid-cols-3 gap-6"><motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}><EmotionChart data={dashboardData.emotionDistribution} isLoading={dashboardData.isLoading} /></motion.div><motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="lg:col-span-2"><TopicProgress topics={dashboardData.topicProgress} isLoading={dashboardData.isLoading} /></motion.div></div></TabsContent>
-            <TabsContent value="activity" className="space-y-6"><motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}><RecentActivity sessions={dashboardData.recentSessions} isLoading={dashboardData.isLoading} /></motion.div></TabsContent>
+            <TabsList className="grid w-full grid-cols-3 mb-6">
+              <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
+              <TabsTrigger value="analytics" className="text-xs sm:text-sm">Analytics</TabsTrigger>
+              <TabsTrigger value="activity" className="text-xs sm:text-sm">Activity</TabsTrigger>
+            </TabsList>
+            <TabsContent value="overview" className="space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  transition={{ delay: 0.2 }} 
+                  className="lg:col-span-2 order-2 lg:order-1"
+                >
+                  <ActivityChart data={dashboardData.activityChart} isLoading={dashboardData.isLoading} />
+                </motion.div>
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  transition={{ delay: 0.3 }} 
+                  className="order-1 lg:order-2"
+                >
+                  <InsightsCard stats={dashboardData.stats} topicProgress={dashboardData.topicProgress} isLoading={dashboardData.isLoading} />
+                </motion.div>
+              </div>
+            </TabsContent>
+            <TabsContent value="analytics" className="space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  transition={{ delay: 0.4 }} 
+                  className="order-2 lg:order-1"
+                >
+                  <EmotionChart data={dashboardData.emotionDistribution} isLoading={dashboardData.isLoading} />
+                </motion.div>
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  transition={{ delay: 0.5 }} 
+                  className="order-1 lg:order-2 lg:col-span-2"
+                >
+                  <TopicProgress topics={dashboardData.topicProgress} isLoading={dashboardData.isLoading} />
+                </motion.div>
+              </div>
+            </TabsContent>
+            <TabsContent value="activity" className="space-y-4 sm:space-y-6">
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                transition={{ delay: 0.6 }}
+              >
+                <RecentActivity sessions={dashboardData.recentSessions} isLoading={dashboardData.isLoading} />
+              </motion.div>
+            </TabsContent>
           </Tabs>
         </div>
       </PageContainer>

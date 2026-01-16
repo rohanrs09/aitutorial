@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { 
   Mic, Brain, BarChart3, Sparkles, CheckCircle, ArrowRight, 
-  Play, Volume2, BookOpen, Target, Zap, Users, Star, Menu, X
+  Play, Volume2, BookOpen, Target, Zap, Users, Star, Menu, X, Check
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
@@ -391,6 +391,14 @@ export default function LandingPage() {
                     </div>
                     <h3 className="text-lg font-semibold text-white mb-3">{feature.title}</h3>
                     <p className="text-gray-400 leading-relaxed">{feature.description}</p>
+                {index === 2 && (
+                  <div className="mt-4">
+                    <a href="#pricing" className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-sm font-medium transition-colors">
+                      View Pricing
+                      <ArrowRight size={16} />
+                    </a>
+                  </div>
+                )}
                   </CardContent>
                 </Card>
               </motion.div>
@@ -479,6 +487,87 @@ export default function LandingPage() {
         </div>
       </section>
 
+
+      {/* Pricing Section */}
+      <section id="pricing" className="py-24 sm:py-32 px-4 sm:px-6 lg:px-8 bg-surface-light/30">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-violet-500/10 border border-violet-500/20 rounded-full mb-6">
+                <Sparkles className="w-4 h-4 text-violet-400" />
+                <span className="text-sm text-violet-300">Simple, transparent pricing</span>
+              </div>
+              
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6">
+                Choose Your{' '}
+                <span className="bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent">
+                  Learning Plan
+                </span>
+              </h2>
+              
+              <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+                Start free and upgrade when you are ready. All plans include our core AI tutoring features.
+              </p>
+            </motion.div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+            {pricingPlans.map((plan, index) => (
+              <motion.div
+                key={plan.name}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                className={`relative rounded-2xl p-6 lg:p-8 ${
+                  plan.highlighted
+                    ? 'bg-gradient-to-b from-violet-500/10 to-purple-500/5 border-2 border-violet-500/30'
+                    : 'bg-white/[0.02] border border-white/5'
+                }`}
+              >
+                {plan.highlighted && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className="px-4 py-1 bg-gradient-to-r from-violet-500 to-purple-600 text-white text-xs font-semibold rounded-full">
+                      Most Popular
+                    </span>
+                  </div>
+                )}
+
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-bold text-white">{plan.price}</span>
+                    <span className="text-gray-500">{plan.period}</span>
+                  </div>
+                </div>
+
+                <ul className="space-y-3 mb-8">
+                  {plan.features.map((feature, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                      <span className="text-gray-300">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  className={`w-full py-3 rounded-xl font-semibold transition-all ${
+                    plan.highlighted
+                      ? 'bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white shadow-lg shadow-violet-500/25'
+                      : 'bg-white/5 hover:bg-white/10 text-white border border-white/10'
+                  }`}
+                >
+                  {plan.cta}
+                </button>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* CTA Section */}
       <section className="py-24 sm:py-32 px-4 sm:px-6 lg:px-8 border-t border-white/5">

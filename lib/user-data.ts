@@ -87,6 +87,7 @@ export async function createSession(
   const sessionData = {
     sessionId,
     topicName,
+    clerkUserId: clerkUserId || null,
     startedAt: new Date(),
     endedAt: null,
     messages: [] as SessionMessage[],
@@ -97,11 +98,11 @@ export async function createSession(
   // Store in localStorage for immediate access
   if (typeof window !== 'undefined') {
     localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(sessionData));
-    console.log('[Session] Created session:', { sessionId, topicName });
+    console.log('[Session] Created session:', { sessionId, topicName, clerkUserId });
   }
   
   // Try to save to Supabase if configured
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && clerkUserId) {
     try {
       // Validate connection and tables
       const validation = await validateSupabaseConnection();
@@ -113,44 +114,38 @@ export async function createSession(
       
       if (!validation.tablesExist) {
         console.warn('[Supabase] Tables not created - using localStorage only');
-        console.info('[Setup] To enable Supabase persistence, run: migrations/001_create_tables.sql');
+        console.info('[Setup] To enable Supabase persistence, run: migrations/003_reset_and_fix_schema.sql');
         return sessionId;
       }
 
-      console.log('[Supabase] Saving session to database...');
+      console.log('[Supabase] Saving session to database for user:', clerkUserId);
 
-      if (clerkUserId && clerkUserId.startsWith('user_')) {
-        const profileUpsert = await supabase
-          .from('user_profiles')
-          .upsert(
-            {
-              clerk_user_id: clerkUserId,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: 'clerk_user_id' }
-          );
+      // Always upsert user profile first to ensure user exists
+      const profileUpsert = await supabase
+        .from('user_profiles')
+        .upsert(
+          {
+            clerk_user_id: clerkUserId,
+            last_active_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'clerk_user_id' }
+        );
 
-        if (profileUpsert.error) {
-          console.warn('[Supabase] Could not upsert user profile:', profileUpsert.error.message);
-        }
+      if (profileUpsert.error) {
+        console.warn('[Supabase] Could not upsert user profile:', profileUpsert.error.message);
+      } else {
+        console.log('[Supabase] ✅ User profile upserted');
       }
       
-      // Determine if clerkUserId is a UUID or Clerk user ID format
-      const insertData: Record<string, any> = {
+      // Insert session with clerk_user_id (required field)
+      const insertData = {
         session_id: sessionId,
         topic_name: topicName,
+        clerk_user_id: clerkUserId,
         started_at: new Date().toISOString(),
+        total_messages: 0,
       };
-      
-      if (clerkUserId) {
-        if (clerkUserId.startsWith('user_')) {
-          // Clerk user ID format
-          insertData.clerk_user_id = clerkUserId;
-        } else {
-          // UUID format
-          insertData.user_id = clerkUserId;
-        }
-      }
       
       const response = await supabase
         .from('learning_sessions')
@@ -158,16 +153,18 @@ export async function createSession(
         .select();
       
       if (response.error) {
-        console.warn('[Supabase] Could not save session:', response.error.message);
+        console.error('[Supabase] Could not save session:', response.error.message);
         if (response.error.code === 'PGRST116' || response.error.message.includes('not found')) {
-          console.info('[Setup] Tables missing - app will use local storage only');
+          console.info('[Setup] Tables missing - run: migrations/003_reset_and_fix_schema.sql');
         }
       } else {
-        console.log('[Supabase] ✅ Session saved successfully');
+        console.log('[Supabase] ✅ Session saved successfully:', response.data);
       }
     } catch (error) {
-      console.warn('[Supabase] Error saving session:', error instanceof Error ? error.message : String(error));
+      console.error('[Supabase] Error saving session:', error instanceof Error ? error.message : String(error));
     }
+  } else if (!clerkUserId) {
+    console.warn('[Session] No clerkUserId provided - session will only be saved locally');
   }
   
   return sessionId;
@@ -197,8 +194,11 @@ export async function updateSession(
     }
   }
   
-  // Try to update Supabase (skip if not configured)
-  if (!isSupabaseConfigured) {
+  // Try to update Supabase (skip if not configured or no user)
+  if (!isSupabaseConfigured || !clerkUserId) {
+    if (!clerkUserId) {
+      console.warn('[Session] No clerkUserId - skipping Supabase update');
+    }
     return;
   }
   
@@ -208,31 +208,26 @@ export async function updateSession(
     };
     if (updates.emotionsDetected) {
       updateData.emotions_detected = updates.emotionsDetected;
+      // Set primary emotion as the most recent one
+      if (updates.emotionsDetected.length > 0) {
+        updateData.primary_emotion = updates.emotionsDetected[updates.emotionsDetected.length - 1];
+      }
     }
     if (updates.quizScore !== undefined) {
       updateData.quiz_score = updates.quizScore;
     }
-
-    const userPayload: Record<string, unknown> = {};
-    if (clerkUserId) {
-      if (clerkUserId.startsWith('user_')) {
-        userPayload.clerk_user_id = clerkUserId;
-      } else {
-        userPayload.user_id = clerkUserId;
-      }
-    }
     
     const topicName = getLocalSessionTopicName(sessionId) || 'General Learning';
 
-    console.log('[Supabase] Updating session:', { sessionId, updates });
-    // Use upsert to avoid client-side PATCH requests that can be blocked by CORS.
-    // learning_sessions.topic_name is NOT NULL, so provide it.
+    console.log('[Supabase] Updating session:', { sessionId, clerkUserId, updates: Object.keys(updateData) });
+    
+    // Use upsert with clerk_user_id to ensure proper user association
     const response = await supabase
       .from('learning_sessions')
       .upsert(
         {
           session_id: sessionId,
-          ...userPayload,
+          clerk_user_id: clerkUserId,
           topic_name: topicName,
           ...updateData,
           updated_at: new Date().toISOString(),
@@ -241,12 +236,12 @@ export async function updateSession(
       );
     
     if (response.error) {
-      console.warn('[Supabase] Error updating session:', response.error.message);
+      console.error('[Supabase] Error updating session:', response.error.message);
     } else {
       console.log('[Supabase] ✅ Session updated successfully');
     }
   } catch (error) {
-    console.warn('[Supabase] Could not update session:', error instanceof Error ? error.message : String(error));
+    console.error('[Supabase] Could not update session:', error instanceof Error ? error.message : String(error));
   }
 }
 
@@ -305,15 +300,22 @@ export async function endSession(sessionId: string, userId?: string): Promise<vo
     }
   }
   
-  // Update Supabase (skip if not configured)
-  if (!isSupabaseConfigured) {
+  // Update Supabase (skip if not configured or no user)
+  if (!isSupabaseConfigured || !userId) {
+    if (!userId) {
+      console.warn('[Session] No userId provided - skipping Supabase end session');
+    }
     return;
   }
   
   try {
-    // Compute duration from localStorage if possible (avoids needing a server read)
+    // Compute duration and get session data from localStorage
     let durationMinutes: number | null = null;
-    let topicName = getLocalSessionTopicName(sessionId) || 'General Learning';
+    let topicName = 'General Learning';
+    let primaryEmotion: string | null = null;
+    let totalMessages = 0;
+    let quizScore: number | null = null;
+    
     if (typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem(STORAGE_KEYS.CURRENT_SESSION);
@@ -323,6 +325,9 @@ export async function endSession(sessionId: string, userId?: string): Promise<vo
             const startTime = new Date(localSession.startedAt);
             durationMinutes = Math.round((endTime.getTime() - startTime.getTime()) / 60000);
             topicName = localSession.topicName || topicName;
+            primaryEmotion = localSession.emotionsDetected?.[localSession.emotionsDetected.length - 1] || null;
+            totalMessages = localSession.messages?.length || 0;
+            quizScore = localSession.quizScore || null;
           }
         }
       } catch {
@@ -345,35 +350,37 @@ export async function endSession(sessionId: string, userId?: string): Promise<vo
       }
     }
 
-    // Prepare user ID payload
-    const userPayload: Record<string, unknown> = {};
-    if (userId) {
-      if (userId.startsWith('user_')) {
-        userPayload.clerk_user_id = userId;
-      } else {
-        userPayload.user_id = userId;
-      }
+    console.log('[Supabase] Ending session:', { sessionId, userId, durationMinutes, topicName });
+
+    // Build upsert data with clerk_user_id
+    const upsertData: Record<string, unknown> = {
+      session_id: sessionId,
+      topic_name: topicName,
+      clerk_user_id: userId,
+      ended_at: endTime.toISOString(),
+      duration_minutes: durationMinutes ?? null,
+      total_messages: totalMessages,
+      updated_at: new Date().toISOString(),
+    };
+    
+    if (primaryEmotion) {
+      upsertData.primary_emotion = primaryEmotion;
+    }
+    if (quizScore !== null) {
+      upsertData.quiz_score = quizScore;
     }
 
     const response = await supabase
       .from('learning_sessions')
-      .upsert(
-        {
-          session_id: sessionId,
-          topic_name: topicName,
-          ...userPayload,
-          ended_at: endTime.toISOString(),
-          duration_minutes: durationMinutes ?? null,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'session_id' }
-      );
+      .upsert(upsertData, { onConflict: 'session_id' });
 
     if (response.error) {
-      console.warn('Error updating session end time in Supabase:', response.error.message);
+      console.error('[Supabase] Error ending session:', response.error.message);
+    } else {
+      console.log('[Supabase] ✅ Session ended successfully');
     }
   } catch (error) {
-    console.warn('Error ending session in Supabase:', error instanceof Error ? error.message : String(error));
+    console.error('[Supabase] Error ending session:', error instanceof Error ? error.message : String(error));
   }
 }
 
@@ -590,31 +597,34 @@ export async function saveMessage(
   message: { role: 'user' | 'assistant'; content: string; emotion?: string },
   clerkUserId?: string
 ): Promise<void> {
+  // Skip if no user ID
+  if (!clerkUserId) {
+    console.warn('[Message] No clerkUserId - skipping Supabase save');
+    return;
+  }
+  
   // Try Supabase
   try {
     if (isSupabaseConfigured) {
-      const insertData: Record<string, any> = {
+      const insertData = {
         session_id: sessionId,
         role: message.role,
         content: message.content,
         emotion: message.emotion || null,
+        clerk_user_id: clerkUserId,
+        timestamp: new Date().toISOString(),
       };
       
-      // Add the appropriate user ID field based on format
-      if (clerkUserId && clerkUserId.startsWith('user_')) {
-        // Clerk user ID format
-        insertData.clerk_user_id = clerkUserId;
-      } else if (clerkUserId) {
-        // UUID format
-        insertData.user_id = clerkUserId;
-      }
-      
-      await supabase
+      const { error } = await supabase
         .from('conversation_messages')
         .insert(insertData);
+        
+      if (error) {
+        console.error('[Message] Error saving to Supabase:', error.message);
+      }
     }
   } catch (error) {
-    console.warn('Could not save message to Supabase:', error);
+    console.error('[Message] Could not save message to Supabase:', error);
   }
 }
 

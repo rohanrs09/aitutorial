@@ -96,8 +96,11 @@ function calculatePercentageChange(current: number, previous: number): number {
 export async function fetchDashboardData(
   userId: string | null
 ): Promise<DashboardData> {
+  console.log('[Dashboard] Fetching data for user:', userId);
+  
   // If Supabase not configured or no user, return empty state
   if (!isSupabaseConfigured || !userId) {
+    console.warn('[Dashboard] Supabase not configured or no userId provided');
     return {
       stats: {
         totalSessions: 0,
@@ -117,8 +120,9 @@ export async function fetchDashboardData(
   }
 
   try {
-    // Determine user ID column (Clerk vs UUID)
-    const userIdColumn = userId.startsWith('user_') ? 'clerk_user_id' : 'user_id';
+    // Always use clerk_user_id for Clerk authentication
+    const userIdColumn = 'clerk_user_id';
+    console.log('[Dashboard] Using column:', userIdColumn, 'for user:', userId);
 
     // Fetch all data in parallel for performance
     const [
@@ -138,6 +142,9 @@ export async function fetchDashboardData(
       fetchRecentSessions(userId, userIdColumn, 5),
       fetchTopicProgress(userId, userIdColumn),
     ]);
+    
+    console.log('[Dashboard] Fetched stats:', statsResult);
+    console.log('[Dashboard] Recent sessions count:', recentResult.length);
 
     // Calculate progress percentages
     const weeklyProgress = calculatePercentageChange(

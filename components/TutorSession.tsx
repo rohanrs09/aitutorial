@@ -1495,13 +1495,13 @@ The student is confused about THIS SPECIFIC LECTURE. Explain it simply!
                               No Course Selected
                             </h2>
                             <p className="text-gray-500 text-sm sm:text-base mb-6">
-                              Please access AI Tutor from a course page. Go to a course and click "Need Help?" to get started.
+                              Please access AI Tutor from a course page. Go to a course and click Need Help to get started.
                             </p>
                             <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-left">
                               <p className="text-sm text-gray-700 font-medium mb-2">How to use:</p>
                               <ol className="text-sm text-gray-600 list-decimal list-inside space-y-1">
                                 <li>Navigate to a course page</li>
-                                <li>Click "Need Help with AI Tutor" button</li>
+                                <li>Click the Need Help with AI Tutor button</li>
                                 <li>Start asking questions about the lecture</li>
                               </ol>
                             </div>
@@ -1748,13 +1748,45 @@ The student is confused about THIS SPECIFIC LECTURE. Explain it simply!
             </button>
           </div>
 
-          {/* Center - Voice Input (Always) */}
-          <div className="flex-1 max-w-sm sm:max-w-md">
-            <SpacebarVoiceInput
-              onTranscript={handleTranscript}
-              isProcessing={isProcessing}
-              disabled={isSpeaking}
-            />
+          {/* Center - Voice + Text Input */}
+          <div className="flex-1 max-w-sm sm:max-w-lg flex items-center gap-2">
+            {/* Text Input */}
+            <form onSubmit={handleTextSubmit} className="flex-1 flex items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  ref={textInputRef}
+                  type="text"
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
+                  placeholder="Type your question..."
+                  disabled={isProcessing || isSpeaking}
+                  className="w-full px-4 py-2.5 bg-surface-light border border-white/10 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleTextSubmit();
+                    }
+                  }}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={!textInput.trim() || isProcessing || isSpeaking}
+                className="p-2.5 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-700 disabled:opacity-50 text-white rounded-xl transition-all disabled:cursor-not-allowed"
+                title="Send message"
+              >
+                <Send size={18} />
+              </button>
+            </form>
+            
+            {/* Voice Input */}
+            <div className="flex-shrink-0">
+              <SpacebarVoiceInput
+                onTranscript={handleTranscript}
+                isProcessing={isProcessing}
+                disabled={isSpeaking}
+              />
+            </div>
           </div>
 
           {/* Right Controls */}

@@ -1,28 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Check if Gemini API key is configured
+const isGeminiConfigured = () => {
+  return !!process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your-gemini-api-key-here';
+};
 
-// Check if OpenAI API key is configured
-const isOpenAIConfigured = () => {
-  return !!process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'sk-your-openai-api-key-here';
+// Initialize Gemini client
+const getGeminiClient = () => {
+  if (!isGeminiConfigured()) return null;
+  return new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 };
 
 export async function POST(request: NextRequest) {
   try {
     console.log('[Emotion Vision] Request received');
     
-    // If API key not configured, return neutral emotion fallback
-    if (!isOpenAIConfigured()) {
-      console.warn('[Emotion Vision] OpenAI API key not configured - using fallback');
+    // If Gemini API key not configured, return neutral emotion fallback
+    if (!isGeminiConfigured()) {
+      console.warn('[Emotion Vision] Gemini API key not configured - using fallback');
       return NextResponse.json({
         success: true,
         emotion: 'neutral',
         confidence: 0.5,
         fallback: true,
-        message: 'Emotion detection unavailable - API key not configured'
+        message: 'Emotion detection unavailable - Gemini API key not configured'
       });
     }
 
@@ -37,63 +39,63 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    console.log('[Emotion Vision] Analyzing image with OpenAI Vision...');
+    console.log('[Emotion Vision] Analyzing image with Gemini Vision...');
 
-    // Use OpenAI Vision to analyze facial expressions
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an advanced emotion detection assistant specialized in learning contexts. Analyze facial expressions with attention to subtle cues.
-          
-          Return ONLY a JSON object: {"emotion": "one_word_emotion", "confidence": 0.0-1.0, "indicators": ["cue1", "cue2"]}
-          
-          Valid emotions: neutral, confused, frustrated, happy, concentrating, engaged, bored, curious, excited, tired, stressed
-          
-          DETAILED ANALYSIS CRITERIA:
-          
-          **Confused**: Furrowed brow, squinting eyes, tilted head, pursed lips
-          **Frustrated**: Tight jaw, furrowed brow, tense face, downturned mouth
-          **Engaged**: Slight forward lean, focused eyes, relaxed but attentive face
-          **Bored**: Drooping eyelids, slack jaw, unfocused gaze, head resting on hand
-          **Tired**: Heavy eyelids, yawning, rubbing eyes, slouched posture
-          **Stressed**: Tense facial muscles, rapid blinking, tight lips, shallow breathing
-          **Concentrating**: Narrowed eyes, slight frown, focused gaze, minimal movement
-          **Curious**: Raised eyebrows, wide eyes, slight smile, head tilt
-          **Excited**: Wide eyes, big smile, raised eyebrows, animated expression
-          
-          CONFIDENCE GUIDELINES:
-          - 0.9-1.0: Very clear, multiple strong indicators
-          - 0.7-0.9: Clear emotion with 2-3 indicators
-          - 0.5-0.7: Moderate indicators, some ambiguity
-          - 0.3-0.5: Weak indicators, high uncertainty
-          - 0.0-0.3: Very unclear, default to neutral
-          
-          If face unclear or emotion ambiguous, return neutral with appropriate confidence.`
+    const genAI = getGeminiClient();
+    if (!genAI) {
+      return NextResponse.json({
+        success: true,
+        emotion: 'neutral',
+        confidence: 0.5,
+        fallback: true,
+      });
+    }
+
+    // Use Gemini Vision to analyze facial expressions
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    
+    // Extract base64 data from data URL
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+    
+    const prompt = `You are an advanced emotion detection assistant specialized in learning contexts. Analyze this person's facial expression.
+
+Return ONLY a JSON object: {"emotion": "one_word_emotion", "confidence": 0.0-1.0, "indicators": ["cue1", "cue2"]}
+
+Valid emotions: neutral, confused, frustrated, happy, concentrating, engaged, bored, curious, excited, tired, stressed
+
+DETAILED ANALYSIS CRITERIA:
+- Confused: Furrowed brow, squinting eyes, tilted head, pursed lips
+- Frustrated: Tight jaw, furrowed brow, tense face, downturned mouth
+- Engaged: Slight forward lean, focused eyes, relaxed but attentive face
+- Bored: Drooping eyelids, slack jaw, unfocused gaze, head resting on hand
+- Tired: Heavy eyelids, yawning, rubbing eyes, slouched posture
+- Stressed: Tense facial muscles, rapid blinking, tight lips
+- Concentrating: Narrowed eyes, slight frown, focused gaze
+- Curious: Raised eyebrows, wide eyes, slight smile, head tilt
+- Excited: Wide eyes, big smile, raised eyebrows
+
+CONFIDENCE GUIDELINES:
+- 0.9-1.0: Very clear, multiple strong indicators
+- 0.7-0.9: Clear emotion with 2-3 indicators
+- 0.5-0.7: Moderate indicators, some ambiguity
+- 0.3-0.5: Weak indicators, high uncertainty
+- 0.0-0.3: Very unclear, default to neutral
+
+If face unclear or emotion ambiguous, return neutral with appropriate confidence.`;
+
+    const result = await model.generateContent([
+      prompt,
+      {
+        inlineData: {
+          mimeType: 'image/jpeg',
+          data: base64Data,
         },
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: 'Analyze this person\'s facial expression and determine their emotional state for a learning context.'
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: image,
-                detail: 'low'
-              }
-            }
-          ]
-        }
-      ],
-      max_tokens: 100,
-      temperature: 0.3,
-    });
+      },
+    ]);
 
-    const content = response.choices[0]?.message?.content || '';
+    const response = await result.response;
+
+    const content = response.text() || '';
     console.log('[Emotion Vision] Raw response:', content);
     
     // Parse the JSON response

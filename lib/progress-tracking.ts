@@ -131,14 +131,9 @@ export async function saveProgress(
     last_accessed_at: new Date().toISOString(),
   };
   
-  // Add the appropriate user ID field based on format
-  if (userId.startsWith('user_')) {
-    // Clerk user ID format
-    upsertData.clerk_user_id = userId;
-  } else {
-    // UUID format
-    upsertData.user_id = userId;
-  }
+  // Always use clerk_user_id for consistent user scoping
+  upsertData.clerk_user_id = userId;
+  console.log('[Progress] Saving progress for user:', userId, 'session:', sessionId);
   
   try {
     const { data, error } = await supabase
@@ -216,25 +211,14 @@ export async function getUserLearningHistory(userId: string) {
   }
 
   try {
-    // Check if userId is a UUID or Clerk user ID format
-    let query;
-    if (userId.startsWith('user_')) {
-      // Clerk user ID format - use clerk_user_id column
-      query = supabase
-        .from('learning_progress')
-        .select('*')
-        .eq('clerk_user_id', userId)
-        .order('last_accessed_at', { ascending: false });
-    } else {
-      // UUID format - use user_id column
-      query = supabase
-        .from('learning_progress')
-        .select('*')
-        .eq('user_id', userId)
-        .order('last_accessed_at', { ascending: false });
-    }
+    // Always use clerk_user_id for consistent user scoping
+    console.log('[Progress] Loading history for user:', userId);
     
-    const { data, error } = await query;
+    const { data, error } = await supabase
+      .from('learning_progress')
+      .select('*')
+      .eq('clerk_user_id', userId)
+      .order('last_accessed_at', { ascending: false });
 
     if (error) {
       const errorMsg = error?.message || JSON.stringify(error) || 'Failed to load history';

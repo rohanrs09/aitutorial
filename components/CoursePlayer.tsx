@@ -288,17 +288,17 @@ export default function CoursePlayer({
         <div className="flex-1 overflow-y-auto">
           <div className="px-6 lg:px-8 py-5 border-b border-white/5">
             {/* Title & Help Button */}
-            <div className="flex items-start justify-between gap-4 mb-5">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-5">
               <div className="flex-1 min-w-0">
-                <h2 className="text-lg lg:text-xl font-semibold text-white mb-1.5 leading-snug">
+                <h2 className="text-base sm:text-lg lg:text-xl font-semibold text-white mb-1 sm:mb-1.5 leading-snug">
                   {currentLecture?.title || 'Select a lecture'}
                 </h2>
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <span>{currentSection?.title}</span>
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500">
+                  <span className="truncate">{currentSection?.title}</span>
                   {currentLecture?.duration && (
                     <>
                       <span className="text-gray-700">•</span>
-                      <span>{currentLecture.duration}</span>
+                      <span className="flex-shrink-0">{currentLecture.duration}</span>
                     </>
                   )}
                 </div>
@@ -308,11 +308,11 @@ export default function CoursePlayer({
               <button
                 onClick={() => currentLecture && currentSection && onRequestHelp?.(currentLecture, currentSection)}
                 disabled={!currentLecture}
-                className="flex items-center justify-center gap-2 px-4 sm:px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 disabled:from-gray-700 disabled:to-gray-700 disabled:opacity-50 text-white rounded-xl font-semibold text-sm sm:text-base transition-all shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40 hover:scale-105 active:scale-95 w-full sm:w-auto"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 disabled:from-gray-700 disabled:to-gray-700 disabled:opacity-50 text-white rounded-xl font-semibold text-sm transition-all shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40 hover:scale-105 active:scale-95 flex-shrink-0"
                 title="Get AI help with this lecture"
               >
-                <HelpCircle size={18} />
-                <span>Need Help with AI Tutor</span>
+                <HelpCircle size={16} className="sm:w-[18px] sm:h-[18px]" />
+                <span className="whitespace-nowrap">Need Help</span>
               </button>
             </div>
 
@@ -333,20 +333,20 @@ export default function CoursePlayer({
             </div>
 
             {/* Navigation Controls */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={goToPreviousLecture}
                 disabled={!canGoPrevious()}
-                className="flex items-center gap-1.5 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-sm font-medium"
+                className="flex items-center gap-1 px-3 py-2 sm:px-4 sm:py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-xs sm:text-sm font-medium"
               >
-                <ChevronLeft size={16} />
-                <span className="hidden sm:inline">Previous</span>
+                <ChevronLeft size={14} className="sm:w-4 sm:h-4" />
+                <span className="hidden xs:inline">Prev</span>
               </button>
 
               {currentLecture && (
                 <button
                   onClick={() => onToggleComplete?.(currentLecture.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-colors text-sm font-medium ${
+                  className={`flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg transition-colors text-xs sm:text-sm font-medium ${
                     isLectureCompleted(currentLecture.id)
                       ? 'bg-green-500/15 text-green-400'
                       : 'bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white'
@@ -354,13 +354,13 @@ export default function CoursePlayer({
                 >
                   {isLectureCompleted(currentLecture.id) ? (
                     <>
-                      <CheckCircle2 size={16} />
-                      <span className="hidden sm:inline">Completed</span>
+                      <CheckCircle2 size={14} className="sm:w-4 sm:h-4" />
+                      <span>Done</span>
                     </>
                   ) : (
                     <>
-                      <Circle size={16} />
-                      <span className="hidden sm:inline">Mark Complete</span>
+                      <Circle size={14} className="sm:w-4 sm:h-4" />
+                      <span>Complete</span>
                     </>
                   )}
                 </button>
@@ -369,10 +369,10 @@ export default function CoursePlayer({
               <button
                 onClick={goToNextLecture}
                 disabled={!canGoNext()}
-                className="flex items-center gap-1.5 px-4 py-2.5 bg-primary-500 hover:bg-primary-400 text-white rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed ml-auto text-sm font-medium"
+                className="flex items-center gap-1 px-3 py-2 sm:px-4 sm:py-2.5 bg-primary-500 hover:bg-primary-400 text-white rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed ml-auto text-xs sm:text-sm font-medium"
               >
-                <span className="hidden sm:inline">Next</span>
-                <ChevronRight size={16} />
+                <span className="hidden xs:inline">Next</span>
+                <ChevronRight size={14} className="sm:w-4 sm:h-4" />
               </button>
             </div>
           </div>
@@ -395,9 +395,9 @@ export default function CoursePlayer({
                   <HelpCircle size={18} className="text-purple-400" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-white mb-1">Didn't understand something?</h4>
+                  <h4 className="text-sm font-medium text-white mb-1">Need clarification?</h4>
                   <p className="text-xs text-gray-500 leading-relaxed">
-                    Click <strong className="text-purple-400">"Need Help?"</strong> and the AI tutor will explain this topic in simpler terms with examples and step-by-step breakdown.
+                    Click <strong className="text-purple-400">Need Help</strong> and the AI tutor will explain this topic in simpler terms with examples and step-by-step breakdown.
                   </p>
                 </div>
               </div>

@@ -47,17 +47,32 @@ export function DashboardHeader({
           </div>
 
           {/* Right: Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Button
               variant="ghost"
               size="sm"
               onClick={onRefresh}
               disabled={isRefreshing}
+              className="hidden sm:flex"
             >
               <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
-              <span className="hidden sm:inline ml-2">Refresh</span>
+              <span className="ml-2">Refresh</span>
             </Button>
-            <Separator orientation="vertical" className="h-6" />
+            <a href="/#pricing" className="hidden sm:block">
+              <Button variant="ghost" size="sm">
+                Pricing
+              </Button>
+            </a>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              className="sm:hidden"
+            >
+              <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+            </Button>
+            <Separator orientation="vertical" className="h-6 hidden sm:block" />
             {userButton}
           </div>
         </div>
