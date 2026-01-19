@@ -13,7 +13,11 @@ import {
   AlertCircle,
   Sparkles
 } from 'lucide-react';
-import MermaidDiagram from './MermaidDiagram';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+// import MermaidDiagram from './MermaidDiagram';
 
 export interface LearningSlide {
   id: string;
@@ -136,19 +140,23 @@ export default function LearningSlidePanel({
   }, [currentSlideIndex]);
 
   // SYNCHRONIZATION FIX: Stop audio when manually changing slides
-  const handlePrevSlide = () => {
+  const handlePrevSlide = useCallback(() => {
     if (currentSlideIndex > 0) {
+      console.log('[Slides] Previous button clicked, moving to:', currentSlideIndex - 1);
       onSlideChange(currentSlideIndex - 1);
-      // Audio will be stopped in parent component (TutorSession)
+      setSelectedAnswer(null);
+      setShowQuizResult(false);
     }
-  };
+  }, [currentSlideIndex, onSlideChange]);
 
-  const handleNextSlide = () => {
+  const handleNextSlide = useCallback(() => {
     if (currentSlideIndex < slides.length - 1) {
+      console.log('[Slides] Next button clicked, moving to:', currentSlideIndex + 1);
       onSlideChange(currentSlideIndex + 1);
-      // Audio will be stopped in parent component (TutorSession)
+      setSelectedAnswer(null);
+      setShowQuizResult(false);
     }
-  };
+  }, [currentSlideIndex, slides.length, onSlideChange]);
 
   const handleQuizAnswer = (answerIndex: number) => {
     setSelectedAnswer(answerIndex);
@@ -181,9 +189,11 @@ export default function LearningSlidePanel({
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-4 sm:mt-6 p-3 sm:p-4 bg-white/80 rounded-lg sm:rounded-xl max-w-lg"
+            className="mt-4 sm:mt-6 p-3 sm:p-4 bg-white/80 rounded-lg sm:rounded-xl max-w-lg prose prose-sm max-w-none"
           >
-            <p className="text-sm sm:text-base text-gray-700 italic">&ldquo;{tutorMessage}&rdquo;</p>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {tutorMessage}
+            </ReactMarkdown>
           </motion.div>
         )}
       </div>
@@ -237,24 +247,75 @@ export default function LearningSlidePanel({
       </div>
 
       {/* Slide content */}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 scrollbar-hide">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 scrollbar-hide">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentSlide?.id}
+            className="max-w-4xl mx-auto"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.3 }}
           >
-            {/* Title */}
-            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800 mb-3 sm:mb-4">
-              {currentSlide?.title}
-            </h2>
+            {/* Title with audio progress */}
+            <div className="mb-3 sm:mb-4">
+              <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800 mb-2">
+                {currentSlide?.title}
+              </h2>
+              
+              {/* Audio progress indicator */}
+              {isAudioPlaying && currentSlide?.audioStartTime && currentSlide?.audioDuration && (
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <div className="flex-1 bg-gray-200 rounded-full h-1.5">
+                    <div 
+                      className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                      style={{
+                        width: `${Math.min(100, Math.max(0, ((audioCurrentTime - (currentSlide.audioStartTime || 0)) / (currentSlide.audioDuration || 1)) * 100))}%`
+                      }}
+                    />
+                  </div>
+                  <span className="whitespace-nowrap">
+                    {Math.floor(audioCurrentTime - (currentSlide.audioStartTime || 0))}s / {Math.floor(currentSlide.audioDuration || 0)}s
+                  </span>
+                </div>
+              )}
+            </div>
 
             {/* Main content */}
-            <p className="text-sm sm:text-base md:text-lg text-gray-700 leading-relaxed mb-4 sm:mb-6">
-              {currentSlide?.content}
-            </p>
+            <div className="text-sm sm:text-base md:text-lg text-gray-700 leading-relaxed mb-4 sm:mb-6 prose prose-sm max-w-none">
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  code({node, className, children, ...props}: any) {
+                    const match = /language-(\w+)/.exec(className || '');
+                    const language = match ? match[1] : '';
+                    const isInline = className?.includes('inline');
+                    
+                    if (!isInline && language) {
+                      return (
+                        <SyntaxHighlighter
+                          style={oneDark as any}
+                          language={language}
+                          PreTag="div"
+                          className="rounded-lg text-sm"
+                          {...props}
+                        >
+                          {String(children).replace(/\n$/, '')}
+                        </SyntaxHighlighter>
+                      );
+                    }
+                    
+                    return (
+                      <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono" {...props}>
+                        {children}
+                      </code>
+                    );
+                  }
+                }}
+              >
+                {currentSlide?.content || ''}
+              </ReactMarkdown>
+            </div>
 
             {/* Key points */}
             {currentSlide?.keyPoints && currentSlide.keyPoints.length > 0 && (
@@ -287,12 +348,45 @@ export default function LearningSlidePanel({
                   <Lightbulb size={16} className="sm:w-[18px] sm:h-[18px]" />
                   Example
                 </h4>
-                <p className="text-xs sm:text-sm md:text-base text-green-800">{currentSlide.example}</p>
+                <div className="text-xs sm:text-sm md:text-base text-green-800 prose prose-sm max-w-none">
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      code({node, className, children, ...props}: any) {
+                        const match = /language-(\w+)/.exec(className || '');
+                        const language = match ? match[1] : '';
+                        const isInline = className?.includes('inline');
+                        
+                        if (!isInline && language) {
+                          return (
+                            <SyntaxHighlighter
+                              style={oneDark as any}
+                              language={language}
+                              PreTag="div"
+                              className="rounded-lg text-sm"
+                              {...props}
+                            >
+                              {String(children).replace(/\n$/, '')}
+                            </SyntaxHighlighter>
+                          );
+                        }
+                        
+                        return (
+                          <code className="bg-green-100 px-1 py-0.5 rounded text-sm font-mono" {...props}>
+                            {children}
+                          </code>
+                        );
+                      }
+                    }}
+                  >
+                    {currentSlide.example}
+                  </ReactMarkdown>
+                </div>
               </div>
             )}
 
             {/* Visual Aid / Diagram */}
-            {currentSlide?.visualAid && (
+            {/* {currentSlide?.visualAid && (
               <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl border border-gray-200 overflow-x-auto">
                 {currentSlide.visualAid.type === 'mermaid' || currentSlide.visualAid.type === 'flowchart' ? (
                   <MermaidDiagram code={currentSlide.visualAid.data} />
@@ -302,7 +396,7 @@ export default function LearningSlidePanel({
                   </div>
                 )}
               </div>
-            )}
+            )} */}
 
             {/* Quiz */}
             {currentSlide?.quiz && (
