@@ -11,6 +11,7 @@ import AnimatedTutorOrb from '@/components/AnimatedTutorOrb';
 import SpacebarVoiceInput from '@/components/SpacebarVoiceInput';
 import LiveTranscript from '@/components/LiveTranscript';
 import EmotionCameraWidget from '@/components/EmotionCameraWidget';
+import EmotionConfirmation from '@/components/EmotionConfirmation';
 import NotesPanel from '@/components/NotesPanel';
 import LearningSlidePanel, { LearningSlide } from '@/components/LearningSlidePanel';
 import LearningProgressTracker from '@/components/LearningProgressTracker';
@@ -106,6 +107,14 @@ export default function TutorSession() {
   const [currentEmotion, setCurrentEmotion] = useState<string>('neutral');
   const [emotionConfidence, setEmotionConfidence] = useState(0);
   
+  // Emotion confirmation state
+  const [showEmotionConfirmation, setShowEmotionConfirmation] = useState(false);
+  const [pendingEmotionAction, setPendingEmotionAction] = useState<{
+    emotion: string;
+    confidence: number;
+    action: () => void;
+  } | null>(null);
+  
   // Notes
   const [notes, setNotes] = useState<Note[]>([]);
   
@@ -141,12 +150,57 @@ export default function TutorSession() {
     };
   }, []);
 
+  // CRITICAL: Auto-advance slides based on audio timing
+  useEffect(() => {
+    if (!audioRef.current || !learningSlides.length) return;
+
+    const audio = audioRef.current;
+    const currentSlide = learningSlides[currentSlideIndex];
+    
+    if (!currentSlide?.audioStartTime || !currentSlide?.audioDuration) {
+      return;
+    }
+
+    const checkSlideTiming = () => {
+      const currentTime = audio.currentTime;
+      const slideStart = currentSlide.audioStartTime || 0;
+      const slideEnd = slideStart + (currentSlide.audioDuration || 0);
+      
+      // Check if we should advance to next slide
+      if (currentTime >= slideEnd && currentSlideIndex < learningSlides.length - 1) {
+        console.log('[Audio Sync] Auto-advancing to next slide at:', currentTime);
+        setCurrentSlideIndex(prev => prev + 1);
+      }
+    };
+
+    const interval = setInterval(checkSlideTiming, 100);
+    
+    return () => clearInterval(interval);
+  }, [currentSlideIndex, learningSlides]);
+
+  // Update audio current time for slide synchronization
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const updateTime = () => {
+      setAudioCurrentTime(audio.currentTime);
+    };
+
+    audio.addEventListener('timeupdate', updateTime);
+    
+    return () => {
+      audio.removeEventListener('timeupdate', updateTime);
+    };
+  }, [audioUrl]);
+
   // CRITICAL: Stop audio when slide changes (SYNCHRONIZATION FIX)
   useEffect(() => {
     if (audioRef.current && !audioRef.current.paused) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
       setIsSpeaking(false);
+      setAudioCurrentTime(0);
       console.log('[Audio Sync] Stopped audio on slide change');
     }
   }, [currentSlideIndex]);
@@ -194,8 +248,8 @@ export default function TutorSession() {
             setWelcomeMessageToSpeak(welcomeMsg);
             setShowQuickPrompts(true); // Show quick prompts for easy learning
             
-            // Clear context from storage (but keep in state)
-            sessionStorage.removeItem('helpContext');
+            // Keep context in storage for session persistence
+            // sessionStorage.removeItem('helpContext');
           }
         } catch (e) {
           console.error('Failed to parse help context:', e);
@@ -817,21 +871,12 @@ Reference specific concepts from this lecture and help clarify any confusion abo
           
           // Reset time tracking when audio starts
           audioRef.current.onplay = () => {
-            setAudioCurrentTime(0);
             setIsSpeaking(true);
-          };
-          
-          // Update time tracking during playback
-          audioRef.current.ontimeupdate = () => {
-            if (audioRef.current) {
-              setAudioCurrentTime(audioRef.current.currentTime);
-            }
           };
           
           // Clean up when finished
           audioRef.current.onended = () => {
             setIsSpeaking(false);
-            setAudioCurrentTime(0);
           };
           
           // Try to play immediately if possible
@@ -1022,6 +1067,13 @@ The student is confused about THIS SPECIFIC LECTURE. Explain it simply!
   const handleEmotionDetected = useCallback((emotion: string, confidence: number) => {
     const now = Date.now();
     
+    // Only process valid emotions
+    const validEmotions = ['neutral', 'confused', 'frustrated', 'confident'];
+    if (!validEmotions.includes(emotion)) {
+      console.warn('[Emotion] Invalid emotion received:', emotion);
+      return;
+    }
+    
     // Add to emotion history and calculate smoothed emotion
     setEmotionHistory(prev => {
       const updated = [...prev, { emotion, confidence, time: now }]
@@ -1072,42 +1124,56 @@ The student is confused about THIS SPECIFIC LECTURE. Explain it simply!
         timeSinceLastAction: Math.floor(timeSinceLastAction / 1000) + 's'
       });
 
-      // High confidence confusion/frustration - AUTO-GENERATE SIMPLIFIED SLIDES
+      // EMOTION CONFIRMATION: Ask user before triggering help
       if ((dominantEmotion === 'confused' || dominantEmotion === 'frustrated') && 
-          smoothedConfidence > 0.7 && canTakeAction && !isProcessing && !isSessionPaused) {
+          smoothedConfidence > 0.5 && canTakeAction && !isProcessing && !isSessionPaused) {
+        
         lastConfusionActionRef.current = now;
-        const helpMessage = dominantEmotion === 'confused'
-          ? "I see you're confused. Generating visual slides with audio explanation..."
-          : "This seems challenging. Creating simplified slides with audio...";
-        console.log('[Emotion] 🎯 HIGH confidence trigger:', dominantEmotion, smoothedConfidence);
-        setGuidanceMessage(helpMessage);
-        setTimeout(() => {
-          if (!isProcessing && !isSessionPaused) {
-            console.log('[Emotion] ✅ Executing auto-simplify for high confidence');
-            handleAutoSimplify(dominantEmotion);
+        console.log('[Emotion] 🎯 Showing confirmation for:', dominantEmotion, smoothedConfidence);
+        
+        // Set up confirmation dialog
+        setPendingEmotionAction({
+          emotion: dominantEmotion,
+          confidence: smoothedConfidence,
+          action: () => {
+            const helpMessage = dominantEmotion === 'confused'
+              ? "Generating simplified slides with audio explanation..."
+              : "Creating simplified slides with audio to help you understand...";
+            
+            setGuidanceMessage(helpMessage);
+            setTimeout(() => {
+              if (!isProcessing && !isSessionPaused) {
+                console.log('[Emotion] ✅ User confirmed - executing help action');
+                handleAutoSimplify(dominantEmotion);
+              }
+            }, 1000);
           }
-        }, 1500);
-      } else if ((dominantEmotion === 'confused' || dominantEmotion === 'frustrated') && 
-                 smoothedConfidence > 0.5 && canTakeAction && !isProcessing) {
-        // Medium confidence - show guidance and auto-generate
-        lastConfusionActionRef.current = now;
-        console.log('[Emotion] 📊 MEDIUM confidence trigger:', dominantEmotion, smoothedConfidence);
-        setGuidanceMessage(
-          dominantEmotion === 'confused'
-            ? "I can help! Generating visual slides with audio explanation..."
-            : "Let me create simplified slides with audio to help you understand."
-        );
-        setTimeout(() => {
-          if (!isProcessing && !isSessionPaused) {
-            console.log('[Emotion] ✅ Executing auto-simplify for medium confidence');
-            handleAutoSimplify(dominantEmotion);
-          }
-        }, 3000);
+        });
+        
+        setShowEmotionConfirmation(true);
       }
 
       return updated;
     });
   }, [isProcessing, isSessionPaused, handleAutoSimplify]);
+
+  // Handle emotion confirmation
+  const handleEmotionConfirm = useCallback(() => {
+    if (pendingEmotionAction) {
+      console.log('[Emotion] User confirmed help action');
+      pendingEmotionAction.action();
+      setPendingEmotionAction(null);
+      setShowEmotionConfirmation(false);
+    }
+  }, [pendingEmotionAction]);
+
+  // Handle emotion dismissal
+  const handleEmotionDismiss = useCallback(() => {
+    console.log('[Emotion] User dismissed help suggestion');
+    setPendingEmotionAction(null);
+    setShowEmotionConfirmation(false);
+    setGuidanceMessage("Let me know if you need help understanding anything!");
+  }, []);
 
   // Request simplified content
   const handleRequestSimplification = async () => {
@@ -1195,6 +1261,15 @@ The student is confused about THIS SPECIFIC LECTURE. Explain it simply!
 
   return (
     <div className="min-h-screen bg-surface flex flex-col safe-area-inset">
+      {/* Emotion Confirmation Modal */}
+      <EmotionConfirmation
+        emotion={pendingEmotionAction?.emotion || ''}
+        confidence={pendingEmotionAction?.confidence || 0}
+        onConfirm={handleEmotionConfirm}
+        onDismiss={handleEmotionDismiss}
+        isVisible={showEmotionConfirmation}
+      />
+      
       {/* End Session Confirmation Modal */}
       <AnimatePresence>
         {showEndSessionModal && (
@@ -1342,11 +1417,9 @@ The student is confused about THIS SPECIFIC LECTURE. Explain it simply!
         src={audioUrl || undefined}
         autoPlay
         onPlay={() => setIsSpeaking(true)}
-        onTimeUpdate={(e) => setAudioCurrentTime((e.target as HTMLAudioElement).currentTime)}
         onEnded={() => {
           setIsSpeaking(false);
           setCurrentTranscript('');
-          setAudioCurrentTime(0);
         }}
         onPause={() => setIsSpeaking(false)}
         onError={(e) => {

@@ -128,8 +128,7 @@ function getAIConfig(): AIConfig {
       return {
         provider: 'gemini',
         apiKey: process.env.GEMINI_API_KEY || '',
-        baseUrl: process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1',
-        model: process.env.GEMINI_MODEL_NAME || 'models/gemini-1.5-flash',
+        model: process.env.GEMINI_MODEL_NAME || 'gemini-1.5-flash',
         temperature: 0.7,
         maxTokens: 1000,
       };
@@ -200,8 +199,7 @@ export class AIAdapter {
         const geminiConfig: AIConfig = {
           provider: 'gemini',
           apiKey: process.env.GEMINI_API_KEY,
-          baseUrl: process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1',
-          model: process.env.GEMINI_MODEL_NAME || 'models/gemini-1.5-flash',
+          model: process.env.GEMINI_MODEL_NAME || 'gemini-1.5-flash',
           temperature: options.temperature ?? this.config.temperature,
           maxTokens: options.maxTokens ?? this.config.maxTokens,
         };
@@ -279,7 +277,7 @@ export class AIAdapter {
   }
 
   /**
-   * Generate completion using Google Gemini API
+   * Generate completion using Google Gemini API SDK
    */
   private async generateGeminiCompletion(
     messages: AIMessage[],
@@ -288,11 +286,13 @@ export class AIAdapter {
     responseFormat?: 'text' | 'json',
     config?: AIConfig
   ): Promise<AIResponse> {
+    // Import SDK dynamically to avoid issues when not available
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+
     const geminiConfig = config || {
       provider: 'gemini',
       apiKey: process.env.GEMINI_API_KEY || '',
-      baseUrl: process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1',
-      model: process.env.GEMINI_MODEL_NAME || 'models/gemini-1.5-flash',
+      model: process.env.GEMINI_MODEL_NAME || 'gemini-1.5-flash',
       temperature: 0.7,
       maxTokens: 1000,
     };
@@ -307,17 +307,20 @@ export class AIAdapter {
       console.warn('[AIAdapter] Warning: Gemini API key seems too short. Please verify your key is correct.');
     }
 
-    // Valid Gemini models only
+    // Valid Gemini models only (remove 'models/' prefix for SDK)
     const GEMINI_MODELS = [
-      'models/gemini-1.5-pro',
-      'models/gemini-1.5-flash'
+      'gemini-1.5-pro',
+      'gemini-1.5-flash'
     ];
 
     // Use user-specified model if valid, otherwise use defaults in order
-    const userModel = geminiConfig.model;
+    const userModel = geminiConfig.model.replace('models/', ''); // Remove prefix if present
     const modelsToTry = userModel && GEMINI_MODELS.includes(userModel)
       ? [userModel, ...GEMINI_MODELS.filter(m => m !== userModel)]
       : GEMINI_MODELS;
+
+    // Initialize Gemini client
+    const genAI = new GoogleGenerativeAI(geminiConfig.apiKey);
 
     // Convert OpenAI message format to Gemini format
     const contents = messages
@@ -336,68 +339,40 @@ export class AIAdapter {
       });
     }
 
-    const requestBody: any = {
-      contents,
-      generationConfig: {
-        temperature: temperature ?? geminiConfig.temperature ?? 0.7,
-        maxOutputTokens: maxTokens ?? geminiConfig.maxTokens ?? 1000,
-        ...(responseFormat === 'json' && { responseMimeType: 'application/json' })
-      }
-    };
-
     // Try each model, don't throw errors - just try next
     for (const model of modelsToTry) {
       try {
-        const apiUrl = `${geminiConfig.baseUrl}/${model}:generateContent?key=${geminiConfig.apiKey}`;
+        console.log(`[AIAdapter] Gemini: Trying model ${model}`);
         
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody),
+        const geminiModel = genAI.getGenerativeModel({ model });
+        
+        const generationConfig = {
+          temperature: temperature ?? geminiConfig.temperature ?? 0.7,
+          maxOutputTokens: maxTokens ?? geminiConfig.maxTokens ?? 1000,
+          ...(responseFormat === 'json' && { responseMimeType: 'application/json' })
+        };
+
+        const result = await geminiModel.generateContent({
+          contents,
+          generationConfig
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          
-          // Log successful model if different from default
-          if (model !== modelsToTry[0]) {
-            console.log(`[AIAdapter] Gemini: Using fallback model ${model}`);
-          }
-          
-          // Normalize Gemini response to our format
-          const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          
-          return {
-            content: text,
-            usage: data.usageMetadata ? {
-              promptTokens: data.usageMetadata.promptTokenCount || 0,
-              completionTokens: data.usageMetadata.candidatesTokenCount || 0,
-              totalTokens: data.usageMetadata.totalTokenCount || 0,
-            } : undefined,
-          };
-        }
-
-        // If not OK, log and try next model (don't throw)
-        let errorText = '';
-        try {
-          errorText = await response.text();
-        } catch (e) {
-          errorText = 'Unable to read error response';
+        const response = await result.response;
+        const text = response.text();
+        
+        // Log successful model if different from default
+        if (model !== modelsToTry[0]) {
+          console.log(`[AIAdapter] Gemini: Using fallback model ${model}`);
         }
         
-        // Provide detailed error information for 401 (auth errors)
-        if (response.status === 401) {
-          console.error(`[AIAdapter] Gemini API Authentication Failed (401) for model ${model}`);
-          console.error(`[AIAdapter] Check your GEMINI_API_KEY in .env.local. Key length: ${geminiConfig.apiKey.length} chars`);
-          console.error(`[AIAdapter] Key starts with: ${geminiConfig.apiKey.substring(0, Math.min(10, geminiConfig.apiKey.length))}...`);
-          // Don't continue for auth errors - they'll all fail
-          throw new Error(`Gemini API authentication failed (401). Please check your GEMINI_API_KEY is valid. Make sure:\n1. Key is in .env.local\n2. Server was restarted after adding key\n3. No spaces or quotes around the key\nError: ${errorText.substring(0, 200)}`);
-        }
-        
-        console.log(`[AIAdapter] Gemini model ${model} failed: ${response.status} - ${errorText.substring(0, 100)}`);
-        continue;
+        return {
+          content: text,
+          usage: response.usageMetadata ? {
+            promptTokens: response.usageMetadata.promptTokenCount || 0,
+            completionTokens: response.usageMetadata.candidatesTokenCount || 0,
+            totalTokens: response.usageMetadata.totalTokenCount || 0,
+          } : undefined,
+        };
       } catch (error: any) {
         // Log error and try next model (don't throw)
         console.log(`[AIAdapter] Gemini model ${model} error:`, error.message || error);

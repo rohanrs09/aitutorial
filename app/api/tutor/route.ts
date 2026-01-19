@@ -118,6 +118,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Detect user's slide content preference
+    const detectSlidePreference = (userMessage: string): string => {
+      const msg = userMessage.toLowerCase();
+      if (msg.includes('example') || msg.includes('examples')) return 'example';
+      if (msg.includes('step by step') || msg.includes('step-by-step')) return 'steps';
+      if (msg.includes('diagram') || msg.includes('visual') || msg.includes('chart')) return 'diagram';
+      if (msg.includes('practice') || msg.includes('quiz') || msg.includes('test')) return 'practice';
+      if (msg.includes('simple') || msg.includes('beginner') || msg.includes('basic')) return 'simple';
+      return 'general';
+    };
+
+    const slidePreference = detectSlidePreference(message);
+    console.log('[Tutor] Slide preference detected:', slidePreference);
+
     // Analyze emotion and determine if simplification is needed
     // EMOTION-BASED ADAPTATION: When confused/frustrated, SLM is called again with simpler prompts
     // This changes HOW content is explained, NOT the lecture order
@@ -214,7 +228,8 @@ IMPORTANT: This is a custom learning topic. Focus your teaching on the descripti
       responseMessage,
       topic,
       adaptiveResponse.simplificationLevel,
-      emotion as EmotionType
+      emotion as EmotionType,
+      slidePreference
     );
     
     console.log(`[Tutor API] ✓ Generated ${slides.length} slides from SLM response`);
@@ -253,15 +268,36 @@ IMPORTANT: This is a custom learning topic. Focus your teaching on the descripti
 // Extract slides from SLM structured response (Title, Explanation, Analogy, Code, Common Mistake)
 // SLM returns structured format, we parse it into slides WITHOUT calling SLM again
 function extractSlidesFromSLMResponse(
-  responseText: string,
+  response: string,
   topic: string,
   simplificationLevel: 'basic' | 'intermediate' | 'advanced',
-  emotion: EmotionType
+  emotion: EmotionType,
+  slidePreference: string = 'general'
 ): GeneratedSlide[] {
   const slides: GeneratedSlide[] = [];
   const isSimplified = simplificationLevel === 'basic';
   
   // Parse structured format from SLM response
+  const responseText = response;
+  
+  // Reorder slides based on user preference
+  const getSlideOrder = (pref: string): string[] => {
+    switch (pref) {
+      case 'example':
+        return ['concept', 'example', 'code', 'summary'];
+      case 'steps':
+        return ['concept', 'code', 'example', 'summary'];
+      case 'diagram':
+        return ['concept', 'diagram', 'example', 'summary'];
+      case 'practice':
+        return ['concept', 'practice', 'example', 'summary'];
+      case 'simple':
+        return ['concept', 'example', 'summary'];
+      default:
+        return ['concept', 'example', 'code', 'summary'];
+    }
+  };
+  
   // Look for Title (markdown header or bold)
   const titleMatch = responseText.match(/(?:^|\n)#+\s*(.+?)(?:\n|$)|(?:^|\n)\*\*(.+?)\*\*(?:\n|$)/m);
   const title = titleMatch ? (titleMatch[1] || titleMatch[2] || topic).trim() : topic;
@@ -305,16 +341,25 @@ function extractSlidesFromSLMResponse(
     const codeDescriptionMatch = responseText.match(/(?:Working Code Snippet|Code)[:]*\s*\n*([\s\S]+?)(?=```)/i);
     const codeDescription = codeDescriptionMatch ? codeDescriptionMatch[1].trim() : 'Here\'s a working code example:';
     
+    // Format code with proper sections for better readability
+    const formattedCode = formatCodeForDisplay(code);
+    const codeSections = extractCodeSections(code);
+    
     slides.push({
       id: `slide-3-${Date.now()}`,
       title: 'Working Code Example',
       type: 'example',
       content: codeDescription,
-      example: code,
-      keyPoints: ['Run this code to see it in action', 'Copy and paste to try it yourself'],
+      example: formattedCode,
+      keyPoints: [
+        '✅ Complete, runnable code',
+        '✅ Proper imports and setup',
+        ...codeSections.slice(0, 2)
+      ],
+      visualAid: generateCodeFlowDiagram(code),
       isSimplified,
       simplificationLevel,
-      spokenContent: codeDescription
+      spokenContent: formatCodeForSpokenContent(code)
     });
   }
   
@@ -381,7 +426,8 @@ async function generateLearningSlides(
   topic: string,
   simplificationLevel: 'basic' | 'intermediate' | 'advanced',
   emotion: EmotionType,
-  emotionConfidence: number
+  emotionConfidence: number,
+  slidePreference: string = 'general'
 ): Promise<GeneratedSlide[]> {
   const isSimplified = simplificationLevel === 'basic';
   const needsSimplification = (emotion === 'confused' || emotion === 'frustrated') && emotionConfidence > 0.5;
@@ -400,6 +446,24 @@ async function generateLearningSlides(
          Include simple flowchart diagrams using Mermaid syntax.`
       : `Generate clear, educational learning slides with visual diagrams for the topic.`;
 
+    // Customize slide generation based on user preference
+    const getPreferencePrompt = (pref: string): string => {
+      switch (pref) {
+        case 'example':
+          return 'Focus heavily on practical examples and real-world applications. Include at least 2 concrete examples with code.';
+        case 'steps':
+          return 'Break down everything into clear, numbered steps. Use step-by-step format for all explanations.';
+        case 'diagram':
+          return 'Emphasize visual learning with detailed diagrams and flowcharts. Include multiple visual aids.';
+        case 'practice':
+          return 'Include practice problems and interactive exercises. Focus on hands-on learning.';
+        case 'simple':
+          return 'Use extremely simple language. Avoid jargon. Use everyday analogies.';
+        default:
+          return 'Provide balanced, comprehensive content.';
+      }
+    };
+
     // Use AI Adapter for slide generation (model-agnostic)
     const completion = await aiAdapter.generateCompletion({
       messages: [
@@ -407,17 +471,58 @@ async function generateLearningSlides(
           role: 'system',
           content: `You are an educational slide generator that creates synchronized learning content. ${slidePrompt}
           
+User requested: ${getPreferencePrompt(slidePreference)}
+
 Create ${slideCount} slides that correspond to different parts of the tutor's explanation.
 Return ONLY a JSON object with a "slides" array.
 
 Each slide MUST have:
 - id: unique string like "slide-1", "slide-2"
 - title: clear, descriptive title
-- type: one of [concept, example, tip, diagram, summary]
+- type: one of [concept, example, tip, diagram, summary, practice]
 - content: ${isSimplified ? '1-2 simple sentences' : '2-3 sentences'} matching the audio explanation
 - keyPoints: array of ${isSimplified ? '2-3 very simple points' : '3-4 key points'}
+- example: (REQUIRED for example/practice types) properly formatted code with:
+  * Use \`\`\`javascript or \`\`\`python code blocks
+  * Include clear comments explaining each line
+  * Show complete, runnable examples
+  * Use proper indentation (2 spaces)
+  * Add console.log or print statements to show output
 - spokenContent: the EXACT portion of the tutor response this slide covers (for audio sync)
-- visualAid: { type: "mermaid", data: "<mermaid diagram code>" } - REQUIRED for concept and diagram types
+- visualAid: { type: "mermaid", data: "<mermaid diagram code>" } - OPTIONAL for concept and diagram types
+
+CRITICAL CODE FORMATTING RULES:
+1. All code MUST be in proper markdown code blocks with language specified
+2. Code must be complete and runnable (include imports, setup)
+3. Add inline comments explaining each important line
+4. Use consistent indentation (2 spaces)
+5. Include example output in comments
+6. Structure code with clear sections (setup, main logic, examples)
+
+Example of properly formatted code:
+\`\`\`javascript
+// ===== SETUP =====
+const express = require('express');
+const app = express();
+
+// ===== MIDDLEWARE =====
+// This middleware runs before every request
+app.use((req, res, next) => {
+  console.log('Request received:', req.method, req.url);
+  next(); // Pass control to next middleware
+});
+
+// ===== ROUTE =====
+app.get('/hello', (req, res) => {
+  res.send('Hello World!');
+});
+
+// ===== START SERVER =====
+app.listen(3000, () => {
+  console.log('Server running on port 3000');
+});
+// Output: Server running on port 3000
+\`\`\`
 
 For visualAid diagrams, use simple Mermaid syntax like:
 - Flowcharts: graph TD\n  A[Step 1] --> B[Step 2]
@@ -458,8 +563,8 @@ Generate ${slideCount} slides with diagrams and audio sync markers.`
         simplificationLevel: simplificationLevel,
         audioStartTime: accumulatedTime,
         audioDuration: slideDuration,
-        // Ensure visualAid is properly formatted
-        visualAid: slide.visualAid || generateDiagramForSlide(slide, topic, isSimplified)
+        // Only use existing visualAid, don't generate automatic diagrams
+        visualAid: slide.visualAid || undefined
       };
       
       accumulatedTime += slideDuration;
@@ -524,6 +629,144 @@ function generateDiagramForSlide(
   };
 }
 
+// Format code for spoken content (TTS)
+function formatCodeForSpokenContent(code: string): string {
+  // Remove code syntax and make it readable for TTS
+  return code
+    .replace(/```/g, '')
+    .replace(/const|let|var/g, 'constant')
+    .replace(/function/g, 'function')
+    .replace(/=>/g, 'arrow function')
+    .replace(/console\.log/g, 'console log')
+    .replace(/app\.use/g, 'app use middleware')
+    .replace(/app\.get/g, 'app get route')
+    .replace(/app\.post/g, 'app post route')
+    .replace(/req/g, 'request')
+    .replace(/res/g, 'response')
+    .replace(/next\(\)/g, 'next function')
+    .replace(/[{}]/g, '')
+    .replace(/;/g, ',')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Format code for display with proper syntax highlighting and structure
+function formatCodeForDisplay(code: string): string {
+  // Ensure proper formatting first
+  let formattedCode = code.trim();
+  
+  // Remove setup/execution sections that users don't want
+  formattedCode = formattedCode
+    .replace(/\/\/ ===== SETUP =====[\s\S]*?\/\/ =====/g, '// =====')
+    .replace(/\/\/ ===== EXECUTION =====[\s\S]*?\/\/ =====/g, '// =====')
+    .replace(/\/\/ ===== RUN =====[\s\S]*?\/\/ =====/g, '// =====')
+    .replace(/Setup:|Execution:|Run:|To run:|To execute:/gi, '')
+    .replace(/npm install|npm start|node app\.js|python app\.py/g, '');
+  
+  // Clean up section headers (minimal emojis)
+  formattedCode = formattedCode
+    .replace(/\/\/ ===== ([A-Z\s]+) =====/g, '\n// ===== $1 =====\n')
+    .replace(/\/\/ ([A-Z][a-zA-Z\s]+)/g, '// $1')
+    .replace(/IMPORTANT:/g, 'IMPORTANT:')
+    .replace(/In real app:/g, 'In real app:');
+  
+  // Ensure proper indentation and clean formatting
+  const lines = formattedCode.split('\n');
+  const indentedLines = lines.map(line => {
+    const trimmedLine = line.trim();
+    
+    // Preserve comments and empty lines
+    if (trimmedLine.startsWith('//') || trimmedLine === '') {
+      return line;
+    }
+    
+    // Add proper indentation for code
+    if (trimmedLine && !line.startsWith('  ') && !line.startsWith('    ')) {
+      return '  ' + trimmedLine;
+    }
+    
+    return trimmedLine;
+  });
+  
+  return indentedLines.join('\n');
+}
+
+// Extract code sections for key points
+function extractCodeSections(code: string): string[] {
+  const sections: string[] = [];
+  
+  // Look for section comments
+  const sectionMatches = code.matchAll(/\/\/ ===== ([A-Z\s]+) =====\n([\s\S]*?)(?=\n\/\/ =====|\n\/\/ [A-Z]|\n\n|$)/g);
+  
+  for (const match of sectionMatches) {
+    const sectionName = match[1].trim();
+    sections.push(`📁 ${sectionName}`);
+  }
+  
+  // Look for important comments
+  const importantMatches = code.matchAll(/\/\/ (IMPORTANT|In real app|NOTE): ([^\n]+)/g);
+  for (const match of importantMatches) {
+    sections.push(`⚠️  ${match[1]}: ${match[2]}`);
+  }
+  
+  // If no sections found, provide generic ones
+  if (sections.length === 0) {
+    if (code.includes('app.use')) sections.push('🔧 Middleware setup');
+    if (code.includes('app.get')) sections.push('🌐 GET route defined');
+    if (code.includes('app.post')) sections.push('📝 POST route defined');
+    if (code.includes('listen')) sections.push('🚀 Server started');
+  }
+  
+  return sections.slice(0, 3);
+}
+
+// Generate code flow diagram
+function generateCodeFlowDiagram(code: string): { type: 'mermaid' | 'illustration' | 'flowchart'; data: string } {
+  const nodes: string[] = [];
+  let nodeIndex = 0;
+  
+  // Add setup node
+  nodes.push(`    P${nodeIndex}["📁 Setup"]`);
+  nodeIndex++;
+  
+  // Add middleware nodes
+  if (code.includes('app.use')) {
+    nodes.push(`    P${nodeIndex}["🔧 Middleware"]`);
+    nodeIndex++;
+  }
+  
+  // Add route nodes
+  if (code.includes('app.get')) {
+    nodes.push(`    P${nodeIndex}["📥 GET Routes"]`);
+    nodeIndex++;
+  }
+  
+  if (code.includes('app.post')) {
+    nodes.push(`    P${nodeIndex}["📤 POST Routes"]`);
+    nodeIndex++;
+  }
+  
+  // Add server node
+  nodes.push(`    P${nodeIndex}["🚀 Server Start"]`);
+  
+  const connections = nodes.map((_: string, i: number) => 
+    i < nodes.length - 1 ? `    P${i} --> P${i + 1}` : ''
+  ).filter(Boolean);
+
+  const diagramData = [
+    'graph TD',
+    '    Start["🎯 Code Execution"]',
+    ...nodes,
+    '    Start --> P0',
+    ...connections
+  ].join('\n');
+
+  return {
+    type: 'mermaid',
+    data: diagramData
+  };
+}
+
 function generateFallbackSlides(
   tutorResponse: string,
   topic: string,
@@ -556,5 +799,5 @@ function generateFallbackSlides(
       isSimplified,
       simplificationLevel: isSimplified ? 'basic' : 'intermediate'
     }
-  ];
+  ]
 }

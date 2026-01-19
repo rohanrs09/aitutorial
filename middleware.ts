@@ -8,11 +8,10 @@ const isClerkConfigured = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && !!p
 // Define public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
   '/',
+  '/courses',
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/api/webhook(.*)',
-  '/learn',
-  '/dashboard',
   // Public API routes for demo functionality
   '/api/tutor',
   '/api/stt',
@@ -20,6 +19,18 @@ const isPublicRoute = createRouteMatcher([
   '/api/emotion(.*)',
   '/api/diagram',
   '/api/generate-slides',
+]);
+
+// Define protected routes that require authentication
+const requiresAuth = createRouteMatcher([
+  '/dashboard(.*)',
+  '/settings(.*)',
+  '/learn',
+]);
+
+// Define routes that require topic selection
+const requiresTopicSelection = createRouteMatcher([
+  '/learn',
 ]);
 
 // Fallback middleware when Clerk is not configured
@@ -31,10 +42,13 @@ function demoMiddleware(req: NextRequest) {
 // Export middleware based on configuration
 export default isClerkConfigured 
   ? clerkMiddleware(async (auth, req) => {
-      // Protect all routes except public ones
-      if (!isPublicRoute(req)) {
+      // Protect routes that require authentication
+      if (requiresAuth(req)) {
         await auth.protect();
       }
+      
+      // Routes that require topic selection are handled client-side
+      // This includes /learn which checks for course context
     })
   : demoMiddleware;
 

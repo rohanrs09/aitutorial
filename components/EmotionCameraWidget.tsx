@@ -23,6 +23,7 @@ export default function EmotionCameraWidget({
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [faceVisible, setFaceVisible] = useState<boolean>(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const analysisIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -56,27 +57,31 @@ export default function EmotionCameraWidget({
     return canvas.toDataURL('image/jpeg', 0.8);
   }, []);
 
-  // Analyze emotion using OpenAI Vision API
+  // Analyze emotion using API
   const analyzeEmotion = useCallback(async () => {
     if (isAnalyzing) return;
     const now = Date.now();
     
-    // RATE LIMITING: Minimum 3 seconds between emotion API calls
+    // RATE LIMITING: Minimum 4 seconds between emotion API calls (increased for reliability)
     const timeSinceLastAnalysis = now - lastAnalysisRef.current;
-    if (timeSinceLastAnalysis < 3000) {
-      console.log(`[Emotion] Throttled - wait ${Math.ceil((3000 - timeSinceLastAnalysis) / 1000)}s`);
+    if (timeSinceLastAnalysis < 4000) {
+      console.log(`[Emotion] Throttled - wait ${Math.ceil((4000 - timeSinceLastAnalysis) / 1000)}s`);
       return;
     }
     
     lastAnalysisRef.current = now;
 
     const frameData = captureFrame();
-    if (!frameData) return;
+    if (!frameData) {
+      console.warn('[Emotion] No frame data captured');
+      return;
+    }
 
     setIsAnalyzing(true);
     setError(null);
 
     try {
+      console.log('[Emotion] Sending frame for analysis...');
       const response = await fetch('/api/emotion-vision', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -90,24 +95,51 @@ export default function EmotionCameraWidget({
       if (!response.ok) {
         console.error('[Emotion] API Error:', data.error || 'Unknown error');
         setError(data.error || 'Emotion detection failed');
+        // Don't set fallback emotion on API error
       } else if (data.success && data.emotion) {
         const detectedEmotion = data.emotion.charAt(0).toUpperCase() + data.emotion.slice(1);
-        console.log('[Emotion] Detected:', detectedEmotion, 'Confidence:', data.confidence);
-        setCurrentEmotion(detectedEmotion);
-        setConfidence(data.confidence || 0.8);
-        onEmotionDetected(data.emotion.toLowerCase(), data.confidence || 0.8);
+        const emotionConfidence = data.confidence || 0.7;
+        const isFaceVisible = data.face_visible !== false; // Default to true
+        
+        console.log('[Emotion] ✅ Detected:', {
+          emotion: detectedEmotion,
+          confidence: emotionConfidence,
+          faceVisible: isFaceVisible,
+          indicators: data.indicators
+        });
+        
+        // Update face visibility
+        setFaceVisible(isFaceVisible);
+        
+        // If no face visible, show warning
+        if (!isFaceVisible) {
+          setError('No face detected - please position yourself in camera view');
+          setCurrentEmotion('Neutral');
+          setConfidence(0.3);
+          return;
+        }
+        
+        // Only update if confidence is reasonable (> 0.4)
+        if (emotionConfidence > 0.4) {
+          setCurrentEmotion(detectedEmotion);
+          setConfidence(emotionConfidence);
+          setError(null);
+          
+          // Only trigger help for confused/frustrated with high confidence
+          if ((data.emotion.toLowerCase() === 'confused' || data.emotion.toLowerCase() === 'frustrated') && emotionConfidence > 0.6) {
+            console.log('[Emotion] 🎯 Triggering help for:', data.emotion.toLowerCase(), 'with confidence:', emotionConfidence);
+            onEmotionDetected(data.emotion.toLowerCase(), emotionConfidence);
+          }
+        } else {
+          console.log('[Emotion] ⚠️ Low confidence, ignoring:', emotionConfidence);
+        }
       } else {
         console.warn('[Emotion] No emotion detected in response');
       }
     } catch (err) {
       console.error('[Emotion] Analysis error:', err);
-      setError('Emotion detection unavailable');
-      // Fallback to basic detection based on time patterns
-      const emotions = ['Concentrating', 'Engaged', 'Neutral'];
-      const fallbackEmotion = emotions[Math.floor(Math.random() * emotions.length)];
-      setCurrentEmotion(fallbackEmotion);
-      setConfidence(0.6);
-      onEmotionDetected(fallbackEmotion.toLowerCase(), 0.6);
+      setError('Connection error - retrying...');
+      // Don't set fallback emotion on network error
     } finally {
       setIsAnalyzing(false);
     }
@@ -174,10 +206,10 @@ export default function EmotionCameraWidget({
   // Start emotion analysis when camera is active
   useEffect(() => {
     if (isEnabled && stream && !analysisIntervalRef.current) {
-      console.log('[Emotion] Starting analysis interval');
+      console.log('[Emotion] Starting analysis interval (every 4 seconds)');
       analysisIntervalRef.current = setInterval(() => {
         analyzeEmotion();
-      }, 3000);
+      }, 4000); // Increased to 4 seconds for better reliability
     } else if (!isEnabled && analysisIntervalRef.current) {
       console.log('[Emotion] Stopping analysis interval');
       clearInterval(analysisIntervalRef.current);

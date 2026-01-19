@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from './supabase';
+import { supabase, isSupabaseConfigured, getOrCreateUserProfile } from './supabase';
 
 export interface LearningProgress {
   id: string;
@@ -117,11 +117,13 @@ export async function saveProgress(
     console.warn('[Progress] LocalStorage save failed:', err);
   }
 
-  // Try to save to Supabase
+  // Always try to save to Supabase (even if not configured, will fail gracefully)
   if (!isSupabaseConfigured) {
-    console.warn('[Progress] Supabase not configured, using localStorage only');
+    console.warn('[Progress] Supabase not configured, saved to localStorage only');
     return { success: true, source: 'localStorage' };
   }
+
+  console.log('[Progress] Attempting to save to Supabase for user:', userId);
 
   // Determine if userId is a UUID or Clerk user ID format
   const upsertData: any = {
@@ -135,7 +137,18 @@ export async function saveProgress(
   upsertData.clerk_user_id = userId;
   console.log('[Progress] Saving progress for user:', userId, 'session:', sessionId);
   
+  // Ensure user profile exists for Clerk users
+  if (userId.startsWith('user_')) {
+    try {
+      await getOrCreateUserProfile(userId);
+    } catch (err) {
+      console.warn('[Progress] Failed to create user profile:', err);
+    }
+  }
+  
   try {
+    console.log('[Progress] Upserting to Supabase with data:', JSON.stringify(upsertData, null, 2));
+    
     const { data, error } = await supabase
       .from('learning_progress')
       .upsert(
@@ -147,19 +160,21 @@ export async function saveProgress(
 
     if (error) {
       const errorMsg = error?.message || JSON.stringify(error) || 'Unknown error';
-      console.error('[Progress] Save failed:', errorMsg);
+      console.error('[Progress] ❌ Supabase save failed:', errorMsg);
+      console.error('[Progress] Error details:', error);
       return { success: false, error: errorMsg, source: 'supabase' };
     }
 
     if (!data) {
-      console.warn('[Progress] Save completed but no data returned');
+      console.warn('[Progress] ⚠️ Save completed but no data returned');
       return { success: true, source: 'supabase', data: null };
     }
 
-    console.log('[Progress] Saved successfully:', data);
+    console.log('[Progress] ✅ Saved successfully to Supabase:', data);
     return { success: true, data, source: 'supabase' };
-  } catch (err) {
-    console.error('[Progress] Unexpected error saving progress:', err);
+  } catch (err: any) {
+    console.error('[Progress] ❌ Unexpected error saving progress:', err);
+    console.error('[Progress] Error stack:', err.stack);
     return { success: false, error: String(err), source: 'supabase' };
   }
 }
@@ -211,6 +226,15 @@ export async function getUserLearningHistory(userId: string) {
   }
 
   try {
+    // Ensure user profile exists for Clerk users
+    if (userId.startsWith('user_')) {
+      try {
+        await getOrCreateUserProfile(userId);
+      } catch (err) {
+        console.warn('[Progress] Failed to create user profile:', err);
+      }
+    }
+    
     // Always use clerk_user_id for consistent user scoping
     console.log('[Progress] Loading history for user:', userId);
     
@@ -258,6 +282,15 @@ export async function resumeSession(userId: string, topicName?: string) {
 
     // Try to get last session from Supabase
     if (isSupabaseConfigured) {
+      // Ensure user profile exists for Clerk users
+      if (userId.startsWith('user_')) {
+        try {
+          await getOrCreateUserProfile(userId);
+        } catch (err) {
+          console.warn('[Progress] Failed to create user profile:', err);
+        }
+      }
+      
       // Check if userId is a UUID or Clerk user ID format
       let query;
       if (userId.startsWith('user_')) {

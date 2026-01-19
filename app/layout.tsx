@@ -59,29 +59,29 @@ export default function RootLayout({
   }
 
   return (
-    <ClerkProvider
-      appearance={{
-        baseTheme: dark,
-        variables: {
-          colorPrimary: '#8b5cf6',
-          colorBackground: '#0a0e27',
-          colorInputBackground: '#1a1a2e',
-          colorInputText: '#ffffff',
-        },
-        elements: {
-          formButtonPrimary: 'bg-primary-500 hover:bg-primary-600',
-          card: 'bg-surface-light border border-white/10',
-          headerTitle: 'text-white',
-          headerSubtitle: 'text-gray-400',
-        }
-      }}
-    >
-      <html lang="en" className="dark" suppressHydrationWarning>
-        <head />
-        <body className="antialiased bg-surface min-h-screen">
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <head />
+      <body className="antialiased bg-surface min-h-screen">
+        <ClerkProvider
+          appearance={{
+            baseTheme: dark,
+            variables: {
+              colorPrimary: '#8b5cf6',
+              colorBackground: '#0a0e27',
+              colorInputBackground: '#1a1a2e',
+              colorInputText: '#ffffff',
+            },
+            elements: {
+              formButtonPrimary: 'bg-primary-500 hover:bg-primary-600',
+              card: 'bg-surface-light border border-white/10',
+              headerTitle: 'text-white',
+              headerSubtitle: 'text-gray-400',
+            }
+          }}
+        >
           {children}
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }

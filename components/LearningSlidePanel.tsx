@@ -282,7 +282,7 @@ export default function LearningSlidePanel({
             </div>
 
             {/* Main content */}
-            <div className="text-sm sm:text-base md:text-lg text-gray-700 leading-relaxed mb-4 sm:mb-6 prose prose-sm max-w-none">
+            <div className="text-sm sm:text-base md:text-lg text-gray-700 leading-relaxed mb-4 sm:mb-6 prose prose-sm sm:prose-base max-w-none">
               <ReactMarkdown 
                 remarkPlugins={[remarkGfm]}
                 components={{
@@ -293,20 +293,29 @@ export default function LearningSlidePanel({
                     
                     if (!isInline && language) {
                       return (
-                        <SyntaxHighlighter
-                          style={oneDark as any}
-                          language={language}
-                          PreTag="div"
-                          className="rounded-lg text-sm"
-                          {...props}
-                        >
-                          {String(children).replace(/\n$/, '')}
-                        </SyntaxHighlighter>
+                        <div className="my-4 rounded-xl overflow-hidden shadow-md">
+                          <SyntaxHighlighter
+                            style={oneDark as any}
+                            language={language}
+                            PreTag="div"
+                            className="!text-xs sm:!text-sm md:!text-base !m-0"
+                            customStyle={{
+                              padding: '1.5rem',
+                              margin: 0,
+                              fontSize: 'inherit',
+                              lineHeight: '1.6'
+                            }}
+                            showLineNumbers={true}
+                            {...props}
+                          >
+                            {String(children).replace(/\n$/, '')}
+                          </SyntaxHighlighter>
+                        </div>
                       );
                     }
                     
                     return (
-                      <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono" {...props}>
+                      <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs sm:text-sm font-mono text-purple-700" {...props}>
                         {children}
                       </code>
                     );
@@ -343,12 +352,12 @@ export default function LearningSlidePanel({
 
             {/* Example */}
             {currentSlide?.example && (
-              <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-green-50 border border-green-200 rounded-lg sm:rounded-xl">
-                <h4 className="font-semibold text-green-700 mb-1.5 sm:mb-2 flex items-center gap-2 text-sm sm:text-base">
-                  <Lightbulb size={16} className="sm:w-[18px] sm:h-[18px]" />
-                  Example
+              <div className="mb-4 sm:mb-6 p-4 sm:p-5 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl sm:rounded-2xl shadow-sm">
+                <h4 className="font-bold text-green-700 mb-3 sm:mb-4 flex items-center gap-2 text-base sm:text-lg">
+                  <Lightbulb size={18} className="sm:w-5 sm:h-5" />
+                  Code Example
                 </h4>
-                <div className="text-xs sm:text-sm md:text-base text-green-800 prose prose-sm max-w-none">
+                <div className="text-xs sm:text-sm md:text-base text-green-900 prose prose-sm sm:prose-base max-w-none">
                   <ReactMarkdown 
                     remarkPlugins={[remarkGfm]}
                     components={{
@@ -359,20 +368,31 @@ export default function LearningSlidePanel({
                         
                         if (!isInline && language) {
                           return (
-                            <SyntaxHighlighter
-                              style={oneDark as any}
-                              language={language}
-                              PreTag="div"
-                              className="rounded-lg text-sm"
-                              {...props}
-                            >
-                              {String(children).replace(/\n$/, '')}
-                            </SyntaxHighlighter>
+                            <div className="my-3 rounded-xl overflow-hidden shadow-lg border border-green-300">
+                              <SyntaxHighlighter
+                                style={oneDark as any}
+                                language={language}
+                                PreTag="div"
+                                className="!text-xs sm:!text-sm md:!text-base !m-0"
+                                customStyle={{
+                                  padding: '1.5rem',
+                                  margin: 0,
+                                  fontSize: 'inherit',
+                                  lineHeight: '1.7',
+                                  backgroundColor: '#1e293b'
+                                }}
+                                showLineNumbers={true}
+                                wrapLines={true}
+                                {...props}
+                              >
+                                {String(children).replace(/\n$/, '')}
+                              </SyntaxHighlighter>
+                            </div>
                           );
                         }
                         
                         return (
-                          <code className="bg-green-100 px-1 py-0.5 rounded text-sm font-mono" {...props}>
+                          <code className="bg-green-100 px-2 py-1 rounded text-xs sm:text-sm font-mono text-green-800 font-semibold" {...props}>
                             {children}
                           </code>
                         );

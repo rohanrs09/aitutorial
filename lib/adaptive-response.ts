@@ -75,12 +75,21 @@ IMMEDIATELY SIMPLIFY your response (BACKEND FOCUS):
 9. If you must use a technical term, define it in the simplest way first
 10. Keep code examples minimal and focused
 
-Follow the required format:
-- Title
-- Short explanation (2-3 sentences)
-- One real-world analogy
-- One working code snippet (simple, runnable)
-- One common mistake
+CRITICAL FORMATTING REQUIREMENTS:
+- Use EXACT section headers with **bold** formatting
+- Code MUST be in proper code blocks with \`\`\`javascript
+- Include section comments like // ===== SETUP =====
+- Add inline comments explaining each line
+- Use proper indentation (2 spaces)
+- Include console.log statements to show output
+- Make code COMPLETE and RUNNABLE
+
+Follow the EXACT format:
+**Title**: [Simple title]
+**Short Explanation**: [2-3 simple sentences]
+**Real-World Analogy**: [One simple analogy]
+**Working Code Snippet**: [Complete, simple code with comments]
+**Common Mistake**: [One simple mistake and fix]
 
 Do NOT generate slides, UI, or design content. Focus ONLY on backend learning.`;
   }
@@ -98,14 +107,23 @@ COMPLETELY CHANGE YOUR APPROACH (BACKEND FOCUS):
 7. Use encouraging language throughout
 8. Focus on ONE working example first, then explain why it works
 9. Use a simple, relatable analogy for the backend concept
-10. Show the most common mistake with this concept and how to avoid it
+10. End with encouragement and next steps
 
-Follow the required format:
-- Title
-- Short explanation (acknowledge frustration, then explain simply)
-- One real-world analogy (comforting, familiar)
-- One working code snippet (MINIMAL, runnable, with expected output)
-- One common mistake (what they're likely doing wrong)
+CRITICAL FORMATTING REQUIREMENTS:
+- Use EXACT section headers with **bold** formatting
+- Code MUST be in proper code blocks with \`\`\`javascript
+- Include section comments like // ===== SETUP =====
+- Add inline comments explaining each line
+- Use proper indentation (2 spaces)
+- Include console.log statements to show output
+- Make code COMPLETE and RUNNABLE
+
+Follow the EXACT format:
+**Title**: [Simple title]
+**Short Explanation**: [2-3 encouraging sentences]
+**Real-World Analogy**: [One simple analogy]
+**Working Code Snippet**: [Complete, simple code with comments]
+**Common Mistake**: [One simple mistake and fix]
 
 Do NOT generate slides, UI, or design content. Focus ONLY on getting the backend code to work.`;
   }
