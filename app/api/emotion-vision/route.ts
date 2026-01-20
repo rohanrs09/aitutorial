@@ -47,62 +47,78 @@ IMPORTANT RULES:
 4. List at least 2-3 specific indicators you observed
 5. Prioritize detecting negative emotions (frustrated, confused, bored) as they trigger help`;
 
-// List of Gemini models to try (in order of preference for vision tasks)
-// Based on available models from API: gemini-2.0-flash, gemini-2.5-flash, gemini-2.5-pro
-const GEMINI_VISION_MODELS = [
-  'gemini-2.0-flash',
-  'gemini-2.5-flash',
-  'gemini-2.0-flash-001'
-];
+// Use only ONE model to avoid rate limit spam
+const GEMINI_MODEL = "gemini-2.5-flash";
+
+// Rate limiting: Track last API call time
+let lastGeminiCall = 0;
+const RATE_LIMIT_MS = 15000; // 15 seconds between calls
+
+function canCallGemini(): { allowed: boolean; waitTime?: number } {
+  const now = Date.now();
+  const timeSinceLastCall = now - lastGeminiCall;
+  
+  if (timeSinceLastCall < RATE_LIMIT_MS) {
+    const waitTime = Math.ceil((RATE_LIMIT_MS - timeSinceLastCall) / 1000);
+    return { allowed: false, waitTime };
+  }
+  
+  return { allowed: true };
+}
 
 async function analyzeWithGemini(imageBase64: string) {
   const apiKey = process.env.GEMINI_API_KEY!;
   
-  // Try each model until one works
-  for (const model of GEMINI_VISION_MODELS) {
-    try {
-      console.log(`[Emotion Vision] Trying model: ${model}`);
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-      const requestBody = {
-        contents: [{
-          parts: [
-            { text: EMOTION_PROMPT },
-            {
-              inlineData: {
-                mimeType: "image/jpeg",
-                data: imageBase64
-              }
-            }
-          ]
-        }]
-      };
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        console.log(`[Emotion Vision] ✅ Model ${model} worked!`);
-        return text;
-      } else {
-        const errorText = await response.text();
-        console.log(`[Emotion Vision] Model ${model} failed: ${response.status}`);
-        // Continue to next model
-      }
-    } catch (err: any) {
-      console.log(`[Emotion Vision] Model ${model} error: ${err.message}`);
-      // Continue to next model
-    }
+  // Check rate limit
+  const rateCheck = canCallGemini();
+  if (!rateCheck.allowed) {
+    throw new Error(`RATE_LIMITED:Please wait ${rateCheck.waitTime} seconds before next emotion detection`);
   }
   
-  throw new Error('All Gemini models failed');
+  console.log(`[Emotion Vision] Calling Gemini model: ${GEMINI_MODEL}`);
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+
+  const requestBody = {
+    contents: [{
+      parts: [
+        { text: EMOTION_PROMPT },
+        {
+          inlineData: {
+            mimeType: "image/jpeg",
+            data: imageBase64
+          }
+        }
+      ]
+    }]
+  };
+
+  // Update last call time BEFORE making the request
+  lastGeminiCall = Date.now();
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    
+    // Handle 429 rate limit specifically
+    if (response.status === 429) {
+      console.warn(`[Emotion Vision] ⚠️ Gemini rate limit (429) - quota exhausted`);
+      throw new Error('QUOTA_EXCEEDED:Gemini API rate limit reached. Please wait before next request.');
+    }
+    
+    throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  console.log(`[Emotion Vision] ✅ Gemini response received`);
+  return text;
 }
 
 function parseEmotionResponse(content: string) {
@@ -146,7 +162,7 @@ export async function POST(request: NextRequest) {
     // Extract base64 data
     const imageBase64 = image.replace(/^data:image\/\w+;base64,/, '');
 
-    // Use ONLY Gemini
+    // Use ONLY Gemini with rate limiting
     try {
       console.log('[Emotion Vision] Using Gemini...');
       const geminiResult = await analyzeWithGemini(imageBase64);
@@ -164,6 +180,31 @@ export async function POST(request: NextRequest) {
     } catch (err: any) {
       console.error('[Emotion Vision] Gemini failed:', err.message);
       
+      // Handle rate limit specifically
+      if (err.message?.includes('RATE_LIMITED')) {
+        const waitTime = err.message.match(/(\d+) seconds/)?.[1] || '15';
+        return NextResponse.json({
+          success: false,
+          emotion: "neutral",
+          confidence: 0.5,
+          rate_limited: true,
+          wait_seconds: parseInt(waitTime),
+          message: `Please wait ${waitTime} seconds before next emotion detection`
+        });
+      }
+      
+      // Handle quota exceeded (429)
+      if (err.message?.includes('QUOTA_EXCEEDED') || err.message?.includes('429')) {
+        return NextResponse.json({
+          success: false,
+          emotion: "neutral",
+          confidence: 0.5,
+          quota_exceeded: true,
+          message: 'Gemini API quota exceeded. Emotion detection paused.'
+        });
+      }
+      
+      // Generic error
       return NextResponse.json({
         success: false,
         emotion: "neutral",

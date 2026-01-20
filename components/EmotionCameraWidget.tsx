@@ -62,10 +62,11 @@ export default function EmotionCameraWidget({
     if (isAnalyzing) return;
     const now = Date.now();
     
-    // RATE LIMITING: Minimum 4 seconds between emotion API calls (increased for reliability)
+    // RATE LIMITING: Minimum 20 seconds between emotion API calls (matches backend 15s + buffer)
+    const COOLDOWN_MS = 20000; // 20 seconds
     const timeSinceLastAnalysis = now - lastAnalysisRef.current;
-    if (timeSinceLastAnalysis < 4000) {
-      console.log(`[Emotion] Throttled - wait ${Math.ceil((4000 - timeSinceLastAnalysis) / 1000)}s`);
+    if (timeSinceLastAnalysis < COOLDOWN_MS) {
+      console.log(`[Emotion] ⏱️ Cooldown - wait ${Math.ceil((COOLDOWN_MS - timeSinceLastAnalysis) / 1000)}s more`);
       return;
     }
     
@@ -91,6 +92,20 @@ export default function EmotionCameraWidget({
       const data = await response.json();
       
       console.log('[Emotion] API Response:', data);
+      
+      // Handle rate limiting
+      if (data.rate_limited) {
+        console.warn(`[Emotion] ⏱️ Rate limited - wait ${data.wait_seconds} seconds`);
+        setError(`Rate limited - wait ${data.wait_seconds}s`);
+        return;
+      }
+      
+      // Handle quota exceeded
+      if (data.quota_exceeded) {
+        console.warn('[Emotion] ⚠️ Quota exceeded');
+        setError('API quota exceeded - emotion detection paused');
+        return;
+      }
       
       if (!response.ok) {
         console.error('[Emotion] API Error:', data.error || 'Unknown error');
@@ -206,10 +221,13 @@ export default function EmotionCameraWidget({
   // Start emotion analysis when camera is active
   useEffect(() => {
     if (isEnabled && stream && !analysisIntervalRef.current) {
-      console.log('[Emotion] Starting analysis interval (every 4 seconds)');
+      console.log('[Emotion] Starting analysis interval (every 20 seconds)');
+      // Run first analysis immediately
+      analyzeEmotion();
+      // Then set interval for subsequent analyses
       analysisIntervalRef.current = setInterval(() => {
         analyzeEmotion();
-      }, 4000); // Increased to 4 seconds for better reliability
+      }, 20000); // 20 seconds to match backend rate limit (15s) + buffer
     } else if (!isEnabled && analysisIntervalRef.current) {
       console.log('[Emotion] Stopping analysis interval');
       clearInterval(analysisIntervalRef.current);
