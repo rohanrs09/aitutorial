@@ -1,19 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --primary: #8b5cf6;
-  --secondary: #6366f1;
-  --accent: #ec4899;
+  /* Modern Orange Theme - Vibrant & Energetic */
+  --primary: #ff6b35;
+  --primary-light: #ff8c5a;
+  --primary-dark: #e85a2a;
+  --primary-glow: rgba(255, 107, 53, 0.6);
+  --secondary: #0a0a0f;
+  --secondary-light: #12121a;
+  --accent: #ffa726;
+  --accent-light: #ffb74d;
+  --accent-glow: rgba(255, 167, 38, 0.5);
+  --highlight: #ff9500;
+  --highlight-glow: rgba(255, 149, 0, 0.4);
+  --surface: #0d0d12;
+  --surface-light: #141419;
+  --surface-lighter: #1a1a20;
+  --surface-card: #18181d;
+  --text-primary: #f5f5f7;
+  --text-secondary: #b0b0b8;
+  --text-muted: #707078;
+  --border-glow: rgba(255, 107, 53, 0.3);
+  
+  /* Spacing */
   --spacing-unit: 8px;
   
-  /* Animation timing */
+  /* Animation timing - Smooth & Modern */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
   --duration-fast: 150ms;
-  --duration-normal: 250ms;
-  --duration-slow: 350ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
 }
 
 /* Reduced motion support */
@@ -33,10 +56,19 @@
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: var(--surface);
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+/* Monospace font for code */
+code, pre, .font-mono {
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-feature-settings: 'calt' 1;
 }
 
 /* Touch-friendly base */
@@ -398,11 +430,106 @@ button, a, [role="button"] {
   left: 100%;
 }
 
-/* Background gradient */
+/* Modern Orange Atmospheric Background */
 .bg-gradient-dark {
-  background: radial-gradient(circle at 20% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
-              radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.15) 0%, transparent 50%),
-              #0a0e27;
+  background: 
+    radial-gradient(ellipse at 20% 0%, rgba(255, 107, 53, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(255, 167, 38, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(255, 149, 0, 0.05) 0%, transparent 70%),
+    var(--surface);
+}
+
+/* Layered atmospheric background */
+.bg-atmospheric {
+  position: relative;
+  background: var(--surface);
+}
+
+.bg-atmospheric::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse at 0% 0%, rgba(255, 107, 53, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(255, 167, 38, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(255, 149, 0, 0.08) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.bg-atmospheric::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    repeating-linear-gradient(0deg, transparent, transparent 50px, rgba(255, 107, 53, 0.02) 50px, rgba(255, 107, 53, 0.02) 51px),
+    repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(255, 107, 53, 0.02) 50px, rgba(255, 107, 53, 0.02) 51px);
+  pointer-events: none;
+}
+
+/* Orange glow card effect */
+.neon-card {
+  background: var(--surface-card);
+  border: 1px solid rgba(255, 107, 53, 0.25);
+  box-shadow: 
+    0 0 20px rgba(255, 107, 53, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+.neon-card:hover {
+  border-color: rgba(255, 107, 53, 0.5);
+  box-shadow: 
+    0 0 30px rgba(255, 107, 53, 0.25),
+    0 0 60px rgba(255, 107, 53, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Accent card */
+.coral-card {
+  background: var(--surface-card);
+  border: 1px solid rgba(255, 167, 38, 0.25);
+  box-shadow: 0 0 20px rgba(255, 167, 38, 0.1);
+}
+
+.coral-card:hover {
+  border-color: rgba(255, 167, 38, 0.5);
+  box-shadow: 0 0 40px rgba(255, 167, 38, 0.2);
+}
+
+/* Orange text glow */
+.neon-text {
+  text-shadow: 0 0 10px var(--primary-glow), 0 0 20px var(--primary-glow);
+}
+
+.coral-text {
+  text-shadow: 0 0 10px var(--accent-glow), 0 0 20px var(--accent-glow);
+}
+
+/* Orange button */
+.neon-btn {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: #0d0d12;
+  font-weight: 700;
+  box-shadow: 0 0 20px var(--primary-glow), 0 4px 15px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.neon-btn:hover {
+  box-shadow: 0 0 30px var(--primary-glow), 0 0 60px var(--primary-glow), 0 6px 20px rgba(0, 0, 0, 0.4);
+  transform: translateY(-2px);
+}
+
+/* Accent button variant */
+.coral-btn {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+  color: #0d0d12;
+  font-weight: 700;
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
+.coral-btn:hover {
+  box-shadow: 0 0 40px var(--accent-glow);
+  transform: translateY(-2px);
 }
 
 /* Shimmer effect */

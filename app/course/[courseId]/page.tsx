@@ -163,10 +163,12 @@ export default function CoursePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface flex items-center justify-center">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-gray-400">Loading course...</span>
+      <div className="min-h-screen bg-atmospheric flex items-center justify-center relative overflow-hidden">
+        <div className="absolute top-20 left-10 w-[400px] h-[400px] bg-orange-500/20 rounded-full blur-[100px]" />
+        <div className="absolute bottom-20 right-10 w-[300px] h-[300px] bg-amber-500/15 rounded-full blur-[80px]" />
+        <div className="flex items-center gap-3 relative z-10">
+          <div className="w-10 h-10 border-3 border-orange-500 border-t-transparent rounded-full animate-spin shadow-lg shadow-orange-500/30" />
+          <span className="text-gray-400 font-medium">Loading course...</span>
         </div>
       </div>
     );
@@ -174,13 +176,16 @@ export default function CoursePage() {
 
   if (error || !course) {
     return (
-      <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-4">
-        <BookOpen size={48} className="text-gray-600 mb-4" />
-        <h1 className="text-xl font-bold text-white mb-2">Course Not Found</h1>
-        <p className="text-gray-400 mb-6">{error || 'The course you\'re looking for doesn\'t exist.'}</p>
+      <div className="min-h-screen bg-atmospheric flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        <div className="absolute top-20 left-10 w-[400px] h-[400px] bg-orange-500/20 rounded-full blur-[100px]" />
+        <div className="w-20 h-20 rounded-full bg-orange-500/20 border border-orange-500/40 flex items-center justify-center mb-4 relative z-10">
+          <BookOpen size={40} className="text-orange-400" />
+        </div>
+        <h1 className="text-xl font-bold text-white mb-2 relative z-10">Course Not Found</h1>
+        <p className="text-gray-400 mb-6 relative z-10">{error || 'The course you\'re looking for doesn\'t exist.'}</p>
         <Link
           href="/"
-          className="px-6 py-3 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-all"
+          className="px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-gray-900 font-bold rounded-xl transition-all shadow-lg shadow-orange-500/30 relative z-10"
         >
           Browse Courses
         </Link>
@@ -189,21 +194,25 @@ export default function CoursePage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
+    <div className="min-h-screen bg-atmospheric flex flex-col relative overflow-hidden">
+      {/* Background orbs */}
+      <div className="fixed top-0 left-0 w-[400px] h-[400px] bg-orange-500/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed bottom-0 right-0 w-[300px] h-[300px] bg-amber-500/10 rounded-full blur-[80px] pointer-events-none" />
+      
       {/* Header - Mobile Optimized */}
-      <nav className="sticky top-0 z-50 bg-surface/95 backdrop-blur-lg border-b border-white/5">
+      <nav className="sticky top-0 z-50 bg-gray-900/95 backdrop-blur-xl border-b border-orange-500/20 shadow-lg shadow-orange-500/5">
         <div className="w-full px-4 sm:px-6">
           <div className="flex items-center justify-between h-14 sm:h-16">
             {/* Back Button & Course Title */}
             <div className="flex items-center gap-3 min-w-0">
               <Link
                 href="/"
-                className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-all flex-shrink-0"
+                className="p-2 text-gray-400 hover:text-orange-400 hover:bg-orange-500/10 rounded-lg transition-all flex-shrink-0 border border-transparent hover:border-orange-500/30"
               >
                 <ArrowLeft size={20} />
               </Link>
               <div className="min-w-0">
-                <h1 className="font-semibold text-white truncate">{course.title}</h1>
+                <h1 className="font-bold text-white truncate">{course.title}</h1>
                 <p className="text-xs text-gray-500 truncate hidden sm:block">
                   {course.instructor}
                 </p>

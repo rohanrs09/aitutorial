@@ -11,13 +11,69 @@ import {
   CheckCircle, 
   RefreshCw,
   AlertCircle,
-  Sparkles
+  Sparkles,
+  Copy,
+  Check
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 // import MermaidDiagram from './MermaidDiagram';
+
+// Code block component with copy functionality
+function CodeBlock({ language, children }: { language: string; children: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(children);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="relative group my-4 rounded-xl overflow-hidden shadow-lg border border-gray-700">
+      {/* Header with language and copy button */}
+      <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
+        <span className="text-xs font-medium text-gray-400 uppercase">{language}</span>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-gray-300 hover:text-white bg-gray-700 hover:bg-gray-600 rounded-md transition-colors"
+          aria-label="Copy code"
+        >
+          {copied ? (
+            <>
+              <Check size={14} />
+              <span>Copied!</span>
+            </>
+          ) : (
+            <>
+              <Copy size={14} />
+              <span>Copy</span>
+            </>
+          )}
+        </button>
+      </div>
+      {/* Code content */}
+      <SyntaxHighlighter
+        style={oneDark as any}
+        language={language}
+        PreTag="div"
+        className="!text-xs sm:!text-sm !m-0"
+        customStyle={{
+          padding: '1rem 1.5rem',
+          margin: 0,
+          fontSize: 'inherit',
+          lineHeight: '1.6',
+          background: '#1e1e1e'
+        }}
+        showLineNumbers={true}
+      >
+        {children}
+      </SyntaxHighlighter>
+    </div>
+  );
+}
 
 export interface LearningSlide {
   id: string;
@@ -289,28 +345,13 @@ export default function LearningSlidePanel({
                   code({node, className, children, ...props}: any) {
                     const match = /language-(\w+)/.exec(className || '');
                     const language = match ? match[1] : '';
-                    const isInline = className?.includes('inline');
+                    const isInline = !className || className.includes('inline');
                     
                     if (!isInline && language) {
                       return (
-                        <div className="my-4 rounded-xl overflow-hidden shadow-md">
-                          <SyntaxHighlighter
-                            style={oneDark as any}
-                            language={language}
-                            PreTag="div"
-                            className="!text-xs sm:!text-sm md:!text-base !m-0"
-                            customStyle={{
-                              padding: '1.5rem',
-                              margin: 0,
-                              fontSize: 'inherit',
-                              lineHeight: '1.6'
-                            }}
-                            showLineNumbers={true}
-                            {...props}
-                          >
-                            {String(children).replace(/\n$/, '')}
-                          </SyntaxHighlighter>
-                        </div>
+                        <CodeBlock language={language}>
+                          {String(children).replace(/\n$/, '')}
+                        </CodeBlock>
                       );
                     }
                     
@@ -364,24 +405,18 @@ export default function LearningSlidePanel({
                       code({node, className, children, ...props}: any) {
                         const match = /language-(\w+)/.exec(className || '');
                         const language = match ? match[1] : '';
-                        const isInline = className?.includes('inline');
+                        const isInline = !className || className.includes('inline');
                         
                         if (!isInline && language) {
                           return (
-                            <SyntaxHighlighter
-                              style={oneDark as any}
-                              language={language}
-                              PreTag="div"
-                              className="rounded-lg text-sm"
-                              {...props}
-                            >
+                            <CodeBlock language={language}>
                               {String(children).replace(/\n$/, '')}
-                            </SyntaxHighlighter>
+                            </CodeBlock>
                           );
                         }
                         
                         return (
-                          <code className="bg-green-100 px-1 py-0.5 rounded text-sm font-mono" {...props}>
+                          <code className="bg-green-100 px-1.5 py-0.5 rounded text-xs sm:text-sm font-mono text-green-800" {...props}>
                             {children}
                           </code>
                         );

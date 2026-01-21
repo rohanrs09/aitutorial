@@ -25,15 +25,13 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
     return (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
-          <Card key={i} variant="elevated" padding="md">
-            <CardContent>
-              <div className="animate-pulse">
-                <div className="w-10 h-10 bg-surface-lighter rounded-lg mb-3" />
-                <div className="h-6 bg-surface-lighter rounded mb-2" />
-                <div className="h-4 bg-surface-lighter rounded w-20" />
-              </div>
-            </CardContent>
-          </Card>
+          <div key={i} className="bg-gray-900/80 border border-orange-500/20 rounded-xl p-4">
+            <div className="animate-pulse">
+              <div className="w-10 h-10 bg-orange-500/10 rounded-lg mb-3" />
+              <div className="h-6 bg-orange-500/10 rounded mb-2" />
+              <div className="h-4 bg-orange-500/10 rounded w-20" />
+            </div>
+          </div>
         ))}
       </div>
     );
@@ -44,32 +42,40 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
       title: 'Total Sessions',
       value: stats.totalSessions,
       icon: MessageSquare,
-      iconColor: 'text-primary-400',
-      bgColor: 'bg-primary-500/10',
+      iconColor: 'text-orange-400',
+      bgColor: 'bg-orange-500/20',
+      borderColor: 'border-orange-500/40',
+      glowColor: 'shadow-orange-500/20',
       trend: stats.weeklyProgress,
     },
     {
       title: 'Learning Time',
       value: `${Math.floor(stats.totalMinutes / 60)}h ${stats.totalMinutes % 60}m`,
       icon: Clock,
-      iconColor: 'text-green-400',
-      bgColor: 'bg-green-500/10',
+      iconColor: 'text-amber-400',
+      bgColor: 'bg-amber-500/20',
+      borderColor: 'border-amber-500/40',
+      glowColor: 'shadow-amber-500/20',
       trend: null,
     },
     {
       title: 'Current Streak',
       value: `${stats.currentStreak} days`,
       icon: Flame,
-      iconColor: 'text-orange-400',
-      bgColor: 'bg-orange-500/10',
+      iconColor: 'text-orange-500',
+      bgColor: 'bg-orange-600/20',
+      borderColor: 'border-orange-600/40',
+      glowColor: 'shadow-orange-600/20',
       trend: null,
     },
     {
       title: 'Average Score',
       value: `${stats.averageScore}%`,
       icon: Target,
-      iconColor: 'text-blue-400',
-      bgColor: 'bg-blue-500/10',
+      iconColor: 'text-amber-500',
+      bgColor: 'bg-amber-600/20',
+      borderColor: 'border-amber-600/40',
+      glowColor: 'shadow-amber-600/20',
       trend: null,
     },
   ];
@@ -77,25 +83,26 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {cards.map((card, index) => (
-        <Card key={index} variant="elevated" padding="md" hover>
-          <CardContent>
-            <div className="flex items-start justify-between mb-3">
-              <div className={`w-10 h-10 rounded-lg ${card.bgColor} flex items-center justify-center`}>
-                <card.icon size={20} className={card.iconColor} />
-              </div>
-              {card.trend !== null && card.trend !== 0 && (
-                <div className={`flex items-center gap-1 text-xs font-medium ${
-                  card.trend > 0 ? 'text-green-400' : 'text-red-400'
-                }`}>
-                  {card.trend > 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                  <span>{Math.abs(card.trend)}%</span>
-                </div>
-              )}
+        <div 
+          key={index} 
+          className={`bg-gray-900/80 border ${card.borderColor} rounded-xl p-4 hover:bg-gray-900/90 transition-all duration-300 hover:shadow-lg ${card.glowColor} group cursor-default`}
+        >
+          <div className="flex items-start justify-between mb-3">
+            <div className={`w-10 h-10 rounded-lg ${card.bgColor} flex items-center justify-center border ${card.borderColor} group-hover:scale-110 transition-transform duration-300`}>
+              <card.icon size={20} className={card.iconColor} />
             </div>
-            <p className="text-2xl font-bold text-white mb-1">{card.value}</p>
-            <p className="text-xs text-gray-400">{card.title}</p>
-          </CardContent>
-        </Card>
+            {card.trend !== null && card.trend !== 0 && (
+              <div className={`flex items-center gap-1 text-xs font-bold ${
+                card.trend > 0 ? 'text-orange-400' : 'text-red-400'
+              }`}>
+                {card.trend > 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                <span>{Math.abs(card.trend)}%</span>
+              </div>
+            )}
+          </div>
+          <p className="text-2xl font-bold text-white mb-1">{card.value}</p>
+          <p className="text-xs text-gray-500 font-medium">{card.title}</p>
+        </div>
       ))}
     </div>
   );

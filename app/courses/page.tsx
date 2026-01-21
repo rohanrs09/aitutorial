@@ -120,7 +120,10 @@ export default function CoursesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen bg-atmospheric relative overflow-hidden">
+      {/* Modern orange background orbs */}
+      <div className="fixed top-20 left-10 w-[400px] h-[400px] bg-orange-500/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed bottom-20 right-10 w-[300px] h-[300px] bg-amber-500/10 rounded-full blur-[80px] pointer-events-none" />
       {/* Header - Using PageHeader Component */}
       <PageHeader
         title="Courses"
@@ -189,16 +192,16 @@ export default function CoursesPage() {
             // Loading State
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <Card key={i} variant="elevated" padding="none">
+                <div key={i} className="bg-gray-900/80 border border-orange-500/20 rounded-2xl overflow-hidden">
                   <div className="animate-pulse">
-                    <div className="h-40 bg-surface-lighter rounded-t-2xl" />
+                    <div className="h-40 bg-orange-500/10" />
                     <div className="p-4 space-y-3">
-                      <div className="h-4 bg-surface-lighter rounded w-3/4" />
-                      <div className="h-3 bg-surface-lighter rounded w-full" />
-                      <div className="h-3 bg-surface-lighter rounded w-2/3" />
+                      <div className="h-4 bg-orange-500/10 rounded w-3/4" />
+                      <div className="h-3 bg-orange-500/10 rounded w-full" />
+                      <div className="h-3 bg-orange-500/10 rounded w-2/3" />
                     </div>
                   </div>
-                </Card>
+                </div>
               ))}
             </div>
           ) : filteredCourses.length === 0 ? (
@@ -208,10 +211,10 @@ export default function CoursesPage() {
               animate={{ opacity: 1, scale: 1 }}
               className="text-center py-16"
             >
-              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-surface-lighter flex items-center justify-center">
-                <BookOpen className="w-10 h-10 text-gray-500" />
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-orange-500/20 border border-orange-500/40 flex items-center justify-center">
+                <BookOpen className="w-10 h-10 text-orange-400" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">
+              <h3 className="text-xl font-bold text-white mb-2">
                 No courses found
               </h3>
               <p className="text-gray-400 mb-6 max-w-md mx-auto">
@@ -245,23 +248,22 @@ export default function CoursesPage() {
                       }}
                     >
                       <Link href={`/course/${course.id}`}>
-                        <Card 
-                          variant="elevated" 
-                          padding="none"
-                          hover
-                          className="h-full group overflow-hidden"
+                        <div 
+                          className="h-full group overflow-hidden bg-gray-900/80 border border-orange-500/20 rounded-2xl hover:border-orange-500/50 hover:shadow-lg hover:shadow-orange-500/20 transition-all duration-300"
                         >
                           {/* Course Icon/Image */}
-                          <div className="relative h-40 bg-gradient-to-br from-primary-500/20 to-purple-500/20 flex items-center justify-center overflow-hidden">
+                          <div className="relative h-40 bg-gradient-to-br from-orange-500/20 via-amber-500/10 to-orange-600/10 flex items-center justify-center overflow-hidden">
+                            {/* Grid pattern */}
+                            <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 20px, rgba(255, 107, 53, 0.1) 20px, rgba(255, 107, 53, 0.1) 21px), repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(255, 107, 53, 0.1) 20px, rgba(255, 107, 53, 0.1) 21px)' }} />
                             <CategoryIcon 
                               size={64} 
-                              className="text-primary-400 group-hover:scale-110 transition-transform duration-300" 
+                              className="text-orange-400 group-hover:scale-110 transition-transform duration-300 relative z-10" 
                             />
                             {/* Difficulty Badge */}
                             <div className="absolute top-3 right-3">
                               <Badge 
                                 variant="outline"
-                                className={getDifficultyColor(course.level)}
+                                className={`${getDifficultyColor(course.level)} backdrop-blur-sm`}
                               >
                                 {course.level}
                               </Badge>
@@ -273,7 +275,7 @@ export default function CoursesPage() {
                             {/* Title and Rating */}
                             <div className="space-y-1">
                               <div className="flex items-start justify-between gap-2">
-                                <h3 className="text-base font-semibold text-white group-hover:text-primary-400 transition-colors line-clamp-2">
+                                <h3 className="text-base font-bold text-white group-hover:text-orange-400 transition-colors line-clamp-2">
                                   {course.title}
                                 </h3>
                                 {course.rating && (
@@ -313,7 +315,7 @@ export default function CoursesPage() {
                                 <Badge 
                                   key={tag}
                                   variant="outline"
-                                  className="text-xs bg-surface border-white/10 text-gray-400"
+                                  className="text-xs bg-gray-800/50 border-orange-500/20 text-gray-400"
                                 >
                                   {tag}
                                 </Badge>
@@ -321,7 +323,7 @@ export default function CoursesPage() {
                               {course.tags.length > 3 && (
                                 <Badge 
                                   variant="outline"
-                                  className="text-xs bg-surface border-white/10 text-gray-400"
+                                  className="text-xs bg-gray-800/50 border-orange-500/20 text-gray-400"
                                 >
                                   +{course.tags.length - 3}
                                 </Badge>
@@ -330,13 +332,13 @@ export default function CoursesPage() {
 
                             {/* CTA */}
                             <div className="pt-2">
-                              <div className="text-primary-400 text-sm font-medium group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                              <div className="text-orange-400 text-sm font-bold group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
                                 Start Course
                                 <span className="text-lg">→</span>
                               </div>
                             </div>
                           </CardContent>
-                        </Card>
+                        </div>
                       </Link>
                     </motion.div>
                   );

@@ -87,11 +87,20 @@ export default function ProductionDashboard() {
   const getGreeting = () => { const hour = new Date().getHours(); if (hour < 12) return 'Good morning'; if (hour < 17) return 'Good afternoon'; return 'Good evening'; };
 
   if (!isUserLoaded) {
-    return <div className="min-h-screen bg-surface flex items-center justify-center"><motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center gap-4"><div className="w-10 h-10 border-3 border-primary-500 border-t-transparent rounded-full animate-spin" /><p className="text-gray-400 text-sm">Loading dashboard...</p></motion.div></div>;
+    return (
+      <div className="min-h-screen bg-atmospheric flex items-center justify-center relative overflow-hidden">
+        <div className="absolute top-20 left-10 w-[400px] h-[400px] bg-teal-500/20 rounded-full blur-[100px]" />
+        <div className="absolute bottom-20 right-10 w-[300px] h-[300px] bg-orange-500/15 rounded-full blur-[80px]" />
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center gap-4 relative z-10">
+          <div className="w-12 h-12 border-3 border-teal-500 border-t-transparent rounded-full animate-spin shadow-lg shadow-teal-500/30" />
+          <p className="text-gray-400 text-sm font-medium">Loading dashboard...</p>
+        </motion.div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen bg-atmospheric relative overflow-hidden">
       <DashboardHeader userName={user?.firstName || 'Learner'} greeting={getGreeting()} onRefresh={handleRefresh} isRefreshing={isRefreshing} userButton={<UserButton />} />
       <PageContainer maxWidth="2xl">
         {dashboardData.error && <PageSection><Card variant="elevated" padding="md"><CardContent><div className="flex items-center gap-3 text-yellow-400"><AlertCircle size={20} /><div><p className="font-medium">Unable to load dashboard data</p><p className="text-sm text-gray-400 mt-1">{dashboardData.error}</p></div></div></CardContent></Card></PageSection>}
