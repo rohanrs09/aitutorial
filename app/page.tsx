@@ -73,6 +73,7 @@ const testimonials = [
   }
 ];
 
+/* PRICING PLANS - COMMENTED OUT
 const pricingPlans = [
   {
     name: 'Free',
@@ -118,6 +119,7 @@ const pricingPlans = [
     highlighted: false
   }
 ];
+/* END PRICING PLANS */
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -148,7 +150,7 @@ export default function LandingPage() {
               <a href="#courses" className="text-gray-400 hover:text-white transition-colors duration-200 animated-underline">Courses</a>
               <a href="#features" className="text-gray-400 hover:text-white transition-colors duration-200 animated-underline">Features</a>
               <a href="#topics" className="text-gray-400 hover:text-white transition-colors duration-200 animated-underline">Topics</a>
-              <a href="#pricing" className="text-gray-400 hover:text-white transition-colors duration-200 animated-underline">Pricing</a>
+              {/* <a href="#pricing" className="text-gray-400 hover:text-white transition-colors duration-200 animated-underline">Pricing</a> */}
             </div>
 
             {/* Auth Buttons */}
@@ -421,6 +423,7 @@ export default function LandingPage() {
                     </div>
                     <h3 className="text-lg font-bold text-white mb-3">{feature.title}</h3>
                     <p className="text-gray-400 leading-relaxed text-sm">{feature.description}</p>
+                {/* Pricing button - commented out
                 {index === 2 && (
                   <div className="mt-5">
                     <a href="#pricing" className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-gray-900 rounded-lg text-sm font-bold transition-all duration-300 shadow-lg shadow-orange-500/40 hover:shadow-orange-500/60 hover:scale-105">
@@ -429,6 +432,7 @@ export default function LandingPage() {
                     </a>
                   </div>
                 )}
+                */}
                   </CardContent>
                 </Card>
               </motion.div>
@@ -647,7 +651,7 @@ export default function LandingPage() {
               <h4 className="font-semibold text-white mb-4 text-sm">Product</h4>
               <ul className="space-y-3">
                 <li><a href="#features" className="text-gray-400 hover:text-white text-sm transition-colors">Features</a></li>
-                <li><a href="#pricing" className="text-gray-400 hover:text-white text-sm transition-colors">Pricing</a></li>
+                {/* <li><a href="#pricing" className="text-gray-400 hover:text-white text-sm transition-colors">Pricing</a></li> */}
                 <li><a href="#topics" className="text-gray-400 hover:text-white text-sm transition-colors">Topics</a></li>
               </ul>
             </div>

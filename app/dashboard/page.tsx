@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { AlertCircle } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import { useUser } from '@clerk/nextjs';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageContainer, PageSection } from '@/components/layout/PageContainer';
@@ -20,79 +21,63 @@ import { fetchDashboardData, subscribeToDashboardUpdates, type DashboardData } f
 const isClerkConfigured = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
 function FallbackUserButton() {
-  return <div className="w-8 h-8 rounded-full bg-primary-500/20 flex items-center justify-center"><span className="text-primary-400 text-sm">👤</span></div>;
+  return <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center"><span className="text-orange-400 text-sm">👤</span></div>;
 }
 
 const ClerkUserButton = dynamic(() => import('@clerk/nextjs').then(mod => mod.UserButton).catch(() => FallbackUserButton), { ssr: false, loading: () => <FallbackUserButton /> });
-
-async function getClerkUserData(): Promise<{ id?: string; firstName?: string } | null> {
-  if (!isClerkConfigured) return null;
-  try {
-    if (typeof window !== 'undefined') {
-      const clerk = (window as Window & { Clerk?: { user?: unknown; loaded?: boolean } }).Clerk;
-      if (clerk?.loaded && clerk.user) {
-        const user = clerk.user as { id: string; firstName?: string };
-        return { id: user?.id, firstName: user?.firstName || undefined };
-      }
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
 
 function UserButton() {
   return isClerkConfigured ? <ClerkUserButton afterSignOutUrl="/" /> : <FallbackUserButton />;
 }
 
 export default function ProductionDashboard() {
-  const [user, setUser] = useState<{ firstName?: string; id?: string } | null>(null);
-  const [isUserLoaded, setIsUserLoaded] = useState(false);
+  // Use Clerk's useUser hook for reliable user data
+  const { user: clerkUser, isLoaded: isClerkLoaded } = useUser();
+  
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     stats: { totalSessions: 0, totalMinutes: 0, currentStreak: 0, averageScore: 0, weeklyProgress: 0, monthlyProgress: 0 },
     activityChart: [], emotionDistribution: [], recentSessions: [], topicProgress: [], isLoading: true, error: null,
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Derive user info from Clerk
+  const userId = clerkUser?.id || null;
+  const userName = clerkUser?.firstName || 'Learner';
+  const isUserLoaded = isClerkConfigured ? isClerkLoaded : true;
 
+  // Debug logging for user ID
   useEffect(() => {
-    let checkInterval: NodeJS.Timeout;
-    let timeoutId: NodeJS.Timeout;
-    const loadUser = async () => {
-      if (!isClerkConfigured) { setUser({ firstName: 'Learner' }); setIsUserLoaded(true); return; }
-      checkInterval = setInterval(async () => {
-        const clerkUser = await getClerkUserData();
-        if (clerkUser) { setUser(clerkUser); setIsUserLoaded(true); clearInterval(checkInterval); clearTimeout(timeoutId); }
-      }, 200);
-      timeoutId = setTimeout(() => { clearInterval(checkInterval); if (!isUserLoaded) { setUser({ firstName: 'Learner' }); setIsUserLoaded(true); } }, 3000);
-    };
-    loadUser();
-    return () => { clearInterval(checkInterval); clearTimeout(timeoutId); };
-  }, [isUserLoaded]);
+    if (isUserLoaded) {
+      console.log('[Dashboard] User loaded:', { userId, userName, isClerkConfigured });
+    }
+  }, [isUserLoaded, userId, userName]);
 
   useEffect(() => {
     if (!isUserLoaded) return;
     const loadDashboardData = async () => {
+      console.log('[Dashboard] Loading data for userId:', userId);
       setDashboardData(prev => ({ ...prev, isLoading: true }));
-      const data = await fetchDashboardData(user?.id || null);
+      const data = await fetchDashboardData(userId);
+      console.log('[Dashboard] Fetched data:', { sessions: data.recentSessions.length, stats: data.stats });
       setDashboardData(data);
     };
     loadDashboardData();
-    if (user?.id) {
-      const unsubscribe = subscribeToDashboardUpdates(user.id, (updatedData) => { setDashboardData(prev => ({ ...prev, ...updatedData })); });
+    if (userId) {
+      const unsubscribe = subscribeToDashboardUpdates(userId, (updatedData) => { setDashboardData(prev => ({ ...prev, ...updatedData })); });
       return () => { unsubscribe(); };
     }
-  }, [isUserLoaded, user?.id]);
+  }, [isUserLoaded, userId]);
 
-  const handleRefresh = async () => { setIsRefreshing(true); const data = await fetchDashboardData(user?.id || null); setDashboardData(data); setIsRefreshing(false); };
+  const handleRefresh = async () => { setIsRefreshing(true); const data = await fetchDashboardData(userId); setDashboardData(data); setIsRefreshing(false); };
   const getGreeting = () => { const hour = new Date().getHours(); if (hour < 12) return 'Good morning'; if (hour < 17) return 'Good afternoon'; return 'Good evening'; };
 
   if (!isUserLoaded) {
     return (
       <div className="min-h-screen bg-atmospheric flex items-center justify-center relative overflow-hidden">
-        <div className="absolute top-20 left-10 w-[400px] h-[400px] bg-teal-500/20 rounded-full blur-[100px]" />
-        <div className="absolute bottom-20 right-10 w-[300px] h-[300px] bg-orange-500/15 rounded-full blur-[80px]" />
+        <div className="absolute top-20 left-10 w-[400px] h-[400px] bg-orange-500/20 rounded-full blur-[100px]" />
+        <div className="absolute bottom-20 right-10 w-[300px] h-[300px] bg-amber-500/15 rounded-full blur-[80px]" />
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center gap-4 relative z-10">
-          <div className="w-12 h-12 border-3 border-teal-500 border-t-transparent rounded-full animate-spin shadow-lg shadow-teal-500/30" />
+          <div className="w-12 h-12 border-3 border-orange-500 border-t-transparent rounded-full animate-spin shadow-lg shadow-orange-500/30" />
           <p className="text-gray-400 text-sm font-medium">Loading dashboard...</p>
         </motion.div>
       </div>
@@ -101,7 +86,7 @@ export default function ProductionDashboard() {
 
   return (
     <div className="min-h-screen bg-atmospheric relative overflow-hidden">
-      <DashboardHeader userName={user?.firstName || 'Learner'} greeting={getGreeting()} onRefresh={handleRefresh} isRefreshing={isRefreshing} userButton={<UserButton />} />
+      <DashboardHeader userName={userName} greeting={getGreeting()} onRefresh={handleRefresh} isRefreshing={isRefreshing} userButton={<UserButton />} />
       <PageContainer maxWidth="2xl">
         {dashboardData.error && <PageSection><Card variant="elevated" padding="md"><CardContent><div className="flex items-center gap-3 text-yellow-400"><AlertCircle size={20} /><div><p className="font-medium">Unable to load dashboard data</p><p className="text-sm text-gray-400 mt-1">{dashboardData.error}</p></div></div></CardContent></Card></PageSection>}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8"><StatsCards stats={dashboardData.stats} isLoading={dashboardData.isLoading} /></motion.div>

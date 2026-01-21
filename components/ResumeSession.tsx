@@ -94,7 +94,7 @@ export default function ResumeSession() {
             <motion.div
               whileHover={{ scale: 1.02, boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}
               whileTap={{ scale: 0.98 }}
-              className="bg-gradient-to-r from-blue-600 to-cyan-600 rounded-2xl p-6 text-white cursor-pointer shadow-lg"
+              className="bg-gradient-to-r from-orange-500 to-amber-500 rounded-2xl p-6 text-white cursor-pointer shadow-lg shadow-orange-500/30"
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1">
@@ -153,7 +153,7 @@ export default function ResumeSession() {
                   transition={{ delay: index * 0.1 }}
                 >
                   <Link href="/learn">
-                    <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 cursor-pointer transition-colors">
+                    <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-orange-500 dark:hover:border-orange-400 cursor-pointer transition-colors">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
                           <BookOpen className="w-4 h-4 text-gray-400" />
@@ -169,7 +169,7 @@ export default function ResumeSession() {
                           <div className="h-1.5 flex-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                             <div
                               style={{ width: `${session.progress_percentage}%` }}
-                              className="h-full bg-blue-500"
+                              className="h-full bg-orange-500"
                             />
                           </div>
                           <span className="text-xs font-semibold">{Math.round(session.progress_percentage)}%</span>

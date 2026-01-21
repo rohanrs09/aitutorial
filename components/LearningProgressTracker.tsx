@@ -45,7 +45,7 @@ interface LearningProgressTrackerProps {
 
 const masteryColors = {
   new: 'bg-gray-100 text-gray-600',
-  learning: 'bg-blue-100 text-blue-600',
+  learning: 'bg-orange-100 text-orange-600',
   reviewing: 'bg-yellow-100 text-yellow-600',
   mastered: 'bg-green-100 text-green-600'
 };
@@ -144,7 +144,7 @@ export default function LearningProgressTracker({
         className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
             <Trophy size={20} className="text-white" />
           </div>
           <div className="text-left">
@@ -189,7 +189,7 @@ export default function LearningProgressTracker({
                   <p className="text-xs text-gray-400">Accuracy</p>
                 </div>
                 <div className="bg-[#3a3a3a] rounded-lg p-3 text-center">
-                  <Clock size={18} className="mx-auto text-blue-400 mb-1" />
+                  <Clock size={18} className="mx-auto text-orange-400 mb-1" />
                   <p className="text-lg font-bold text-white">{formatTime(sessionStats.timeSpent)}</p>
                   <p className="text-xs text-gray-400">Time</p>
                 </div>
@@ -208,7 +208,7 @@ export default function LearningProgressTracker({
                 </div>
                 <div className="h-3 bg-[#3a3a3a] rounded-full overflow-hidden">
                   <motion.div
-                    className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full"
+                    className="h-full bg-gradient-to-r from-orange-500 to-amber-500 rounded-full"
                     initial={{ width: 0 }}
                     animate={{ width: `${overallMastery}%` }}
                     transition={{ duration: 0.5, delay: 0.2 }}
@@ -254,7 +254,7 @@ export default function LearningProgressTracker({
                                     className={`h-full rounded-full ${
                                       concept.status === 'mastered' ? 'bg-green-500' :
                                       concept.status === 'reviewing' ? 'bg-yellow-500' :
-                                      concept.status === 'learning' ? 'bg-blue-500' : 'bg-gray-500'
+                                      concept.status === 'learning' ? 'bg-orange-500' : 'bg-gray-500'
                                     }`}
                                     style={{ width: `${concept.masteryLevel}%` }}
                                   />

@@ -179,12 +179,12 @@ export function InsightsCard({ stats, topicProgress, isLoading }: InsightsCardPr
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                   insight.type === 'success' ? 'bg-green-500/10' :
                   insight.type === 'warning' ? 'bg-yellow-500/10' :
-                  'bg-blue-500/10'
+                  'bg-orange-500/10'
                 }`}>
                   <insight.icon size={16} className={
                     insight.type === 'success' ? 'text-green-400' :
                     insight.type === 'warning' ? 'text-yellow-400' :
-                    'text-blue-400'
+                    'text-orange-400'
                   } />
                 </div>
                 <div className="flex-1 min-w-0">

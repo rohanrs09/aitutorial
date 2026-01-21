@@ -384,18 +384,20 @@ export default function SettingsPage() {
         >
           <h3 className="text-lg font-semibold text-white mb-4">Subscription</h3>
           
-          <div className="p-4 bg-gradient-to-br from-primary-500/20 to-pink-500/20 rounded-xl border border-primary-500/30 mb-4">
+          <div className="p-4 bg-gradient-to-br from-orange-500/20 to-amber-500/20 rounded-xl border border-orange-500/30 mb-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-white font-medium">Free Plan</span>
-              <span className="px-2 py-1 bg-primary-500/20 text-primary-400 text-xs rounded-full">Current</span>
+              <span className="px-2 py-1 bg-orange-500/20 text-orange-400 text-xs rounded-full">Current</span>
             </div>
-            <p className="text-gray-400 text-sm mb-3">10 voice sessions per month</p>
+            <p className="text-gray-400 text-sm mb-3">Unlimited voice sessions</p>
+            {/* Pricing link commented out
             <Link 
               href="/#pricing" 
               className="btn-primary text-sm w-full justify-center"
             >
               Upgrade to Pro
             </Link>
+            */}
           </div>
 
           <SettingLink 

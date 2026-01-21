@@ -66,10 +66,13 @@ export default function LearnPage() {
   // Show loading while checking context
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-surface flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Setting up your learning session...</p>
+      <div className="min-h-screen bg-atmospheric flex items-center justify-center relative overflow-hidden">
+        {/* Background orbs */}
+        <div className="absolute top-20 left-10 w-[400px] h-[400px] bg-orange-500/20 rounded-full blur-[100px]" />
+        <div className="absolute bottom-20 right-10 w-[300px] h-[300px] bg-amber-500/15 rounded-full blur-[80px]" />
+        <div className="text-center relative z-10">
+          <div className="w-14 h-14 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4 shadow-lg shadow-orange-500/30"></div>
+          <p className="text-gray-300 font-medium">Setting up your learning session...</p>
         </div>
       </div>
     );
@@ -82,10 +85,11 @@ export default function LearnPage() {
 
   // Fallback (should redirect quickly)
   return (
-    <div className="min-h-screen bg-surface flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-gray-400">Redirecting to courses...</p>
+    <div className="min-h-screen bg-atmospheric flex items-center justify-center relative overflow-hidden">
+      <div className="absolute top-20 left-10 w-[400px] h-[400px] bg-orange-500/20 rounded-full blur-[100px]" />
+      <div className="text-center relative z-10">
+        <div className="w-14 h-14 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4 shadow-lg shadow-orange-500/30"></div>
+        <p className="text-gray-300 font-medium">Redirecting to courses...</p>
       </div>
     </div>
   );

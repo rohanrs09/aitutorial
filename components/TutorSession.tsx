@@ -1260,7 +1260,10 @@ The student is confused about THIS SPECIFIC LECTURE. Explain it simply!
   };
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col safe-area-inset">
+    <div className="min-h-screen bg-atmospheric flex flex-col safe-area-inset relative overflow-hidden">
+      {/* Background orbs */}
+      <div className="fixed top-0 left-0 w-[400px] h-[400px] bg-orange-500/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed bottom-0 right-0 w-[300px] h-[300px] bg-amber-500/10 rounded-full blur-[80px] pointer-events-none" />
       {/* Emotion Confirmation Modal */}
       <EmotionConfirmation
         emotion={pendingEmotionAction?.emotion || ''}
@@ -1285,12 +1288,12 @@ The student is confused about THIS SPECIFIC LECTURE. Explain it simply!
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={e => e.stopPropagation()}
-              className="bg-surface-light rounded-2xl p-6 max-w-md w-full border border-white/10 shadow-2xl"
+              className="bg-gray-900/95 rounded-2xl p-6 max-w-md w-full border border-orange-500/30 shadow-2xl shadow-orange-500/10 backdrop-blur-xl"
             >
               <h3 className="text-xl font-bold text-white mb-3">End Learning Session?</h3>
               
               {/* Session Stats Summary */}
-              <div className="mb-4 p-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl">
+              <div className="mb-4 p-4 bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/20 rounded-xl">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="text-center">
                     <p className="text-2xl font-bold text-white">{Math.floor(sessionStats.timeSpent / 60)}</p>
@@ -1316,8 +1319,8 @@ The student is confused about THIS SPECIFIC LECTURE. Explain it simply!
               </p>
               
               {courseContext && (
-                <div className="mb-4 p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-                  <p className="text-sm text-purple-300">
+                <div className="mb-4 p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+                  <p className="text-sm text-orange-300">
                     You&apos;ll return to: <strong>{courseContext.lectureTitle}</strong>
                   </p>
                 </div>
@@ -1332,7 +1335,7 @@ The student is confused about THIS SPECIFIC LECTURE. Explain it simply!
                 <button
                   onClick={handleEndSession}
                   disabled={isEndingSession}
-                  className="flex-1 px-4 py-3 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-gray-900 font-bold rounded-xl hover:from-orange-400 hover:to-amber-400 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-orange-500/30"
                 >
                   {isEndingSession ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -1348,26 +1351,26 @@ The student is confused about THIS SPECIFIC LECTURE. Explain it simply!
       {/* Removed: Welcome Modal - not needed for focused learning */}
 
       {/* Navigation Header - FIXED at top, never shifts */}
-      <header className="bg-surface/95 backdrop-blur-lg border-b border-white/5 fixed top-0 left-0 right-0 z-40">
+      <header className="bg-gray-900/95 backdrop-blur-xl border-b border-orange-500/20 fixed top-0 left-0 right-0 z-40 shadow-lg shadow-orange-500/5">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
           <div className="flex items-center justify-between h-14 sm:h-16">
             {/* Left: Back Button & Logo */}
             <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
               <button
                 onClick={handleGoBack}
-                className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/5 flex-shrink-0"
+                className="p-2 text-gray-400 hover:text-orange-400 transition-colors rounded-lg hover:bg-orange-500/10 flex-shrink-0 border border-transparent hover:border-orange-500/30"
                 title={courseContext ? 'Back to course' : 'Back to home'}
               >
                 <ArrowLeft size={20} />
               </button>
               <div className="flex items-center gap-2 min-w-0">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-orange-500/30">
                   <Mic size={16} className="text-white" />
                 </div>
                 <div className="min-w-0">
                   <span className="font-semibold text-white text-sm sm:text-base">AI Tutor</span>
                   {courseContext && (
-                    <p className="text-xs text-purple-400 truncate hidden sm:block">{courseContext.lectureTitle}</p>
+                    <p className="text-xs text-orange-400 truncate hidden sm:block">{courseContext.lectureTitle}</p>
                   )}
                 </div>
               </div>

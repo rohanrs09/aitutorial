@@ -39,8 +39,8 @@ export default function AnimatedTutorOrb({
   const emotionGradients = {
     neutral: 'from-gray-200 via-white to-gray-100',
     happy: 'from-yellow-100 via-white to-orange-50',
-    thinking: 'from-blue-100 via-white to-purple-50',
-    explaining: 'from-green-100 via-white to-teal-50'
+    thinking: 'from-orange-100 via-white to-amber-50',
+    explaining: 'from-amber-100 via-white to-orange-50'
   };
 
   return (

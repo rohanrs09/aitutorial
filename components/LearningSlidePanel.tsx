@@ -125,7 +125,7 @@ const slideTypeIcons = {
 };
 
 const slideTypeColors = {
-  concept: 'bg-blue-100 text-blue-700 border-blue-200',
+  concept: 'bg-orange-100 text-orange-700 border-orange-200',
   example: 'bg-green-100 text-green-700 border-green-200',
   tip: 'bg-yellow-100 text-yellow-700 border-yellow-200',
   practice: 'bg-purple-100 text-purple-700 border-purple-200',
@@ -324,7 +324,7 @@ export default function LearningSlidePanel({
                 <div className="flex items-center gap-2 text-xs text-gray-500">
                   <div className="flex-1 bg-gray-200 rounded-full h-1.5">
                     <div 
-                      className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                      className="bg-orange-500 h-1.5 rounded-full transition-all duration-300"
                       style={{
                         width: `${Math.min(100, Math.max(0, ((audioCurrentTime - (currentSlide.audioStartTime || 0)) / (currentSlide.audioDuration || 1)) * 100))}%`
                       }}
