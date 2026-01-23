@@ -13,12 +13,12 @@
  * - Mobile-first approach
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { 
-  BookOpen, Clock, Users, Star, Search, X,
-  TrendingUp, Code, Brain, Database, Palette, Globe
+  BookOpen, Clock, Users, Star, Search, X, Filter, SortAsc, SortDesc,
+  TrendingUp, Code, Brain, Database, Palette, Globe, Calculator, Network, Server
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
@@ -62,8 +62,28 @@ const categoryIcons: Record<string, any> = {
   'Languages': Globe,
   'DSA': Code,
   'Algorithms': Brain,
+  'Aptitude': Calculator,
+  'Reasoning': Brain,
+  'Computer Networks': Network,
+  'DBMS': Database,
+  'Operating Systems': Server,
+  'GATE': Brain,
+  'Placements': TrendingUp,
   'default': Brain
 };
+
+// Topic categories for filtering
+const TOPIC_CATEGORIES = [
+  { id: 'all', label: 'All Courses', icon: BookOpen },
+  { id: 'DSA', label: 'DSA', icon: Code },
+  { id: 'Aptitude', label: 'Aptitude', icon: Calculator },
+  { id: 'Computer Networks', label: 'Networks', icon: Network },
+  { id: 'DBMS', label: 'DBMS', icon: Database },
+  { id: 'Operating Systems', label: 'OS', icon: Server },
+  { id: 'GATE', label: 'GATE Prep', icon: Brain },
+];
+
+type SortOption = 'popular' | 'rating' | 'lectures' | 'name';
 
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -72,6 +92,8 @@ export default function CoursesPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [categories, setCategories] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<SortOption>('popular');
+  const [showFilters, setShowFilters] = useState(false);
 
   // Load courses (NO LOGIC CHANGES)
   useEffect(() => {
@@ -86,7 +108,7 @@ export default function CoursesPage() {
     setIsLoading(false);
   }, []);
 
-  // Filter courses (NO LOGIC CHANGES)
+  // Filter and sort courses
   useEffect(() => {
     let filtered = courses;
     
@@ -102,8 +124,24 @@ export default function CoursesPage() {
       filtered = filtered.filter(course => course.tags.includes(selectedCategory));
     }
     
+    // Apply sorting
+    filtered = [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case 'popular':
+          return (b.enrollmentCount || 0) - (a.enrollmentCount || 0);
+        case 'rating':
+          return (b.rating || 0) - (a.rating || 0);
+        case 'lectures':
+          return b.lectureCount - a.lectureCount;
+        case 'name':
+          return a.title.localeCompare(b.title);
+        default:
+          return 0;
+      }
+    });
+    
     setFilteredCourses(filtered);
-  }, [searchQuery, selectedCategory, courses]);
+  }, [searchQuery, selectedCategory, courses, sortBy]);
 
   const getDifficultyColor = (level: string) => {
     switch (level) {
@@ -162,26 +200,51 @@ export default function CoursesPage() {
               )}
             </div>
 
-            {/* Category Pills - Simplified */}
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant={selectedCategory === 'all' ? 'primary' : 'ghost'}
-                size="sm"
-                onClick={() => setSelectedCategory('all')}
-              >
-                All
-              </Button>
-              
-              {categories.slice(0, 5).map((category) => (
-                <Button
-                  key={category}
-                  variant={selectedCategory === category ? 'primary' : 'ghost'}
-                  size="sm"
-                  onClick={() => setSelectedCategory(category)}
-                >
-                  {category}
-                </Button>
-              ))}
+            {/* Topic Categories - Improved with icons */}
+            <div className="flex flex-col gap-4">
+              {/* Topic Filter Buttons */}
+              <div className="flex flex-wrap items-center gap-2">
+                {TOPIC_CATEGORIES.map((category) => {
+                  const IconComponent = category.icon;
+                  const isSelected = selectedCategory === category.id;
+                  return (
+                    <button
+                      key={category.id}
+                      onClick={() => setSelectedCategory(category.id)}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                        isSelected
+                          ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-gray-900 shadow-lg shadow-orange-500/30'
+                          : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/80 hover:text-white border border-gray-700/50 hover:border-orange-500/30'
+                      }`}
+                    >
+                      <IconComponent size={16} />
+                      <span>{category.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Sort Options */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2 text-sm text-gray-400">
+                  <Filter size={16} />
+                  <span>{filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''} found</span>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">Sort by:</span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortOption)}
+                    className="bg-gray-800/80 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 outline-none cursor-pointer"
+                  >
+                    <option value="popular">Most Popular</option>
+                    <option value="rating">Highest Rated</option>
+                    <option value="lectures">Most Content</option>
+                    <option value="name">A-Z</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </motion.div>
         </PageSection>

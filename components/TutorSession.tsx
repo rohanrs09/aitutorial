@@ -1526,7 +1526,7 @@ The student is confused about THIS SPECIFIC LECTURE. Explain it simply!
                                       setShowQuickPrompts(false);
                                     }}
                                     disabled={isProcessing}
-                                    className="p-3 bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 border border-blue-200 rounded-lg text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="p-3 bg-gradient-to-r from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 border border-orange-200 rounded-lg text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                   >
                                     <div className="flex items-center gap-2">
                                       <span className="text-lg">{prompt.icon}</span>
@@ -1538,7 +1538,7 @@ The student is confused about THIS SPECIFIC LECTURE. Explain it simply!
                             )}
                             
                             {courseContext.lectureDescription && (
-                              <div className="p-4 bg-blue-50 rounded-xl mb-4 text-left">
+                              <div className="p-4 bg-orange-50 rounded-xl mb-4 text-left border border-orange-200">
                                 <p className="text-sm text-gray-700 font-medium mb-2">About this lecture:</p>
                                 <p className="text-sm text-gray-600">{courseContext.lectureDescription}</p>
                               </div>
@@ -1547,15 +1547,15 @@ The student is confused about THIS SPECIFIC LECTURE. Explain it simply!
                             {!showQuickPrompts && (
                               <button
                                 onClick={() => setShowQuickPrompts(true)}
-                                className="text-xs text-blue-600 hover:text-blue-700 underline mb-2"
+                                className="text-xs text-orange-600 hover:text-orange-700 underline mb-2"
                               >
                                 Show quick learning prompts
                               </button>
                             )}
                             
-                            <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-xl">
+                            <div className="mt-6 p-4 bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-200 rounded-xl">
                               <p className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                                <Mic size={16} className="text-green-600" />
+                                <Mic size={16} className="text-orange-600" />
                                 Ready to help you learn!
                               </p>
                               <p className="text-xs text-gray-600">

@@ -13,12 +13,14 @@ import {
   AlertCircle,
   Sparkles,
   Copy,
-  Check
+  Check,
+  Loader2
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { ShimmerSlide } from './ui/Shimmer';
 // import MermaidDiagram from './MermaidDiagram';
 
 // Code block component with copy functionality
@@ -221,13 +223,19 @@ export default function LearningSlidePanel({
 
   if (isLoading) {
     return (
-      <div className="h-full flex flex-col sm:flex-row items-center justify-center bg-gradient-to-br from-[#f5f0e8] to-[#e8e0d8] rounded-xl sm:rounded-2xl p-4">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          className="w-8 h-8 sm:w-12 sm:h-12 border-3 sm:border-4 border-purple-500 border-t-transparent rounded-full"
-        />
-        <p className="mt-3 sm:mt-0 sm:ml-4 text-sm sm:text-base text-gray-600">Generating learning content...</p>
+      <div className="h-full bg-gradient-to-br from-[#f5f0e8] to-[#e8e0d8] rounded-xl sm:rounded-2xl p-4 sm:p-6">
+        {/* Loading header */}
+        <div className="flex items-center gap-3 mb-6">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          >
+            <Loader2 className="w-5 h-5 text-orange-500" />
+          </motion.div>
+          <p className="text-sm font-medium text-gray-600">Generating learning content...</p>
+        </div>
+        {/* Shimmer loading UI */}
+        <ShimmerSlide />
       </div>
     );
   }
@@ -245,7 +253,7 @@ export default function LearningSlidePanel({
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-4 sm:mt-6 p-3 sm:p-4 bg-white/80 rounded-lg sm:rounded-xl max-w-lg prose prose-sm max-w-none"
+            className="mt-4 sm:mt-6 p-3 sm:p-4 bg-white/80 rounded-lg sm:rounded-xl prose prose-sm"
           >
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {tutorMessage}

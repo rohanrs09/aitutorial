@@ -191,7 +191,7 @@ export function InsightsCard({ stats, topicProgress, isLoading }: InsightsCardPr
                   <p className="font-medium text-white text-sm mb-1">{insight.title}</p>
                   <p className="text-xs text-gray-400">{insight.description}</p>
                   {insight.action && (
-                    <button className="text-xs text-primary-400 hover:text-primary-300 mt-2 font-medium">
+                    <button className="text-xs text-orange-400 hover:text-orange-300 mt-2 font-medium transition-colors">
                       {insight.action} →
                     </button>
                   )}

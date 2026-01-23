@@ -23,6 +23,16 @@ const actions = [
     primary: true,
   },
   {
+    href: '/quiz',
+    icon: TrendingUp,
+    title: 'Take Quiz',
+    description: 'Test your knowledge',
+    gradient: 'from-purple-500 to-pink-500',
+    borderColor: 'border-purple-500/40',
+    glowColor: 'shadow-purple-500/30',
+    primary: false,
+  },
+  {
     href: '/courses',
     icon: BookOpen,
     title: 'Browse Courses',
@@ -30,15 +40,6 @@ const actions = [
     gradient: 'from-amber-500 to-orange-400',
     borderColor: 'border-amber-500/30',
     glowColor: 'shadow-amber-500/20',
-  },
-  {
-    href: '/dashboard',
-    icon: TrendingUp,
-    title: 'View Analytics',
-    description: 'Track your progress',
-    gradient: 'from-orange-600 to-red-500',
-    borderColor: 'border-orange-600/30',
-    glowColor: 'shadow-orange-600/20',
   },
   {
     href: '/settings',

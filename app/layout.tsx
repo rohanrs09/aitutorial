@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from '@clerk/nextjs';
 import { dark } from '@clerk/themes';
 import "./globals.css";
+import { UserSyncProvider } from '@/components/providers/UserSyncProvider';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -66,20 +67,22 @@ export default function RootLayout({
           appearance={{
             baseTheme: dark,
             variables: {
-              colorPrimary: '#8b5cf6',
+              colorPrimary: '#f97316',
               colorBackground: '#0a0e27',
               colorInputBackground: '#1a1a2e',
               colorInputText: '#ffffff',
             },
             elements: {
-              formButtonPrimary: 'bg-primary-500 hover:bg-primary-600',
+              formButtonPrimary: 'bg-orange-500 hover:bg-orange-600',
               card: 'bg-surface-light border border-white/10',
               headerTitle: 'text-white',
               headerSubtitle: 'text-gray-400',
             }
           }}
         >
-          {children}
+          <UserSyncProvider>
+            {children}
+          </UserSyncProvider>
         </ClerkProvider>
       </body>
     </html>

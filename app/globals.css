@@ -532,20 +532,43 @@ button, a, [role="button"] {
   transform: translateY(-2px);
 }
 
-/* Shimmer effect */
+/* Shimmer effect - Enhanced with orange accent */
 @keyframes shimmer {
   0% {
-    background-position: -1000px 0;
+    transform: translateX(-100%);
   }
   100% {
-    background-position: 1000px 0;
+    transform: translateX(100%);
   }
 }
 
 .shimmer {
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
   background-size: 1000px 100%;
-  animation: shimmer 2s infinite;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Tailwind animate-shimmer utility */
+.animate-shimmer {
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Better shimmer for dark theme - lighter version */
+.shimmer-dark {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg, #2a2a3e 0%, #3a3a50 50%, #2a2a3e 100%);
+  background-size: 200% 100%;
+  animation: shimmerBg 1.8s ease-in-out infinite;
+}
+
+@keyframes shimmerBg {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* Fade in up animation */

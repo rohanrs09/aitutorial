@@ -13,10 +13,12 @@ import { ActivityChart } from '@/components/dashboard/ActivityChart';
 import { EmotionChart } from '@/components/dashboard/EmotionChart';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { TopicProgress } from '@/components/dashboard/TopicProgress';
-import { InsightsCard } from '@/components/dashboard/InsightsCard';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { QuickActions } from '@/components/dashboard/QuickActions';
+import UserLearningInsights from '@/components/UserLearningInsights';
+import QuizAnalytics from '@/components/dashboard/QuizAnalytics';
 import { fetchDashboardData, subscribeToDashboardUpdates, type DashboardData } from '@/lib/dashboard-service';
+import { useRouter } from 'next/navigation';
 
 const isClerkConfigured = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
@@ -33,6 +35,7 @@ function UserButton() {
 export default function ProductionDashboard() {
   // Use Clerk's useUser hook for reliable user data
   const { user: clerkUser, isLoaded: isClerkLoaded } = useUser();
+  const router = useRouter();
   
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     stats: { totalSessions: 0, totalMinutes: 0, currentStreak: 0, averageScore: 0, weeklyProgress: 0, monthlyProgress: 0 },
@@ -44,6 +47,14 @@ export default function ProductionDashboard() {
   const userId = clerkUser?.id || null;
   const userName = clerkUser?.firstName || 'Learner';
   const isUserLoaded = isClerkConfigured ? isClerkLoaded : true;
+
+  const handleStartQuiz = (topic?: string) => {
+    if (topic) {
+      router.push(`/quiz?topic=${encodeURIComponent(topic)}`);
+    } else {
+      router.push('/quiz');
+    }
+  };
 
   // Debug logging for user ID
   useEffect(() => {
@@ -93,9 +104,10 @@ export default function ProductionDashboard() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8"><QuickActions /></motion.div>
         <div className="mb-8">
           <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsList className="grid w-full grid-cols-4 mb-6">
               <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
               <TabsTrigger value="analytics" className="text-xs sm:text-sm">Analytics</TabsTrigger>
+              <TabsTrigger value="quiz" className="text-xs sm:text-sm">Quizzes</TabsTrigger>
               <TabsTrigger value="activity" className="text-xs sm:text-sm">Activity</TabsTrigger>
             </TabsList>
             <TabsContent value="overview" className="space-y-4 sm:space-y-6">
@@ -114,7 +126,23 @@ export default function ProductionDashboard() {
                   transition={{ delay: 0.3 }} 
                   className="order-1 lg:order-2"
                 >
-                  <InsightsCard stats={dashboardData.stats} topicProgress={dashboardData.topicProgress} isLoading={dashboardData.isLoading} />
+                  <UserLearningInsights 
+                    userId={userId}
+                    stats={{
+                      totalSessions: dashboardData.stats.totalSessions,
+                      totalMinutes: dashboardData.stats.totalMinutes,
+                      averageScore: dashboardData.stats.averageScore,
+                      currentStreak: dashboardData.stats.currentStreak,
+                    }}
+                    topicProgress={dashboardData.topicProgress.map(topic => ({
+                      topic: topic.topicName,
+                      score: topic.averageScore,
+                      sessionsCount: topic.sessionsCount,
+                      trend: topic.averageScore >= 70 ? 'up' : topic.averageScore >= 50 ? 'stable' : 'down',
+                      lastPracticed: new Date(topic.lastPracticed).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                    }))}
+                    isPremium={false}
+                  />
                 </motion.div>
               </div>
             </TabsContent>
@@ -137,6 +165,15 @@ export default function ProductionDashboard() {
                   <TopicProgress topics={dashboardData.topicProgress} isLoading={dashboardData.isLoading} />
                 </motion.div>
               </div>
+            </TabsContent>
+            <TabsContent value="quiz" className="space-y-4 sm:space-y-6">
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                transition={{ delay: 0.5 }}
+              >
+                <QuizAnalytics userId={userId} onStartQuiz={handleStartQuiz} />
+              </motion.div>
             </TabsContent>
             <TabsContent value="activity" className="space-y-4 sm:space-y-6">
               <motion.div 
