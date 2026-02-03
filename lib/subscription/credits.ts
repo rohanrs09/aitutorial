@@ -21,11 +21,11 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 // User Subscription Management
 // ============================================
 
-export async function getUserSubscription(userId: string): Promise<UserSubscription | null> {
+export async function getUserSubscription(clerkUserId: string): Promise<UserSubscription | null> {
   const { data, error } = await supabase
     .from('user_subscriptions')
     .select('*')
-    .eq('user_id', userId)
+    .eq('clerk_user_id', clerkUserId)
     .single();
 
   if (error || !data) {
@@ -47,7 +47,7 @@ export async function getUserSubscription(userId: string): Promise<UserSubscript
 }
 
 export async function createUserSubscription(
-  userId: string,
+  clerkUserId: string,
   tier: 'starter' | 'pro' | 'unlimited' = 'starter'
 ): Promise<UserSubscription> {
   const now = new Date();
@@ -57,7 +57,7 @@ export async function createUserSubscription(
   const { data, error } = await supabase
     .from('user_subscriptions')
     .insert({
-      user_id: userId,
+      clerk_user_id: clerkUserId,
       tier,
       status: 'active',
       current_period_start: now.toISOString(),
@@ -71,8 +71,8 @@ export async function createUserSubscription(
     throw new Error(`Failed to create subscription: ${error.message}`);
   }
 
-  // Initialize credits for the user
-  await initializeUserCredits(userId, tier);
+  // Note: Credits should be initialized separately to avoid duplicate key errors
+  // The calling function should handle credit initialization
 
   return {
     id: data.id,
@@ -89,7 +89,7 @@ export async function createUserSubscription(
 }
 
 export async function updateSubscription(
-  userId: string,
+  clerkUserId: string,
   updates: Partial<{
     tier: 'starter' | 'pro' | 'unlimited';
     status: string;
@@ -111,7 +111,7 @@ export async function updateSubscription(
   const { data, error } = await supabase
     .from('user_subscriptions')
     .update(updateData)
-    .eq('user_id', userId)
+    .eq('clerk_user_id', clerkUserId)
     .select()
     .single();
 
@@ -121,7 +121,7 @@ export async function updateSubscription(
 
   // If tier changed, update credits
   if (updates.tier) {
-    await resetUserCredits(userId, updates.tier);
+    await resetUserCredits(clerkUserId, updates.tier);
   }
 
   return {
@@ -142,11 +142,11 @@ export async function updateSubscription(
 // Credits Management
 // ============================================
 
-export async function getUserCredits(userId: string): Promise<UserCredits | null> {
+export async function getUserCredits(clerkUserId: string): Promise<UserCredits | null> {
   const { data, error } = await supabase
     .from('user_credits')
     .select('*')
-    .eq('user_id', userId)
+    .eq('clerk_user_id', clerkUserId)
     .single();
 
   if (error || !data) {
@@ -166,16 +166,23 @@ export async function getUserCredits(userId: string): Promise<UserCredits | null
 }
 
 export async function initializeUserCredits(
-  userId: string,
+  clerkUserId: string,
   tier: 'starter' | 'pro' | 'unlimited'
 ): Promise<UserCredits> {
   const plan = SUBSCRIPTION_PLANS[tier];
   const now = new Date();
 
+  // Check if credits already exist to avoid duplicate key error
+  const existing = await getUserCredits(clerkUserId);
+  if (existing) {
+    console.log('[Credits] Credits already exist for user:', clerkUserId);
+    return existing;
+  }
+
   const { data, error } = await supabase
     .from('user_credits')
     .insert({
-      user_id: userId,
+      clerk_user_id: clerkUserId,
       total_credits: plan.credits,
       used_credits: 0,
       bonus_credits: 0,
@@ -189,7 +196,7 @@ export async function initializeUserCredits(
   }
 
   // Log the transaction
-  await logCreditTransaction(userId, plan.credits, 'subscription_reset', 'Initial credits allocation');
+  await logCreditTransaction(clerkUserId, plan.credits, 'subscription_reset', 'Initial credits allocation');
 
   return {
     id: data.id,
@@ -204,7 +211,7 @@ export async function initializeUserCredits(
 }
 
 export async function resetUserCredits(
-  userId: string,
+  clerkUserId: string,
   tier: 'starter' | 'pro' | 'unlimited'
 ): Promise<UserCredits> {
   const plan = SUBSCRIPTION_PLANS[tier];
@@ -218,7 +225,7 @@ export async function resetUserCredits(
       last_reset_at: now.toISOString(),
       updated_at: now.toISOString()
     })
-    .eq('user_id', userId)
+    .eq('clerk_user_id', clerkUserId)
     .select()
     .single();
 
@@ -227,7 +234,7 @@ export async function resetUserCredits(
   }
 
   // Log the transaction
-  await logCreditTransaction(userId, plan.credits, 'subscription_reset', 'Monthly credits reset');
+  await logCreditTransaction(clerkUserId, plan.credits, 'subscription_reset', 'Monthly credits reset');
 
   return {
     id: data.id,
@@ -241,15 +248,15 @@ export async function resetUserCredits(
   };
 }
 
-export async function useCredits(
-  userId: string,
+export async function deductCredits(
+  clerkUserId: string,
   amount: number,
   description: string
 ): Promise<{ success: boolean; remainingCredits: number | 'unlimited'; error?: string }> {
   // Get user subscription and credits
   const [subscription, credits] = await Promise.all([
-    getUserSubscription(userId),
-    getUserCredits(userId)
+    getUserSubscription(clerkUserId),
+    getUserCredits(clerkUserId)
   ]);
 
   if (!subscription || !credits) {
@@ -264,7 +271,7 @@ export async function useCredits(
   // Unlimited plan doesn't need to check credits
   if (subscription.tier === 'unlimited') {
     // Still log the usage for analytics
-    await logCreditTransaction(userId, -amount, 'usage', description);
+    await logCreditTransaction(clerkUserId, -amount, 'usage', description);
     return { success: true, remainingCredits: 'unlimited' };
   }
 
@@ -285,25 +292,25 @@ export async function useCredits(
       used_credits: credits.usedCredits + amount,
       updated_at: new Date().toISOString()
     })
-    .eq('user_id', userId);
+    .eq('clerk_user_id', clerkUserId);
 
   if (error) {
     return { success: false, remainingCredits: 0, error: error.message };
   }
 
   // Log the transaction
-  await logCreditTransaction(userId, -amount, 'usage', description);
+  await logCreditTransaction(clerkUserId, -amount, 'usage', description);
 
   const newRemaining = credits.totalCredits - (credits.usedCredits + amount) + credits.bonusCredits;
   return { success: true, remainingCredits: Math.max(0, newRemaining) };
 }
 
 export async function addBonusCredits(
-  userId: string,
+  clerkUserId: string,
   amount: number,
   description: string
 ): Promise<UserCredits> {
-  const credits = await getUserCredits(userId);
+  const credits = await getUserCredits(clerkUserId);
   
   if (!credits) {
     throw new Error('User credits not found');
@@ -315,7 +322,7 @@ export async function addBonusCredits(
       bonus_credits: credits.bonusCredits + amount,
       updated_at: new Date().toISOString()
     })
-    .eq('user_id', userId)
+    .eq('clerk_user_id', clerkUserId)
     .select()
     .single();
 
@@ -324,7 +331,7 @@ export async function addBonusCredits(
   }
 
   // Log the transaction
-  await logCreditTransaction(userId, amount, 'bonus', description);
+  await logCreditTransaction(clerkUserId, amount, 'bonus', description);
 
   return {
     id: data.id,
@@ -343,7 +350,7 @@ export async function addBonusCredits(
 // ============================================
 
 export async function logCreditTransaction(
-  userId: string,
+  clerkUserId: string,
   amount: number,
   type: CreditTransactionType,
   description: string,
@@ -352,7 +359,7 @@ export async function logCreditTransaction(
   const { data, error } = await supabase
     .from('credit_transactions')
     .insert({
-      user_id: userId,
+      clerk_user_id: clerkUserId,
       amount,
       type,
       description,
@@ -366,7 +373,7 @@ export async function logCreditTransaction(
     // Don't throw - logging failure shouldn't block operations
     return {
       id: 'error',
-      userId,
+      userId: clerkUserId,
       amount,
       type,
       description,
@@ -387,13 +394,13 @@ export async function logCreditTransaction(
 }
 
 export async function getCreditTransactions(
-  userId: string,
+  clerkUserId: string,
   limit: number = 50
 ): Promise<CreditTransaction[]> {
   const { data, error } = await supabase
     .from('credit_transactions')
     .select('*')
-    .eq('user_id', userId)
+    .eq('clerk_user_id', clerkUserId)
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -446,6 +453,82 @@ export async function checkAndResetCreditsIfNeeded(userId: string): Promise<void
   const now = new Date();
   if (now >= subscription.currentPeriodEnd) {
     await resetUserCredits(userId, subscription.tier);
+  }
+}
+
+// ============================================
+// Quiz-Specific Credit Functions
+// ============================================
+
+/**
+ * Ensure user has subscription and credits initialized
+ * Creates them if they don't exist (for new users)
+ */
+export async function ensureUserSubscription(clerkUserId: string): Promise<{
+  success: boolean;
+  subscription: UserSubscription | null;
+  credits: UserCredits | null;
+  error?: string;
+}> {
+  try {
+    console.log('[Credits] Ensuring subscription for:', clerkUserId);
+    
+    // Try to get existing subscription
+    let subscription = await getUserSubscription(clerkUserId);
+    let credits = await getUserCredits(clerkUserId);
+    
+    // If no subscription exists, create one with starter tier
+    if (!subscription) {
+      console.log('[Credits] No subscription found, creating starter subscription');
+      subscription = await createUserSubscription(clerkUserId, 'starter');
+    }
+    
+    // If no credits exist, initialize them
+    if (!credits) {
+      console.log('[Credits] No credits found, initializing');
+      credits = await initializeUserCredits(clerkUserId, subscription.tier);
+    }
+    
+    return {
+      success: true,
+      subscription,
+      credits
+    };
+  } catch (error) {
+    console.error('[Credits] Error ensuring subscription:', error);
+    return {
+      success: false,
+      subscription: null,
+      credits: null,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * Deduct credits specifically for quiz generation
+ * Deducts QUIZ_GENERATION cost from user's credits
+ */
+export async function deductCreditsForQuiz(clerkUserId: string): Promise<{
+  success: boolean;
+  remainingCredits: number | 'unlimited';
+  error?: string;
+}> {
+  try {
+    const result = await deductCredits(
+      clerkUserId,
+      CREDIT_COSTS.QUIZ_GENERATION,
+      'Quiz generation'
+    );
+    
+    return result;
+  } catch (error) {
+    console.error('[Credits] Error using credits for quiz:', error);
+    return {
+      success: false,
+      remainingCredits: 0,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
   }
 }
 

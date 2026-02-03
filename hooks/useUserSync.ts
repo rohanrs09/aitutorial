@@ -5,7 +5,9 @@
  * 
  * Purpose: Ensures Clerk user is synced to Supabase on every page load
  * - Creates user_profile if it doesn't exist
+ * - Initializes subscription and credits for new users
  * - Updates last_active_at on each visit
+ * - Fetches latest credits from database (NOT localStorage)
  * - Handles the critical user-to-database sync issue
  */
 
@@ -18,6 +20,15 @@ interface SyncStatus {
   isSyncing: boolean;
   error: string | null;
   userId: string | null;
+  credits: {
+    total: number;
+    used: number;
+    remaining: number;
+  } | null;
+  subscription: {
+    tier: 'starter' | 'pro' | 'unlimited';
+    status: string;
+  } | null;
 }
 
 export function useUserSync() {
@@ -27,6 +38,8 @@ export function useUserSync() {
     isSyncing: false,
     error: null,
     userId: null,
+    credits: null,
+    subscription: null,
   });
   const syncAttemptedRef = useRef(false);
 
@@ -77,6 +90,8 @@ export function useUserSync() {
             isSyncing: false,
             error: 'Database tables not created. Please run migrations.',
             userId: user.id,
+            credits: null,
+            subscription: null,
           });
           return;
         }
@@ -109,11 +124,61 @@ export function useUserSync() {
         }
       }
 
+      // Initialize or fetch subscription and credits from database
+      console.log('[UserSync] Fetching subscription and credits from database...');
+      
+      // Fetch subscription
+      const { data: subscriptionData } = await supabase
+        .from('user_subscriptions')
+        .select('tier, status')
+        .eq('clerk_user_id', user.id)
+        .single();
+      
+      // Fetch credits
+      const { data: creditsData } = await supabase
+        .from('user_credits')
+        .select('total_credits, used_credits, bonus_credits')
+        .eq('clerk_user_id', user.id)
+        .single();
+      
+      // If no subscription exists, create one via API
+      if (!subscriptionData) {
+        console.log('[UserSync] No subscription found, calling API to initialize...');
+        try {
+          const response = await fetch('/api/credits', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            console.log('[UserSync] ✅ Subscription initialized via API:', data);
+          }
+        } catch (apiError) {
+          console.warn('[UserSync] Could not initialize subscription via API:', apiError);
+        }
+      }
+      
+      // Calculate credits
+      const credits = creditsData ? {
+        total: creditsData.total_credits,
+        used: creditsData.used_credits,
+        remaining: creditsData.total_credits - creditsData.used_credits + (creditsData.bonus_credits || 0)
+      } : null;
+      
+      const subscription = subscriptionData ? {
+        tier: subscriptionData.tier as 'starter' | 'pro' | 'unlimited',
+        status: subscriptionData.status
+      } : null;
+      
+      console.log('[UserSync] ✅ Sync complete:', { credits, subscription });
+
       setSyncStatus({
         isSynced: true,
         isSyncing: false,
         error: null,
         userId: user.id,
+        credits,
+        subscription,
       });
 
     } catch (error) {
@@ -123,6 +188,8 @@ export function useUserSync() {
         isSyncing: false,
         error: error instanceof Error ? error.message : 'Unknown sync error',
         userId: user?.id || null,
+        credits: null,
+        subscription: null,
       });
     }
   }, [user]);

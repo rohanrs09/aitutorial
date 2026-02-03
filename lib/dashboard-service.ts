@@ -98,9 +98,9 @@ export async function fetchDashboardData(
 ): Promise<DashboardData> {
   console.log('[Dashboard] Fetching data for user:', userId);
   
-  // If Supabase not configured or no user, return empty state
-  if (!isSupabaseConfigured || !userId) {
-    console.warn('[Dashboard] Supabase not configured or no userId provided');
+  // If no user, return empty state
+  if (!userId) {
+    console.warn('[Dashboard] No userId provided');
     return {
       stats: {
         totalSessions: 0,
@@ -115,7 +115,7 @@ export async function fetchDashboardData(
       recentSessions: [],
       topicProgress: [],
       isLoading: false,
-      error: 'User not authenticated or Supabase not configured',
+      error: null, // Don't show error for missing user
     };
   }
 
@@ -171,6 +171,16 @@ export async function fetchDashboardData(
     };
   } catch (error) {
     console.error('[Dashboard Service] Error fetching data:', error);
+    
+    // Check if it's a Supabase connection issue
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch dashboard data';
+    const isConnectionError = errorMessage.includes('Failed to fetch') || 
+                             errorMessage.includes('NetworkError') || 
+                             errorMessage.includes('ERR_NAME_NOT_RESOLVED') ||
+                             errorMessage.includes('not found') ||
+                             errorMessage.includes('permission') ||
+                             errorMessage.includes('Policy');
+    
     return {
       stats: {
         totalSessions: 0,
@@ -185,7 +195,7 @@ export async function fetchDashboardData(
       recentSessions: [],
       topicProgress: [],
       isLoading: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch dashboard data',
+      error: isConnectionError ? 'Unable to load data. Please check your connection and try again.' : null,
     };
   }
 }
@@ -202,17 +212,18 @@ async function fetchUserStats(
   console.log(`[Dashboard] Fetching stats for user: ${userId}`);
   console.log(`[Dashboard] Using column: ${userIdColumn}`);
   
-  const { data: sessions, error } = await supabase
-    .from('learning_sessions')
-    .select('id, duration_minutes, quiz_score, started_at, ended_at, topic_name')
-    .eq(userIdColumn, userId)
-    .not('ended_at', 'is', null)
-    .order('started_at', { ascending: false });
+  try {
+    const { data: sessions, error } = await supabase
+      .from('learning_sessions')
+      .select('id, duration_minutes, quiz_score, started_at, ended_at, topic_name')
+      .eq(userIdColumn, userId)
+      .not('ended_at', 'is', null)
+      .order('started_at', { ascending: false });
 
-  if (error) {
-    console.error('[Dashboard] ❌ Error fetching user stats:', error);
-    throw error;
-  }
+    if (error) {
+      console.error('[Dashboard] ❌ Error fetching user stats:', error);
+      throw error;
+    }
 
   console.log(`[Dashboard] Fetched ${sessions?.length || 0} completed sessions`);
   
@@ -257,48 +268,68 @@ async function fetchUserStats(
     currentStreak,
     averageScore,
   };
+  } catch (error) {
+    console.error('[Dashboard] Error in fetchUserStats:', error);
+    // Return default values on error
+    return {
+      totalSessions: 0,
+      totalMinutes: 0,
+      currentStreak: 0,
+      averageScore: 0,
+    };
+  }
 }
 
 async function fetchWeeklyStats(
   userId: string,
   userIdColumn: string
 ): Promise<{ sessions: number; minutes: number }> {
-  const { start } = getDateRange(7);
+  try {
+    const { start } = getDateRange(7);
 
-  const { data, error } = await supabase
-    .from('learning_sessions')
-    .select('duration_minutes')
-    .eq(userIdColumn, userId)
-    .gte('started_at', start)
-    .not('ended_at', 'is', null);
+    const { data, error } = await supabase
+      .from('learning_sessions')
+      .select('duration_minutes')
+      .eq(userIdColumn, userId)
+      .gte('started_at', start)
+      .not('ended_at', 'is', null);
 
-  if (error) return { sessions: 0, minutes: 0 };
+    if (error) return { sessions: 0, minutes: 0 };
 
-  return {
-    sessions: data?.length || 0,
-    minutes: data?.reduce((sum, s) => sum + (s.duration_minutes || 0), 0) || 0,
-  };
+    return {
+      sessions: data?.length || 0,
+      minutes: data?.reduce((sum, s) => sum + (s.duration_minutes || 0), 0) || 0,
+    };
+  } catch (error) {
+    console.error('[Dashboard] Error in fetchWeeklyStats:', error);
+    return { sessions: 0, minutes: 0 };
+  }
 }
 
 async function fetchMonthlyStats(
   userId: string,
   userIdColumn: string
 ): Promise<{ sessions: number; minutes: number }> {
-  const { start } = getDateRange(30);
+  try {
+    const { start } = getDateRange(30);
 
-  const { data, error } = await supabase
-    .from('learning_sessions')
-    .select('duration_minutes')
-    .eq(userIdColumn, userId)
-    .gte('started_at', start)
-    .not('ended_at', 'is', null);
+    const { data, error } = await supabase
+      .from('learning_sessions')
+      .select('duration_minutes')
+      .eq(userIdColumn, userId)
+      .gte('started_at', start)
+      .not('ended_at', 'is', null);
 
-  if (error) return { sessions: 0, minutes: 0 };
+    if (error) return { sessions: 0, minutes: 0 };
 
-  return {
-    sessions: data?.length || 0,
-    minutes: data?.reduce((sum, s) => sum + (s.duration_minutes || 0), 0) || 0,
-  };
+    return {
+      sessions: data?.length || 0,
+      minutes: data?.reduce((sum, s) => sum + (s.duration_minutes || 0), 0) || 0,
+    };
+  } catch (error) {
+    console.error('[Dashboard] Error in fetchMonthlyStats:', error);
+    return { sessions: 0, minutes: 0 };
+  }
 }
 
 async function fetchActivityChart(
@@ -306,20 +337,21 @@ async function fetchActivityChart(
   userIdColumn: string,
   days: number
 ): Promise<ActivityData[]> {
-  const { start } = getDateRange(days);
+  try {
+    const { start } = getDateRange(days);
 
-  const { data, error } = await supabase
-    .from('learning_sessions')
-    .select('started_at, duration_minutes, quiz_score')
-    .eq(userIdColumn, userId)
-    .gte('started_at', start)
-    .not('ended_at', 'is', null)
-    .order('started_at', { ascending: true });
+    const { data, error } = await supabase
+      .from('learning_sessions')
+      .select('started_at, duration_minutes, quiz_score')
+      .eq(userIdColumn, userId)
+      .gte('started_at', start)
+      .not('ended_at', 'is', null)
+      .order('started_at', { ascending: true });
 
-  if (error || !data) {
-    console.error('[Dashboard] Error fetching activity chart:', error);
-    return [];
-  }
+    if (error || !data) {
+      console.error('[Dashboard] Error fetching activity chart:', error);
+      return [];
+    }
 
   // Group by date
   const grouped = new Map<string, { sessions: number; minutes: number; scores: number[] }>();
@@ -358,22 +390,27 @@ async function fetchActivityChart(
   }
 
   return result;
+  } catch (error) {
+    console.error('[Dashboard] Error in fetchActivityChart:', error);
+    return [];
+  }
 }
 
 async function fetchEmotionDistribution(
   userId: string,
   userIdColumn: string
 ): Promise<EmotionDistribution[]> {
-  const { data, error } = await supabase
-    .from('learning_sessions')
-    .select('primary_emotion')
-    .eq(userIdColumn, userId)
-    .not('ended_at', 'is', null)
-    .not('primary_emotion', 'is', null);
+  try {
+    const { data, error } = await supabase
+      .from('learning_sessions')
+      .select('primary_emotion')
+      .eq(userIdColumn, userId)
+      .not('ended_at', 'is', null)
+      .not('primary_emotion', 'is', null);
 
-  if (error || !data) {
-    return [];
-  }
+    if (error || !data) {
+      return [];
+    }
 
   // Count emotions
   const counts = new Map<string, number>();
@@ -392,6 +429,10 @@ async function fetchEmotionDistribution(
       percentage: Math.round((count / total) * 100),
     }))
     .sort((a, b) => b.count - a.count);
+  } catch (error) {
+    console.error('[Dashboard] Error in fetchEmotionDistribution:', error);
+    return [];
+  }
 }
 
 async function fetchRecentSessions(
@@ -399,46 +440,25 @@ async function fetchRecentSessions(
   userIdColumn: string,
   limit: number
 ): Promise<RecentSession[]> {
-  console.log('[Dashboard] Fetching recent sessions for user:', userId, 'column:', userIdColumn);
-  
-  // Fetch ALL sessions (including in-progress ones) to show user activity
-  const { data, error } = await supabase
-    .from('learning_sessions')
-    .select('id, session_id, topic_name, started_at, ended_at, duration_minutes, quiz_score, primary_emotion, total_messages')
-    .eq(userIdColumn, userId)
-    .order('started_at', { ascending: false })
-    .limit(limit);
+  try {
+    console.log('[Dashboard] Fetching recent sessions for user:', userId, 'column:', userIdColumn);
+    
+    // Fetch ALL sessions (including in-progress ones) to show user activity
+    const { data, error } = await supabase
+      .from('learning_sessions')
+      .select('id, session_id, topic_name, started_at, ended_at, duration_minutes, quiz_score, primary_emotion, total_messages')
+      .eq(userIdColumn, userId)
+      .order('started_at', { ascending: false })
+      .limit(limit);
 
-  if (error) {
-    console.error('[Dashboard] Error fetching recent sessions:', error);
-    return [];
-  }
+    if (error) {
+      console.error('[Dashboard] Error fetching recent sessions:', error);
+      return [];
+    }
 
   if (!data || data.length === 0) {
     console.warn('[Dashboard] No recent sessions found for user:', userId);
-    
-    // Try to get sessions from localStorage as fallback
-    if (typeof window !== 'undefined') {
-      try {
-        const historyStr = localStorage.getItem('ai_tutor_session_history');
-        if (historyStr) {
-          const history = JSON.parse(historyStr);
-          console.log('[Dashboard] Found', history.length, 'sessions in localStorage');
-          return history.slice(0, limit).map((session: any) => ({
-            id: session.id || session.sessionId,
-            sessionId: session.id || session.sessionId,
-            topicName: session.topicName || session.topic || 'Learning Session',
-            startedAt: session.date || session.startedAt || new Date().toISOString(),
-            duration: session.duration || session.durationMinutes || 0,
-            score: session.score || session.quizScore || null,
-            emotion: session.emotion || session.primaryEmotion || null,
-            messagesCount: session.messagesCount || 0,
-          }));
-        }
-      } catch (e) {
-        console.error('[Dashboard] Error reading localStorage:', e);
-      }
-    }
+    console.log('[Dashboard] Database is the single source of truth - no localStorage fallback');
     return [];
   }
 
@@ -462,22 +482,27 @@ async function fetchRecentSessions(
       messagesCount: session.total_messages || 0,
     };
   });
+  } catch (error) {
+    console.error('[Dashboard] Error in fetchRecentSessions:', error);
+    return [];
+  }
 }
 
 async function fetchTopicProgress(
   userId: string,
   userIdColumn: string
 ): Promise<TopicProgress[]> {
-  const { data, error } = await supabase
-    .from('learning_sessions')
-    .select('topic_name, duration_minutes, quiz_score, started_at')
-    .eq(userIdColumn, userId)
-    .not('ended_at', 'is', null)
-    .order('started_at', { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from('learning_sessions')
+      .select('topic_name, duration_minutes, quiz_score, started_at')
+      .eq(userIdColumn, userId)
+      .not('ended_at', 'is', null)
+      .order('started_at', { ascending: false });
 
-  if (error || !data) {
-    return [];
-  }
+    if (error || !data) {
+      return [];
+    }
 
   // Group by topic
   const grouped = new Map<string, {
@@ -528,6 +553,10 @@ async function fetchTopicProgress(
   return topicResults
     .sort((a, b) => new Date(b.lastPracticed).getTime() - new Date(a.lastPracticed).getTime())
     .slice(0, 5); // Top 5 topics
+  } catch (error) {
+    console.error('[Dashboard] Error in fetchTopicProgress:', error);
+    return [];
+  }
 }
 
 function calculateStreak(sessions: Array<{ started_at: string }>): number {

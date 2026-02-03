@@ -12,7 +12,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Zap, ChevronRight, Sparkles, Loader2, TrendingUp, Target, Award, BookOpen, Clock, Star } from 'lucide-react';
+import { Brain, ChevronRight, Sparkles, Loader2, TrendingUp, Target, Award, BookOpen, Clock, Star } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import type { TopicQuizConfig, DifficultyLevel } from '@/lib/quiz-types';
@@ -53,6 +53,7 @@ export default function QuizStarter({
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [learningTopics, setLearningTopics] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'recommended' | 'all' | 'learned'>('recommended');
+  // Note: Quiz generation is FREE - no credit checking needed
 
   // Load topics and recommendations
   useEffect(() => {
@@ -215,7 +216,7 @@ export default function QuizStarter({
                                   {badge.text}
                                 </Badge>
                               </div>
-                              <Zap className="w-5 h-5 text-orange-400 group-hover:text-orange-300 transition-colors flex-shrink-0" />
+                              <ChevronRight className="w-5 h-5 text-orange-400 group-hover:text-orange-300 transition-colors flex-shrink-0" />
                             </div>
                             <p className="text-xs text-gray-400">5 questions • {rec.difficulty} difficulty</p>
                           </motion.button>

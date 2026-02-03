@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import OpenAI from 'openai';
 import { EmotionType } from '@/lib/utils';
+import { deductCredits } from '@/lib/subscription/credits';
+import { CREDIT_COSTS } from '@/lib/subscription/types';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
@@ -13,6 +16,18 @@ const isOpenAIConfigured = () => {
 
 export async function POST(request: NextRequest) {
   try {
+    // Authenticate user
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    console.log('[Slide Generation] Request from user:', userId);
+
     // Validate API key configuration
     if (!isOpenAIConfigured()) {
       return NextResponse.json(
@@ -21,6 +36,28 @@ export async function POST(request: NextRequest) {
           code: 'API_KEY_MISSING'
         },
         { status: 503 }
+      );
+    }
+
+    // Deduct credits BEFORE generating slides
+    console.log('[Slide Generation] Deducting', CREDIT_COSTS.SLIDE_GENERATION, 'credits');
+    
+    try {
+      await deductCredits(
+        userId,
+        CREDIT_COSTS.SLIDE_GENERATION,
+        'Learning slide generation'
+      );
+      console.log('[Slide Generation] ✅ Credits deducted successfully');
+    } catch (error: any) {
+      console.log('[Slide Generation] ❌ Credit deduction failed:', error.message);
+      return NextResponse.json(
+        { 
+          error: error.message || 'Insufficient credits',
+          requiredCredits: CREDIT_COSTS.SLIDE_GENERATION,
+          code: 'INSUFFICIENT_CREDITS'
+        },
+        { status: 402 } // Payment Required
       );
     }
 

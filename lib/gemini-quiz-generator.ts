@@ -91,63 +91,110 @@ function buildGeminiQuizPrompt(config: GeminiQuizConfig, courseContent: any): st
     contentContext = `\n\nCourse Content for Reference:\n${JSON.stringify(courseContent, null, 2)}`;
   }
   
-  return `You are an expert educational quiz generator. Your task is to create HIGH-QUALITY, TOPIC-SPECIFIC quiz questions.
+  return `You are an expert educational quiz generator specializing in creating high-quality, topic-specific assessment questions.
 
-=== CRITICAL INSTRUCTIONS ===
-Topic: "${topic}"
-Number of Questions: ${questionCount}
-${difficultyBreakdown}${subtopicGuidance}${contextGuidance}
+=== QUIZ SPECIFICATIONS ===
+📚 Topic: "${topic}"
+📊 Questions Required: ${questionCount}
+🎯 Difficulty: ${difficultyBreakdown}${subtopicGuidance}${contextGuidance}
 
 === TOPIC-SPECIFIC GUIDANCE ===
 ${topicExamples}
 
-=== QUESTION QUALITY REQUIREMENTS ===
-1. EVERY question MUST be directly about "${topic}" - NO generic or off-topic questions
-2. Questions should test UNDERSTANDING, not just memorization
-3. Include practical scenarios and real-world applications
-4. Use code snippets where relevant (properly formatted)
-5. Each question must have EXACTLY 4 options
-6. Options should be plausible - avoid obviously wrong answers
-7. Correct answer index must be 0, 1, 2, or 3
-8. Explanations must teach WHY the answer is correct AND why others are wrong
+=== CRITICAL QUALITY REQUIREMENTS ===
 
-=== DIFFICULTY DEFINITIONS ===
-- EASY: Basic concepts, definitions, simple identification
-  Example: "What is the time complexity of accessing an array element by index?"
-- MEDIUM: Application, analysis, comparing approaches
-  Example: "Which sorting algorithm would be most efficient for a nearly-sorted array?"
-- HARD: Complex scenarios, optimization, tricky edge cases
-  Example: "What happens when you try to delete from an empty min-heap?"
+1. **Topic Accuracy** 🎯
+   - EVERY question MUST be directly and specifically about "${topic}"
+   - NO generic questions that could apply to any topic
+   - Focus on the unique concepts, principles, and applications of "${topic}"
+   - If the topic is technical (programming, math, science), include relevant terminology and concepts
+
+2. **Question Design** 📝
+   - Test UNDERSTANDING and APPLICATION, not just memorization
+   - Include real-world scenarios and practical examples
+   - For technical topics: Include code snippets, algorithms, or formulas where appropriate
+   - For conceptual topics: Use case studies, scenarios, or thought experiments
+   - Questions should be clear, unambiguous, and professionally written
+
+3. **Answer Options** ✅
+   - Provide EXACTLY 4 options (A, B, C, D)
+   - All options must be plausible and relevant to the question
+   - Avoid obviously wrong "joke" answers
+   - Distractors should test common misconceptions or similar concepts
+   - Options should be roughly similar in length and complexity
+
+4. **Correct Answer** ✓
+   - correctAnswer must be the index: 0, 1, 2, or 3
+   - Only ONE option should be definitively correct
+   - Ensure the correct answer is factually accurate
+
+5. **Explanations** 💡
+   - Explain WHY the correct answer is right (with reasoning/proof)
+   - Explain WHY each incorrect option is wrong
+   - Include additional learning points or related concepts
+   - Use clear, educational language
+   - Length: 2-4 sentences minimum
+
+=== DIFFICULTY CALIBRATION ===
+
+**EASY** (Basic Knowledge):
+- Definitions, terminology, basic concepts
+- Simple recall or identification
+- Fundamental principles
+- Example: "What does HTML stand for?"
+
+**MEDIUM** (Application & Analysis):
+- Comparing approaches or methods
+- Applying concepts to scenarios
+- Analyzing code or processes
+- Problem-solving with known techniques
+- Example: "Which data structure would be most efficient for implementing an undo feature?"
+
+**HARD** (Synthesis & Evaluation):
+- Complex multi-step problems
+- Edge cases and optimization
+- Combining multiple concepts
+- Advanced scenarios requiring deep understanding
+- Example: "Given a distributed system with eventual consistency, how would you handle conflicting updates?"
 
 ${contentContext}
 
-=== OUTPUT FORMAT ===
-Return ONLY a valid JSON array. No markdown, no code blocks, no explanatory text.
+=== OUTPUT FORMAT (STRICT) ===
+
+Return ONLY a valid JSON array. No markdown code blocks, no explanatory text, no comments.
 
 [
   {
     "id": "${topic.toLowerCase().replace(/[^a-z0-9]/g, '-')}-1",
     "topic": "${topic}",
-    "subtopic": "specific aspect of ${topic}",
-    "question": "Clear, specific question about ${topic}",
+    "subtopic": "Specific aspect of ${topic}",
+    "question": "Clear, specific question testing knowledge of ${topic}",
     "type": "multiple-choice",
-    "difficulty": "easy|medium|hard",
-    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "difficulty": "easy",
+    "options": [
+      "First plausible option",
+      "Second plausible option",
+      "Third plausible option",
+      "Fourth plausible option"
+    ],
     "correctAnswer": 0,
-    "explanation": "Detailed explanation: The correct answer is X because... Option Y is wrong because...",
+    "explanation": "The correct answer is [option] because [detailed reasoning]. Option B is incorrect because [reason]. Option C is wrong because [reason]. Option D is incorrect because [reason].",
     "points": 10
   }
 ]
 
-=== VALIDATION CHECKLIST ===
-✓ All ${questionCount} questions are about "${topic}"
-✓ Each question has exactly 4 options
-✓ correctAnswer is a number 0-3
-✓ Explanations are educational
-✓ No duplicate questions
-✓ Valid JSON format
+=== PRE-GENERATION CHECKLIST ===
+Before generating, ensure:
+✓ You understand the topic "${topic}" thoroughly
+✓ Questions will test specific knowledge of "${topic}"
+✓ All ${questionCount} questions will be unique and non-repetitive
+✓ Difficulty distribution matches the requirement
+✓ Each question has educational value
+✓ Explanations teach, not just state facts
+✓ JSON format is valid and parseable
 
-Generate the quiz now:`;
+=== GENERATE NOW ===
+Create ${questionCount} high-quality quiz questions about "${topic}" following ALL requirements above:`;
 }
 
 /**
@@ -438,9 +485,8 @@ export async function generateQuizWithGemini(config: GeminiQuizConfig): Promise<
     // Initialize Gemini
     const genAI = initializeGemini();
     
-    // Use v1 stable API with gemini-1.0-pro (not v1beta)
-    // This model is guaranteed to work across all regions
-    const modelName = process.env.GEMINI_MODEL_NAME || "models/gemini-1.0-pro";
+    // Use gemini-1.5-flash which is widely available
+    const modelName = process.env.GEMINI_MODEL_NAME || "gemini-1.5-flash";
     
     // Debug logging
     console.log("[GeminiQuiz] Gemini API Key:", process.env.GEMINI_API_KEY?.slice(0, 8) + "...");
@@ -524,13 +570,13 @@ export async function generateQuizWithGemini(config: GeminiQuizConfig): Promise<
     console.error('[GeminiQuiz] Generation failed:', error.message);
     
     // Get the model name for error messages
-    const modelName = process.env.GEMINI_MODEL_NAME || "models/gemini-1.0-pro";
+    const modelName = process.env.GEMINI_MODEL_NAME || "gemini-1.5-flash";
     
     // Provide helpful error messages
     if (error.message.includes('API_KEY')) {
       throw new Error('Invalid Gemini API key. Please check your GEMINI_API_KEY environment variable.');
     } else if (error.message.includes('404') || error.message.includes('not found') || error.message.includes('not supported')) {
-      throw new Error(`Gemini model "${modelName}" not available. Make sure you're using "models/gemini-1.0-pro" (v1 stable API, not v1beta). Update GEMINI_MODEL_NAME in .env.local and restart server.`);
+      throw new Error(`Gemini model "${modelName}" not available. Try using "gemini-1.5-flash" in GEMINI_MODEL_NAME.`);
     } else if (error.message.includes('timeout')) {
       throw new Error('Gemini API request timed out. Please try again.');
     } else if (error.message.includes('quota') || error.message.includes('limit')) {

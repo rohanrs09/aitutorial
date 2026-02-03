@@ -1,10 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { generateQuizWithGemini } from '@/lib/gemini-quiz-generator';
+import { ensureUserSubscription } from '@/lib/subscription/credits';
 import type { DifficultyLevel } from '@/lib/quiz-types';
 
 export async function POST(req: NextRequest) {
   try {
-    // Parse and validate request body
+    // ═══════════════════════════════════════
+    // STEP 1: Authenticate user with Clerk
+    // ═══════════════════════════════════════
+    const { userId } = await auth();
+    
+    if (!userId) {
+      console.log('[Quiz API] ❌ Unauthorized - no user ID');
+      return NextResponse.json({ error: 'Unauthorized. Please sign in.' }, { status: 401 });
+    }
+    
+    console.log('[Quiz API] ═══════════════════════════════════════');
+    console.log('[Quiz API] 👤 Authenticated User:', userId);
+
+    // ═══════════════════════════════════════
+    // STEP 2: Ensure user has subscription & credits
+    // ═══════════════════════════════════════
+    const subscriptionResult = await ensureUserSubscription(userId);
+    if (!subscriptionResult.success) {
+      console.log('[Quiz API] ❌ Subscription error:', subscriptionResult.error);
+      return NextResponse.json({ 
+        error: 'Failed to verify subscription',
+        details: subscriptionResult.error 
+      }, { status: 500 });
+    }
+    
+    console.log('[Quiz API] 💳 Subscription:', subscriptionResult.subscription?.tier);
+    console.log('[Quiz API] 💰 Credits:', subscriptionResult.credits?.totalCredits, '- Used:', subscriptionResult.credits?.usedCredits);
+    console.log('[Quiz API] ℹ️ Quiz generation is FREE - no credits deducted');
+
+    // ═══════════════════════════════════════
+    // STEP 4: Parse and validate request body
+    // ═══════════════════════════════════════
     let body;
     try {
       body = await req.json();
@@ -12,7 +45,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
     }
 
-    const { topic, difficulty, count, userId, focusSubtopics, userContext } = body;
+    const { topic, difficulty, count, focusSubtopics, userContext } = body;
 
     // Validation
     if (!topic || typeof topic !== 'string' || topic.trim().length === 0) {
@@ -23,11 +56,12 @@ export async function POST(req: NextRequest) {
     const validDifficulties = ['easy', 'medium', 'hard', 'mixed'];
     const selectedDifficulty = difficulty && validDifficulties.includes(difficulty) ? difficulty : 'mixed';
 
-    // Check Gemini configuration
+    // ═══════════════════════════════════════
+    // STEP 5: Check Gemini configuration
+    // ═══════════════════════════════════════
     const geminiKey = process.env.GEMINI_API_KEY;
     const geminiModel = process.env.GEMINI_MODEL_NAME || 'models/gemini-1.0-pro';
     
-    console.log('[Quiz API] ═══════════════════════════════════════');
     console.log('[Quiz API] 🔑 Gemini API Key:', geminiKey ? `Present (${geminiKey.slice(0, 8)}...)` : '❌ MISSING');
     console.log('[Quiz API] 🤖 Gemini Model:', geminiModel);
     console.log('[Quiz API] 📚 Topic:', topic);
@@ -41,7 +75,9 @@ export async function POST(req: NextRequest) {
       console.warn('[Quiz API] ⚠️ Recommended: models/gemini-1.0-pro (v1 stable API)');
     }
 
-    // Generate quiz using Gemini with fallback
+    // ═══════════════════════════════════════
+    // STEP 6: Generate quiz using Gemini
+    // ═══════════════════════════════════════
     try {
       const result = await generateQuizWithGemini({
         topic: topic.trim(),

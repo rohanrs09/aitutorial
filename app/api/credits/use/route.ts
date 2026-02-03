@@ -1,7 +1,7 @@
 // Credit Usage API Route
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { useCredits, checkAndResetCreditsIfNeeded } from '@/lib/subscription/credits';
+import { deductCredits, checkAndResetCreditsIfNeeded } from '@/lib/subscription/credits';
 import { CREDIT_COSTS } from '@/lib/subscription/types';
 
 // POST - Use credits for an action
@@ -46,13 +46,12 @@ export async function POST(request: NextRequest) {
     await checkAndResetCreditsIfNeeded(userId);
 
     // Use credits
-    const result = await useCredits(userId, creditCost, actionDescription);
-
-    if (!result.success) {
+    try {
+      await deductCredits(userId, creditCost, actionDescription);
+    } catch (error: any) {
       return NextResponse.json(
         { 
-          error: result.error,
-          remainingCredits: result.remainingCredits,
+          error: error.message || 'Insufficient credits',
           requiredCredits: creditCost
         },
         { status: 402 } // Payment Required
@@ -62,7 +61,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       creditsUsed: creditCost,
-      remainingCredits: result.remainingCredits,
       action: action || 'custom'
     });
   } catch (error) {
