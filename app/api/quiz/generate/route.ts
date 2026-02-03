@@ -23,10 +23,23 @@ export async function POST(req: NextRequest) {
     const validDifficulties = ['easy', 'medium', 'hard', 'mixed'];
     const selectedDifficulty = difficulty && validDifficulties.includes(difficulty) ? difficulty : 'mixed';
 
-    // Check Gemini API key
+    // Check Gemini configuration
     const geminiKey = process.env.GEMINI_API_KEY;
-    console.log('[Quiz API] 🔑 Gemini API Key:', geminiKey ? `Present (${geminiKey.length} chars)` : '❌ MISSING');
-    console.log(`[Quiz API] 🚀 Generating quiz with Gemini: topic="${topic}", difficulty="${selectedDifficulty}", count=${questionCount}`);
+    const geminiModel = process.env.GEMINI_MODEL_NAME || 'models/gemini-1.0-pro';
+    
+    console.log('[Quiz API] ═══════════════════════════════════════');
+    console.log('[Quiz API] 🔑 Gemini API Key:', geminiKey ? `Present (${geminiKey.slice(0, 8)}...)` : '❌ MISSING');
+    console.log('[Quiz API] 🤖 Gemini Model:', geminiModel);
+    console.log('[Quiz API] 📚 Topic:', topic);
+    console.log('[Quiz API] 📊 Difficulty:', selectedDifficulty);
+    console.log('[Quiz API] 🔢 Question Count:', questionCount);
+    console.log('[Quiz API] ═══════════════════════════════════════');
+    
+    // Validate model configuration
+    if (geminiModel !== 'models/gemini-1.0-pro') {
+      console.warn('[Quiz API] ⚠️ WARNING: Using non-standard model:', geminiModel);
+      console.warn('[Quiz API] ⚠️ Recommended: models/gemini-1.0-pro (v1 stable API)');
+    }
 
     // Generate quiz using Gemini with fallback
     try {

@@ -606,15 +606,82 @@ export async function completeQuizSession(sessionId: string): Promise<QuizResult
   // Update session and store result in Supabase
   if (isSupabaseConfigured) {
     try {
-      await supabase
+      // Update quiz session using UPSERT to avoid CORS PATCH errors
+      const { error: quizSessionError } = await supabase
         .from('quiz_sessions')
-        .update({
+        .upsert({
+          id: sessionId,
+          clerk_user_id: session.clerk_user_id,
+          topic: session.topic,
+          questions: session.questions,
+          attempts: session.attempts,
+          score: session.score,
+          total_points: session.total_points,
           completed_at: completedAt,
           status: 'completed',
           accuracy,
-          score: session.score,
-        })
-        .eq('id', sessionId);
+        }, {
+          onConflict: 'id',
+        });
+      
+      if (quizSessionError) {
+        console.warn('[Quiz] Failed to update quiz_sessions:', quizSessionError);
+      }
+      
+      // **CRITICAL: Update learning_sessions table with quiz score**
+      const percentageScore = Math.round((session.score / session.total_points) * 100);
+      
+      console.log('[Quiz] Updating learning_sessions with quiz_score:', percentageScore);
+      console.log('[Quiz] Looking for session with topic:', session.topic);
+      
+      // Get ALL learning sessions for this user and topic to find the right one
+      const { data: allSessions, error: fetchError } = await supabase
+        .from('learning_sessions')
+        .select('id, session_id, topic_name, quiz_score, started_at')
+        .eq('clerk_user_id', session.clerk_user_id)
+        .ilike('topic_name', `%${session.topic}%`)
+        .order('started_at', { ascending: false })
+        .limit(5);
+      
+      console.log('[Quiz] Found learning sessions:', allSessions?.length || 0);
+      if (allSessions && allSessions.length > 0) {
+        console.log('[Quiz] Sessions:', allSessions.map(s => ({ 
+          id: s.id, 
+          topic: s.topic_name, 
+          quiz_score: s.quiz_score,
+          started_at: s.started_at
+        })));
+      }
+      
+      if (fetchError) {
+        console.warn('[Quiz] Failed to fetch learning_sessions:', fetchError);
+      } else if (allSessions && allSessions.length > 0) {
+        // Find first session without quiz_score or use the most recent one
+        const learningSession = allSessions.find(s => s.quiz_score === null) || allSessions[0];
+        
+        console.log('[Quiz] Updating session:', learningSession.id);
+        
+        // Use UPSERT to update the learning session with quiz score
+        const { error: updateError } = await supabase
+          .from('learning_sessions')
+          .upsert({
+            id: learningSession.id,
+            session_id: learningSession.session_id,
+            clerk_user_id: session.clerk_user_id,
+            topic_name: learningSession.topic_name,
+            quiz_score: percentageScore,
+          }, {
+            onConflict: 'id',
+          });
+        
+        if (updateError) {
+          console.warn('[Quiz] Failed to update learning_sessions:', updateError);
+        } else {
+          console.log('[Quiz] ✅ Successfully updated learning_sessions with score:', percentageScore);
+        }
+      } else {
+        console.warn('[Quiz] ⚠️ No matching learning_sessions found for topic:', session.topic);
+      }
       
       const resultId = `result_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       

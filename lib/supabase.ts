@@ -423,7 +423,7 @@ export async function getUserAchievements(userId: string): Promise<UserAchieveme
   const { data, error } = await supabase
     .from('user_achievements')
     .select('*')
-    .eq('user_id', userId)
+    .eq('clerk_user_id', userId)
     .order('unlocked_at', { ascending: false });
 
   if (error) {

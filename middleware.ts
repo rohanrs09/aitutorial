@@ -12,6 +12,7 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/api/webhook(.*)',
+  '/api/webhooks(.*)',
   // Public API routes for demo functionality
   '/api/tutor',
   '/api/stt',

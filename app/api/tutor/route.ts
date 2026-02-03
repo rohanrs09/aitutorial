@@ -265,8 +265,8 @@ IMPORTANT: This is a custom learning topic. Focus your teaching on the descripti
   }
 }
 
-// Extract slides from SLM structured response (Title, Explanation, Analogy, Code, Common Mistake)
-// SLM returns structured format, we parse it into slides WITHOUT calling SLM again
+// Extract slides from SLM structured response
+// Robust parser that handles multiple response formats from different SLMs
 function extractSlidesFromSLMResponse(
   response: string,
   topic: string,
@@ -276,114 +276,188 @@ function extractSlidesFromSLMResponse(
 ): GeneratedSlide[] {
   const slides: GeneratedSlide[] = [];
   const isSimplified = simplificationLevel === 'basic';
+  const responseText = response.trim();
   
-  // Parse structured format from SLM response
-  const responseText = response;
+  console.log('[SlideExtractor] Parsing response, length:', responseText.length);
   
-  // Reorder slides based on user preference
-  const getSlideOrder = (pref: string): string[] => {
-    switch (pref) {
-      case 'example':
-        return ['concept', 'example', 'code', 'summary'];
-      case 'steps':
-        return ['concept', 'code', 'example', 'summary'];
-      case 'diagram':
-        return ['concept', 'diagram', 'example', 'summary'];
-      case 'practice':
-        return ['concept', 'practice', 'example', 'summary'];
-      case 'simple':
-        return ['concept', 'example', 'summary'];
-      default:
-        return ['concept', 'example', 'code', 'summary'];
+  // ============================================================
+  // STEP 1: Extract Title (multiple format support)
+  // ============================================================
+  let title = topic;
+  
+  // Try markdown headers first: # Title or ## Title
+  const headerMatch = responseText.match(/^#+\s*\*?\*?(.+?)\*?\*?\s*$/m);
+  if (headerMatch) {
+    title = headerMatch[1].replace(/\*\*/g, '').trim();
+  } else {
+    // Try bold title: **Title** or **Title:**
+    const boldMatch = responseText.match(/^\*\*([^*]+?)\*\*:?\s*$/m);
+    if (boldMatch) {
+      title = boldMatch[1].trim();
     }
-  };
+  }
   
-  // Look for Title (markdown header or bold)
-  const titleMatch = responseText.match(/(?:^|\n)#+\s*(.+?)(?:\n|$)|(?:^|\n)\*\*(.+?)\*\*(?:\n|$)/m);
-  const title = titleMatch ? (titleMatch[1] || titleMatch[2] || topic).trim() : topic;
+  // Clean up title
+  title = title.replace(/^(Title|Topic)[:.]?\s*/i, '').trim() || topic;
   
-  // Slide 1: Title + Short Explanation
-  // Match "Short Explanation" or "Explanation" followed by content until next section
-  const explanationMatch = responseText.match(/(?:Short Explanation|Explanation)[:]*\s*\n*([\s\S]+?)(?=\n\*\*|\n##|Real-World|Working Code|Common Mistake|$)/i);
-  const explanation = explanationMatch ? explanationMatch[1].trim() : responseText.substring(0, 200);
+  // ============================================================
+  // STEP 2: Extract Main Explanation/Content
+  // ============================================================
+  let mainExplanation = '';
   
-  slides.push({
-    id: `slide-1-${Date.now()}`,
-    title: title,
-    type: 'concept',
-    content: explanation,
-    keyPoints: extractKeyPoints(explanation).slice(0, isSimplified ? 2 : 3),
-    isSimplified,
-    simplificationLevel,
-    spokenContent: explanation
-  });
+  // Try structured format: **Short Explanation:** or **Explanation:**
+  const structuredExplanation = responseText.match(/\*\*(?:Short\s+)?Explanation\*\*:?\s*\n?([\s\S]+?)(?=\n\*\*|\n##|```|$)/i);
+  if (structuredExplanation) {
+    mainExplanation = structuredExplanation[1].trim();
+  } else {
+    // Try to get first paragraph after title
+    const firstParagraph = responseText.match(/(?:^|\n\n)([^#*`\n][^\n]+(?:\n[^#*`\n][^\n]+)*)/);
+    if (firstParagraph) {
+      mainExplanation = firstParagraph[1].trim();
+    } else {
+      // Fallback: first 300 chars
+      mainExplanation = responseText.replace(/^[#*]+.*\n/m, '').substring(0, 300).trim();
+    }
+  }
   
-  // Slide 2: Real-World Analogy
-  const analogyMatch = responseText.match(/(?:Real-World Analogy|Analogy)[:]*\s*\n*([\s\S]+?)(?=\n\*\*|\n##|Working Code|Common Mistake|$)/i);
-  if (analogyMatch) {
-    const analogy = analogyMatch[1].trim();
+  // Create main concept slide
+  if (mainExplanation) {
     slides.push({
-      id: `slide-2-${Date.now()}`,
-      title: 'Real-World Analogy',
-      type: 'example',
-      content: analogy,
-      keyPoints: [analogy.substring(0, 100) + '...'],
+      id: `slide-concept-${Date.now()}`,
+      title: title,
+      type: 'concept',
+      content: mainExplanation.substring(0, 500),
+      keyPoints: extractKeyPoints(mainExplanation).slice(0, isSimplified ? 2 : 4),
       isSimplified,
       simplificationLevel,
-      spokenContent: analogy
+      spokenContent: mainExplanation
     });
   }
   
-  // Slide 3: Working Code Snippet
-  const codeMatch = responseText.match(/```(?:javascript|js|typescript|ts|json)?\n([\s\S]+?)```/);
-  if (codeMatch) {
+  // ============================================================
+  // STEP 3: Extract Analogy (multiple formats)
+  // ============================================================
+  const analogyPatterns = [
+    /\*\*(?:Real-?\s*World\s+)?Analogy\*\*:?\s*\n?([\s\S]+?)(?=\n\*\*|\n##|```|$)/i,
+    /(?:Think of it (?:like|as)|Imagine|It's like|Consider)\s+([^.]+\.)/i,
+    /Analogy:?\s*\n?([\s\S]+?)(?=\n\*\*|\n##|```|$)/i
+  ];
+  
+  for (const pattern of analogyPatterns) {
+    const analogyMatch = responseText.match(pattern);
+    if (analogyMatch && analogyMatch[1].trim().length > 20) {
+      const analogy = analogyMatch[1].trim();
+      slides.push({
+        id: `slide-analogy-${Date.now()}`,
+        title: '💡 Real-World Analogy',
+        type: 'example',
+        content: analogy,
+        keyPoints: [analogy.length > 100 ? analogy.substring(0, 97) + '...' : analogy],
+        isSimplified,
+        simplificationLevel,
+        spokenContent: analogy
+      });
+      break;
+    }
+  }
+  
+  // ============================================================
+  // STEP 4: Extract Code Examples (robust multi-language support)
+  // ============================================================
+  const codeBlockPattern = /```(?:javascript|js|typescript|ts|python|py|java|cpp|c\+\+|json|sql|bash|sh)?\s*\n([\s\S]+?)```/g;
+  let codeMatch;
+  let codeSlideCount = 0;
+  
+  while ((codeMatch = codeBlockPattern.exec(responseText)) !== null && codeSlideCount < 2) {
     const code = codeMatch[1].trim();
-    const codeDescriptionMatch = responseText.match(/(?:Working Code Snippet|Code)[:]*\s*\n*([\s\S]+?)(?=```)/i);
-    const codeDescription = codeDescriptionMatch ? codeDescriptionMatch[1].trim() : 'Here\'s a working code example:';
-    
-    // Format code with proper sections for better readability
-    const formattedCode = formatCodeForDisplay(code);
-    const codeSections = extractCodeSections(code);
-    
+    if (code.length > 20) {
+      // Try to find description before code block
+      const codeIndex = codeMatch.index;
+      const textBefore = responseText.substring(Math.max(0, codeIndex - 200), codeIndex);
+      const descMatch = textBefore.match(/(?:\*\*[^*]+\*\*:?|[^\n]+)\s*$/m);
+      const codeDescription = descMatch 
+        ? descMatch[0].replace(/\*\*/g, '').trim() 
+        : 'Working Code Example';
+      
+      const formattedCode = formatCodeForDisplay(code);
+      const codeSections = extractCodeSections(code);
+      
+      slides.push({
+        id: `slide-code-${Date.now()}-${codeSlideCount}`,
+        title: codeSlideCount === 0 ? '💻 Code Example' : '💻 Additional Example',
+        type: 'example',
+        content: codeDescription.substring(0, 150),
+        example: formattedCode,
+        keyPoints: [
+          '✅ Complete, runnable code',
+          ...codeSections.slice(0, 3)
+        ],
+        visualAid: codeSlideCount === 0 ? generateCodeFlowDiagram(code) : undefined,
+        isSimplified,
+        simplificationLevel,
+        spokenContent: formatCodeForSpokenContent(code)
+      });
+      codeSlideCount++;
+    }
+  }
+  
+  // ============================================================
+  // STEP 5: Extract Tips/Mistakes/Best Practices
+  // ============================================================
+  const tipPatterns = [
+    /\*\*(?:Common\s+)?Mistake\*\*:?\s*\n?([\s\S]+?)(?=\n\*\*|\n##|```|$)/i,
+    /\*\*(?:Pro\s+)?Tips?\*\*:?\s*\n?([\s\S]+?)(?=\n\*\*|\n##|```|$)/i,
+    /\*\*Best\s+Practices?\*\*:?\s*\n?([\s\S]+?)(?=\n\*\*|\n##|```|$)/i,
+    /(?:Remember|Important|Note|Tip):?\s*([^\n]+)/i
+  ];
+  
+  for (const pattern of tipPatterns) {
+    const tipMatch = responseText.match(pattern);
+    if (tipMatch && tipMatch[1].trim().length > 15) {
+      const tip = tipMatch[1].trim();
+      slides.push({
+        id: `slide-tip-${Date.now()}`,
+        title: '⚠️ Important Tips',
+        type: 'tip',
+        content: tip.substring(0, 400),
+        keyPoints: extractKeyPoints(tip).slice(0, 3),
+        isSimplified,
+        simplificationLevel,
+        spokenContent: tip
+      });
+      break;
+    }
+  }
+  
+  // ============================================================
+  // STEP 6: Extract bullet points/list items as summary
+  // ============================================================
+  const bulletPoints = responseText.match(/^[\-\*•]\s+.+$/gm);
+  const numberedPoints = responseText.match(/^\d+\.\s+.+$/gm);
+  const allPoints = [...(bulletPoints || []), ...(numberedPoints || [])];
+  
+  if (allPoints.length >= 3 && slides.length < 4) {
     slides.push({
-      id: `slide-3-${Date.now()}`,
-      title: 'Working Code Example',
-      type: 'example',
-      content: codeDescription,
-      example: formattedCode,
-      keyPoints: [
-        '✅ Complete, runnable code',
-        '✅ Proper imports and setup',
-        ...codeSections.slice(0, 2)
-      ],
-      visualAid: generateCodeFlowDiagram(code),
+      id: `slide-summary-${Date.now()}`,
+      title: '📝 Key Points',
+      type: 'summary',
+      content: 'Here are the key takeaways:',
+      keyPoints: allPoints.slice(0, 5).map(p => p.replace(/^[\-\*•\d.]+\s*/, '').trim()),
       isSimplified,
       simplificationLevel,
-      spokenContent: formatCodeForSpokenContent(code)
+      spokenContent: allPoints.slice(0, 5).join('. ')
     });
   }
   
-  // Slide 4: Common Mistake
-  const mistakeMatch = responseText.match(/(?:Common Mistake|Mistake)[:]*\s*\n*([\s\S]+?)(?=\n\*\*|\n##|$)/i);
-  if (mistakeMatch) {
-    const mistake = mistakeMatch[1].trim();
-    slides.push({
-      id: `slide-4-${Date.now()}`,
-      title: 'Common Mistake to Avoid',
-      type: 'tip',
-      content: mistake,
-      keyPoints: extractKeyPoints(mistake).slice(0, 2),
-      isSimplified,
-      simplificationLevel,
-      spokenContent: mistake
-    });
-  }
-  
-  // If no structured format found, create fallback slides from response text
-  if (slides.length <= 1) {
+  // ============================================================
+  // FALLBACK: If extraction failed, create slides from paragraphs
+  // ============================================================
+  if (slides.length === 0) {
+    console.log('[SlideExtractor] No structured content found, using paragraph fallback');
     return generateFallbackSlides(responseText, topic, isSimplified);
   }
   
+  console.log(`[SlideExtractor] ✅ Extracted ${slides.length} slides`);
   return slides;
 }
 

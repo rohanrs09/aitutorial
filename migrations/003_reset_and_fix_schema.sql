@@ -67,7 +67,7 @@ CREATE TABLE learning_sessions (
   ended_at TIMESTAMP WITH TIME ZONE,
   duration_minutes INTEGER,
   total_messages INTEGER DEFAULT 0,
-  quiz_score INTEGER,
+  quiz_score INTEGER CHECK (quiz_score IS NULL OR (quiz_score >= 0 AND quiz_score <= 100)),
   emotions_detected TEXT[],
   primary_emotion TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -123,16 +123,36 @@ CREATE TABLE user_notes (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 7. User Achievements Table
+-- 7. Achievement Definitions Table (stores all available achievements)
+CREATE TABLE achievement_definitions (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  icon TEXT NOT NULL,
+  category TEXT NOT NULL,
+  points INTEGER NOT NULL DEFAULT 10,
+  requirement JSONB NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Insert default achievements
+INSERT INTO achievement_definitions (id, name, description, icon, category, points, requirement) VALUES
+  ('first_session', 'First Steps', 'Complete your first learning session', '🎯', 'learning', 10, '{"type": "sessions", "count": 1}'),
+  ('quiz_master', 'Quiz Master', 'Score 100% on any quiz', '🏆', 'quiz', 50, '{"type": "quiz_score", "score": 100}'),
+  ('week_streak', 'Week Warrior', 'Maintain a 7-day learning streak', '🔥', 'streak', 30, '{"type": "streak", "days": 7}'),
+  ('speed_learner', 'Speed Learner', 'Complete 10 sessions in one day', '⚡', 'learning', 40, '{"type": "daily_sessions", "count": 10}'),
+  ('topic_expert', 'Topic Expert', 'Master 5 different topics', '🎓', 'mastery', 100, '{"type": "topics_mastered", "count": 5}');
+
+-- 8. User Achievements Table (tracks unlocked achievements per user)
 CREATE TABLE user_achievements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   clerk_user_id TEXT NOT NULL,
   user_id UUID REFERENCES user_profiles(id) ON DELETE SET NULL,
-  achievement_key TEXT NOT NULL,
-  achievement_name TEXT NOT NULL,
-  description TEXT,
+  achievement_id TEXT NOT NULL REFERENCES achievement_definitions(id) ON DELETE CASCADE,
+  progress INTEGER DEFAULT 0,
   unlocked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(clerk_user_id, achievement_key)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(clerk_user_id, achievement_id)
 );
 
 -- ============================================
@@ -162,8 +182,15 @@ CREATE INDEX idx_learning_progress_last_accessed ON learning_progress(last_acces
 CREATE INDEX idx_user_notes_clerk_user_id ON user_notes(clerk_user_id);
 CREATE INDEX idx_user_notes_session_id ON user_notes(session_id);
 
+-- Achievement definitions indexes
+CREATE INDEX idx_achievement_definitions_category ON achievement_definitions(category);
+
 -- User achievements indexes
 CREATE INDEX idx_user_achievements_clerk_user_id ON user_achievements(clerk_user_id);
+CREATE INDEX idx_user_achievements_achievement_id ON user_achievements(achievement_id);
+
+-- Quiz score index for faster dashboard queries
+CREATE INDEX idx_learning_sessions_quiz_score ON learning_sessions(clerk_user_id, quiz_score) WHERE quiz_score IS NOT NULL;
 
 -- ============================================
 -- STEP 4: Enable Row Level Security (RLS)
@@ -175,32 +202,54 @@ ALTER TABLE learning_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE conversation_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE learning_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE achievement_definitions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_achievements ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- STEP 5: Create RLS Policies (Allow all for now - app handles auth)
+-- STEP 5: Create RLS Policies (Explicit CRUD policies to avoid CORS issues)
 -- ============================================
 
 -- User Profiles policies
-CREATE POLICY "Allow all on user_profiles" ON user_profiles FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "user_profiles_select" ON user_profiles FOR SELECT USING (true);
+CREATE POLICY "user_profiles_insert" ON user_profiles FOR INSERT WITH CHECK (true);
+CREATE POLICY "user_profiles_update" ON user_profiles FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "user_profiles_delete" ON user_profiles FOR DELETE USING (true);
 
 -- User Preferences policies
-CREATE POLICY "Allow all on user_preferences" ON user_preferences FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "user_preferences_select" ON user_preferences FOR SELECT USING (true);
+CREATE POLICY "user_preferences_insert" ON user_preferences FOR INSERT WITH CHECK (true);
+CREATE POLICY "user_preferences_update" ON user_preferences FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "user_preferences_delete" ON user_preferences FOR DELETE USING (true);
 
 -- Learning Sessions policies
-CREATE POLICY "Allow all on learning_sessions" ON learning_sessions FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "learning_sessions_select" ON learning_sessions FOR SELECT USING (true);
+CREATE POLICY "learning_sessions_insert" ON learning_sessions FOR INSERT WITH CHECK (true);
+CREATE POLICY "learning_sessions_update" ON learning_sessions FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "learning_sessions_delete" ON learning_sessions FOR DELETE USING (true);
 
 -- Conversation Messages policies
-CREATE POLICY "Allow all on conversation_messages" ON conversation_messages FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "conversation_messages_select" ON conversation_messages FOR SELECT USING (true);
+CREATE POLICY "conversation_messages_insert" ON conversation_messages FOR INSERT WITH CHECK (true);
+CREATE POLICY "conversation_messages_update" ON conversation_messages FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "conversation_messages_delete" ON conversation_messages FOR DELETE USING (true);
 
 -- Learning Progress policies
-CREATE POLICY "Allow all on learning_progress" ON learning_progress FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "learning_progress_select" ON learning_progress FOR SELECT USING (true);
+CREATE POLICY "learning_progress_insert" ON learning_progress FOR INSERT WITH CHECK (true);
+CREATE POLICY "learning_progress_update" ON learning_progress FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "learning_progress_delete" ON learning_progress FOR DELETE USING (true);
 
 -- User Notes policies
-CREATE POLICY "Allow all on user_notes" ON user_notes FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "user_notes_select" ON user_notes FOR SELECT USING (true);
+CREATE POLICY "user_notes_insert" ON user_notes FOR INSERT WITH CHECK (true);
+CREATE POLICY "user_notes_update" ON user_notes FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "user_notes_delete" ON user_notes FOR DELETE USING (true);
 
 -- User Achievements policies
-CREATE POLICY "Allow all on user_achievements" ON user_achievements FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "user_achievements_select" ON user_achievements FOR SELECT USING (true);
+CREATE POLICY "user_achievements_insert" ON user_achievements FOR INSERT WITH CHECK (true);
+CREATE POLICY "user_achievements_update" ON user_achievements FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "user_achievements_delete" ON user_achievements FOR DELETE USING (true);
 
 -- ============================================
 -- STEP 6: Create Helper Functions
@@ -446,20 +495,41 @@ ALTER TABLE quiz_analytics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quiz_recommendations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE topic_mastery ENABLE ROW LEVEL SECURITY;
 
+-- Achievement Definitions policies (public read, admin write)
+CREATE POLICY "achievement_definitions_select" ON achievement_definitions FOR SELECT USING (true);
+CREATE POLICY "achievement_definitions_insert" ON achievement_definitions FOR INSERT WITH CHECK (true);
+CREATE POLICY "achievement_definitions_update" ON achievement_definitions FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "achievement_definitions_delete" ON achievement_definitions FOR DELETE USING (true);
+
 -- Quiz Sessions policies
-CREATE POLICY "Allow all on quiz_sessions" ON quiz_sessions FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "quiz_sessions_select" ON quiz_sessions FOR SELECT USING (true);
+CREATE POLICY "quiz_sessions_insert" ON quiz_sessions FOR INSERT WITH CHECK (true);
+CREATE POLICY "quiz_sessions_update" ON quiz_sessions FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "quiz_sessions_delete" ON quiz_sessions FOR DELETE USING (true);
 
 -- Quiz Results policies
-CREATE POLICY "Allow all on quiz_results" ON quiz_results FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "quiz_results_select" ON quiz_results FOR SELECT USING (true);
+CREATE POLICY "quiz_results_insert" ON quiz_results FOR INSERT WITH CHECK (true);
+CREATE POLICY "quiz_results_update" ON quiz_results FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "quiz_results_delete" ON quiz_results FOR DELETE USING (true);
 
 -- Quiz Analytics policies
-CREATE POLICY "Allow all on quiz_analytics" ON quiz_analytics FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "quiz_analytics_select" ON quiz_analytics FOR SELECT USING (true);
+CREATE POLICY "quiz_analytics_insert" ON quiz_analytics FOR INSERT WITH CHECK (true);
+CREATE POLICY "quiz_analytics_update" ON quiz_analytics FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "quiz_analytics_delete" ON quiz_analytics FOR DELETE USING (true);
 
 -- Quiz Recommendations policies
-CREATE POLICY "Allow all on quiz_recommendations" ON quiz_recommendations FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "quiz_recommendations_select" ON quiz_recommendations FOR SELECT USING (true);
+CREATE POLICY "quiz_recommendations_insert" ON quiz_recommendations FOR INSERT WITH CHECK (true);
+CREATE POLICY "quiz_recommendations_update" ON quiz_recommendations FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "quiz_recommendations_delete" ON quiz_recommendations FOR DELETE USING (true);
 
 -- Topic Mastery policies
-CREATE POLICY "Allow all on topic_mastery" ON topic_mastery FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "topic_mastery_select" ON topic_mastery FOR SELECT USING (true);
+CREATE POLICY "topic_mastery_insert" ON topic_mastery FOR INSERT WITH CHECK (true);
+CREATE POLICY "topic_mastery_update" ON topic_mastery FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "topic_mastery_delete" ON topic_mastery FOR DELETE USING (true);
 
 -- ============================================
 -- STEP 10: Quiz Helper Functions
@@ -706,10 +776,19 @@ FROM topic_mastery tm
 LEFT JOIN quiz_analytics qa ON tm.clerk_user_id = qa.clerk_user_id AND tm.topic = qa.topic;
 
 -- ============================================
+-- STEP 12: Grant Permissions to Roles
+-- ============================================
+
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+
+-- ============================================
 -- VERIFICATION: Check tables were created
 -- ============================================
 SELECT table_name FROM information_schema.tables 
 WHERE table_schema = 'public' 
 AND table_name IN ('user_profiles', 'user_preferences', 'learning_sessions', 
-                   'conversation_messages', 'learning_progress', 'user_notes', 'user_achievements',
-                   'quiz_sessions', 'quiz_results', 'quiz_analytics', 'quiz_recommendations', 'topic_mastery');
+                   'conversation_messages', 'learning_progress', 'user_notes', 'achievement_definitions', 'user_achievements',
+                   'quiz_sessions', 'quiz_results', 'quiz_analytics', 'quiz_recommendations', 'topic_mastery')
+ORDER BY table_name;

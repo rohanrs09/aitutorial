@@ -82,6 +82,7 @@ export default function TutorSession() {
   // Emotion smoothing state
   const [emotionHistory, setEmotionHistory] = useState<{emotion: string; confidence: number; time: number}[]>([]);
   const lastConfusionActionRef = useRef<number>(0);
+  const EMOTION_COOLDOWN_MS = 60000; // 60 seconds cooldown between emotion popups
   
   // Session stats for progress tracking
   const [sessionStats, setSessionStats] = useState({
@@ -150,33 +151,25 @@ export default function TutorSession() {
     };
   }, []);
 
-  // CRITICAL: Auto-advance slides based on audio timing
-  useEffect(() => {
-    if (!audioRef.current || !learningSlides.length) return;
-
-    const audio = audioRef.current;
-    const currentSlide = learningSlides[currentSlideIndex];
-    
-    if (!currentSlide?.audioStartTime || !currentSlide?.audioDuration) {
-      return;
-    }
-
-    const checkSlideTiming = () => {
-      const currentTime = audio.currentTime;
-      const slideStart = currentSlide.audioStartTime || 0;
-      const slideEnd = slideStart + (currentSlide.audioDuration || 0);
-      
-      // Check if we should advance to next slide
-      if (currentTime >= slideEnd && currentSlideIndex < learningSlides.length - 1) {
-        console.log('[Audio Sync] Auto-advancing to next slide at:', currentTime);
-        setCurrentSlideIndex(prev => prev + 1);
-      }
-    };
-
-    const interval = setInterval(checkSlideTiming, 100);
-    
-    return () => clearInterval(interval);
-  }, [currentSlideIndex, learningSlides]);
+  // DISABLED: Auto-advance slides - slides should only advance manually or when voice completes
+  // This prevents slides from moving while voice is still speaking
+  // useEffect(() => {
+  //   if (!audioRef.current || !learningSlides.length) return;
+  //   const audio = audioRef.current;
+  //   const currentSlide = learningSlides[currentSlideIndex];
+  //   if (!currentSlide?.audioStartTime || !currentSlide?.audioDuration) return;
+  //   const checkSlideTiming = () => {
+  //     const currentTime = audio.currentTime;
+  //     const slideStart = currentSlide.audioStartTime || 0;
+  //     const slideEnd = slideStart + (currentSlide.audioDuration || 0);
+  //     if (currentTime >= slideEnd && currentSlideIndex < learningSlides.length - 1) {
+  //       console.log('[Audio Sync] Auto-advancing to next slide at:', currentTime);
+  //       setCurrentSlideIndex(prev => prev + 1);
+  //     }
+  //   };
+  //   const interval = setInterval(checkSlideTiming, 100);
+  //   return () => clearInterval(interval);
+  // }, [currentSlideIndex, learningSlides]);
 
   // Update audio current time for slide synchronization
   useEffect(() => {
@@ -1113,7 +1106,7 @@ The student is confused about THIS SPECIFIC LECTURE. Explain it simply!
 
       // EMOTION-BASED AUTO-HELP: Trigger re-explanation when confused/frustrated
       const timeSinceLastAction = now - lastConfusionActionRef.current;
-      const canTakeAction = timeSinceLastAction > 15000; // 15 second cooldown
+      const canTakeAction = timeSinceLastAction > EMOTION_COOLDOWN_MS; // 60 second cooldown to prevent excessive popups
 
       console.log('[Emotion] Detection:', {
         emotion: dominantEmotion,
@@ -1121,12 +1114,13 @@ The student is confused about THIS SPECIFIC LECTURE. Explain it simply!
         canTakeAction,
         isProcessing,
         isSessionPaused,
-        timeSinceLastAction: Math.floor(timeSinceLastAction / 1000) + 's'
+        timeSinceLastAction: Math.floor(timeSinceLastAction / 1000) + 's',
+        cooldownRemaining: canTakeAction ? 0 : Math.floor((EMOTION_COOLDOWN_MS - timeSinceLastAction) / 1000) + 's'
       });
 
-      // EMOTION CONFIRMATION: Ask user before triggering help
+      // EMOTION CONFIRMATION: Ask user before triggering help (with strict cooldown)
       if ((dominantEmotion === 'confused' || dominantEmotion === 'frustrated') && 
-          smoothedConfidence > 0.5 && canTakeAction && !isProcessing && !isSessionPaused) {
+          smoothedConfidence > 0.7 && canTakeAction && !isProcessing && !isSessionPaused && messages.length > 0) {
         
         lastConfusionActionRef.current = now;
         console.log('[Emotion] 🎯 Showing confirmation for:', dominantEmotion, smoothedConfidence);
@@ -1487,7 +1481,7 @@ The student is confused about THIS SPECIFIC LECTURE. Explain it simply!
                       tutorMessage={currentTranscript}
                       audioCurrentTime={audioCurrentTime}
                       isAudioPlaying={isSpeaking}
-                      autoAdvance={true}
+                      autoAdvance={false}
                     />
                   ) : (
                     <div className="h-full flex flex-col items-center justify-center text-gray-700 px-4">

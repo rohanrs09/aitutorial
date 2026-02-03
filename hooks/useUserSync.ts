@@ -41,18 +41,36 @@ export function useUserSync() {
     try {
       console.log('[UserSync] Syncing user to Supabase:', user.id);
 
-      // Check if user already exists
-      const { data: existingUser, error: fetchError } = await supabase
+      // Use UPSERT to avoid CORS PATCH issues
+      // This creates or updates the user in one operation
+      console.log('[UserSync] Upserting user profile');
+      const { data: upsertedUser, error: upsertError } = await supabase
         .from('user_profiles')
-        .select('id, clerk_user_id')
-        .eq('clerk_user_id', user.id)
-        .maybeSingle();
+        .upsert({
+          clerk_user_id: user.id,
+          email: user.emailAddresses?.[0]?.emailAddress || null,
+          first_name: user.firstName || null,
+          last_name: user.lastName || null,
+          avatar_url: user.imageUrl || null,
+          last_active_at: new Date().toISOString(),
+          // Only set these on initial creation
+          subscription_tier: 'free',
+          subscription_status: 'active',
+          sessions_this_month: 0,
+          sessions_limit: 100,
+          streak_days: 0,
+        }, {
+          onConflict: 'clerk_user_id',
+          ignoreDuplicates: false,
+        })
+        .select()
+        .single();
 
-      if (fetchError) {
-        console.error('[UserSync] Error checking user:', fetchError);
+      if (upsertError) {
+        console.error('[UserSync] Upsert error:', upsertError);
         
         // If table doesn't exist, log helpful message
-        if (fetchError.message?.includes('does not exist') || fetchError.code === 'PGRST116') {
+        if (upsertError.message?.includes('does not exist') || upsertError.code === 'PGRST116') {
           console.error('[UserSync] Tables not created! Run migrations/003_reset_and_fix_schema.sql in Supabase SQL Editor');
           setSyncStatus({
             isSynced: false,
@@ -63,73 +81,11 @@ export function useUserSync() {
           return;
         }
         
-        throw fetchError;
+        throw upsertError;
       }
 
-      if (existingUser) {
-        // User exists, update last_active_at
-        console.log('[UserSync] User exists, updating last_active_at');
-        const { error: updateError } = await supabase
-          .from('user_profiles')
-          .update({
-            last_active_at: new Date().toISOString(),
-            email: user.emailAddresses?.[0]?.emailAddress || null,
-            first_name: user.firstName || null,
-            last_name: user.lastName || null,
-            avatar_url: user.imageUrl || null,
-          })
-          .eq('clerk_user_id', user.id);
-
-        if (updateError) {
-          console.warn('[UserSync] Failed to update user:', updateError);
-        }
-
-        setSyncStatus({
-          isSynced: true,
-          isSyncing: false,
-          error: null,
-          userId: user.id,
-        });
-        console.log('[UserSync] ✅ User sync complete (existing user)');
-        return;
-      }
-
-      // User doesn't exist, create new profile
-      console.log('[UserSync] Creating new user profile');
-      const { data: newUser, error: insertError } = await supabase
-        .from('user_profiles')
-        .insert({
-          clerk_user_id: user.id,
-          email: user.emailAddresses?.[0]?.emailAddress || null,
-          first_name: user.firstName || null,
-          last_name: user.lastName || null,
-          avatar_url: user.imageUrl || null,
-          subscription_tier: 'free',
-          subscription_status: 'active',
-          sessions_this_month: 0,
-          sessions_limit: 100,
-          streak_days: 0,
-          last_active_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        // Check if it's a duplicate key error (user was created in parallel)
-        if (insertError.code === '23505') {
-          console.log('[UserSync] User already exists (parallel creation)');
-          setSyncStatus({
-            isSynced: true,
-            isSyncing: false,
-            error: null,
-            userId: user.id,
-          });
-          return;
-        }
-        throw insertError;
-      }
-
-      console.log('[UserSync] ✅ New user profile created:', newUser?.id);
+      console.log('[UserSync] ✅ User profile upserted:', upsertedUser?.id);
+      const newUser = upsertedUser;
 
       // Also create default preferences
       if (newUser) {

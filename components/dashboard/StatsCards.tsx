@@ -60,7 +60,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
     },
     {
       title: 'Current Streak',
-      value: `${stats.currentStreak} days`,
+      value: `${stats.currentStreak} ${stats.currentStreak === 1 ? 'day' : 'days'}`,
       icon: Flame,
       iconColor: 'text-orange-500',
       bgColor: 'bg-orange-600/20',
@@ -70,7 +70,7 @@ export function StatsCards({ stats, isLoading }: StatsCardsProps) {
     },
     {
       title: 'Average Score',
-      value: `${stats.averageScore}%`,
+      value: stats.averageScore > 0 ? `${stats.averageScore}%` : 'No quizzes yet',
       icon: Target,
       iconColor: 'text-amber-500',
       bgColor: 'bg-amber-600/20',

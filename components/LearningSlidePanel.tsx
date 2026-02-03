@@ -155,32 +155,18 @@ export default function LearningSlidePanel({
 
   const currentSlide = slides[currentSlideIndex];
 
-  // Auto-advance slides based on audio timing
+  // DISABLED: Auto-advance slides - slides should only change manually
+  // This prevents slides from moving while voice is still speaking
+  // Users must manually click Next/Previous or use navigation dots
   useEffect(() => {
-    if (!autoAdvance || !isAudioPlaying || slides.length === 0) return;
-
-    // Find which slide should be shown based on audio time
-    const targetSlideIndex = slides.findIndex((slide, index) => {
-      const startTime = slide.audioStartTime || 0;
-      const duration = slide.audioDuration || 10;
-      const endTime = startTime + duration;
-      
-      // Check if current audio time falls within this slide's range
-      return audioCurrentTime >= startTime && audioCurrentTime < endTime;
-    });
-
-    if (targetSlideIndex !== -1 && targetSlideIndex !== currentSlideIndex) {
-      onSlideChange(targetSlideIndex);
-    }
-
-    // Calculate progress within current slide
-    if (currentSlide) {
+    // Only calculate progress within current slide, do NOT auto-advance
+    if (currentSlide && isAudioPlaying) {
       const startTime = currentSlide.audioStartTime || 0;
       const duration = currentSlide.audioDuration || 10;
       const progress = Math.min(((audioCurrentTime - startTime) / duration) * 100, 100);
       setAudioProgress(Math.max(0, progress));
     }
-  }, [audioCurrentTime, isAudioPlaying, slides, currentSlideIndex, autoAdvance, onSlideChange, currentSlide]);
+  }, [audioCurrentTime, isAudioPlaying, currentSlide]);
 
   // Show simplify hint when user is confused
   useEffect(() => {
@@ -512,7 +498,7 @@ export default function LearningSlidePanel({
 
       {/* Footer with navigation and audio progress */}
       <div className="flex flex-col border-t border-gray-200/50 bg-white/30">
-        {/* Audio sync progress bar */}
+        {/* Audio progress indicator (visual only, does NOT auto-advance) */}
         {isAudioPlaying && currentSlide?.audioDuration && (
           <div className="h-1 bg-gray-200">
             <motion.div

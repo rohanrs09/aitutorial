@@ -198,32 +198,58 @@ async function fetchUserStats(
   userId: string,
   userIdColumn: string
 ): Promise<Omit<DashboardStats, 'weeklyProgress' | 'monthlyProgress'>> {
+  console.log(`[Dashboard] ═══════════════════════════════════════`);
+  console.log(`[Dashboard] Fetching stats for user: ${userId}`);
+  console.log(`[Dashboard] Using column: ${userIdColumn}`);
+  
   const { data: sessions, error } = await supabase
     .from('learning_sessions')
-    .select('duration_minutes, quiz_score, started_at')
+    .select('id, duration_minutes, quiz_score, started_at, ended_at, topic_name')
     .eq(userIdColumn, userId)
-    .not('ended_at', 'is', null);
+    .not('ended_at', 'is', null)
+    .order('started_at', { ascending: false });
 
   if (error) {
-    console.error('[Dashboard] Error fetching user stats:', error);
-    return {
-      totalSessions: 0,
-      totalMinutes: 0,
-      currentStreak: 0,
-      averageScore: 0,
-    };
+    console.error('[Dashboard] ❌ Error fetching user stats:', error);
+    throw error;
+  }
+
+  console.log(`[Dashboard] Fetched ${sessions?.length || 0} completed sessions`);
+  
+  // Log all sessions with quiz scores for debugging
+  if (sessions && sessions.length > 0) {
+    console.log('[Dashboard] All sessions:');
+    sessions.forEach((s, idx) => {
+      console.log(`  ${idx + 1}. Topic: ${s.topic_name}, Score: ${s.quiz_score}, Started: ${s.started_at}`);
+    });
   }
 
   const totalSessions = sessions?.length || 0;
   const totalMinutes = sessions?.reduce((sum, s) => sum + (s.duration_minutes || 0), 0) || 0;
   
-  const scores = sessions?.filter(s => s.quiz_score !== null).map(s => s.quiz_score!) || [];
+  // Calculate current streak (consecutive days with sessions)
+  const currentStreak = calculateStreak(sessions || []);
+  
+  // Filter valid quiz scores (0-100 range) and calculate average
+  const scores = sessions?.filter(s => 
+    s.quiz_score !== null && 
+    s.quiz_score !== undefined &&
+    typeof s.quiz_score === 'number' && 
+    s.quiz_score >= 0 && 
+    s.quiz_score <= 100
+  ).map(s => s.quiz_score!) || [];
+  
   const averageScore = scores.length > 0 
     ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) 
     : 0;
-
-  // Calculate streak (simplified - consecutive days)
-  const currentStreak = calculateStreak(sessions || []);
+  
+  console.log('[Dashboard] ═══════════════════════════════════════');
+  console.log('[Dashboard] 📊 Score Calculation Results:');
+  console.log(`[Dashboard]    Total Sessions: ${totalSessions}`);
+  console.log(`[Dashboard]    Sessions with Scores: ${scores.length}`);
+  console.log(`[Dashboard]    Scores: [${scores.join(', ')}]`);
+  console.log(`[Dashboard]    Average Score: ${averageScore}%`);
+  console.log('[Dashboard] ═══════════════════════════════════════');
 
   return {
     totalSessions,
@@ -375,11 +401,11 @@ async function fetchRecentSessions(
 ): Promise<RecentSession[]> {
   console.log('[Dashboard] Fetching recent sessions for user:', userId, 'column:', userIdColumn);
   
+  // Fetch ALL sessions (including in-progress ones) to show user activity
   const { data, error } = await supabase
     .from('learning_sessions')
-    .select('id, session_id, topic_name, started_at, duration_minutes, quiz_score, primary_emotion, total_messages')
+    .select('id, session_id, topic_name, started_at, ended_at, duration_minutes, quiz_score, primary_emotion, total_messages')
     .eq(userIdColumn, userId)
-    .not('ended_at', 'is', null)
     .order('started_at', { ascending: false })
     .limit(limit);
 
@@ -390,20 +416,52 @@ async function fetchRecentSessions(
 
   if (!data || data.length === 0) {
     console.warn('[Dashboard] No recent sessions found for user:', userId);
+    
+    // Try to get sessions from localStorage as fallback
+    if (typeof window !== 'undefined') {
+      try {
+        const historyStr = localStorage.getItem('ai_tutor_session_history');
+        if (historyStr) {
+          const history = JSON.parse(historyStr);
+          console.log('[Dashboard] Found', history.length, 'sessions in localStorage');
+          return history.slice(0, limit).map((session: any) => ({
+            id: session.id || session.sessionId,
+            sessionId: session.id || session.sessionId,
+            topicName: session.topicName || session.topic || 'Learning Session',
+            startedAt: session.date || session.startedAt || new Date().toISOString(),
+            duration: session.duration || session.durationMinutes || 0,
+            score: session.score || session.quizScore || null,
+            emotion: session.emotion || session.primaryEmotion || null,
+            messagesCount: session.messagesCount || 0,
+          }));
+        }
+      } catch (e) {
+        console.error('[Dashboard] Error reading localStorage:', e);
+      }
+    }
     return [];
   }
 
   console.log('[Dashboard] Found', data.length, 'recent sessions');
-  return data.map(session => ({
-    id: session.id,
-    sessionId: session.session_id,
-    topicName: session.topic_name || 'Unknown Topic',
-    startedAt: session.started_at,
-    duration: session.duration_minutes || 0,
-    score: session.quiz_score,
-    emotion: session.primary_emotion,
-    messagesCount: session.total_messages || 0,
-  }));
+  return data.map(session => {
+    // Calculate duration for in-progress sessions
+    let duration = session.duration_minutes || 0;
+    if (!session.ended_at && session.started_at) {
+      // Session still in progress - calculate current duration
+      duration = Math.round((Date.now() - new Date(session.started_at).getTime()) / 60000);
+    }
+    
+    return {
+      id: session.id,
+      sessionId: session.session_id,
+      topicName: session.topic_name || 'Learning Session',
+      startedAt: session.started_at,
+      duration: duration,
+      score: session.quiz_score,
+      emotion: session.primary_emotion,
+      messagesCount: session.total_messages || 0,
+    };
+  });
 }
 
 async function fetchTopicProgress(
@@ -440,7 +498,11 @@ async function fetchTopicProgress(
 
     existing.sessions += 1;
     existing.minutes += session.duration_minutes || 0;
-    if (session.quiz_score !== null && typeof session.quiz_score === 'number') {
+    // Validate quiz scores are in valid range (0-100)
+    if (session.quiz_score !== null && 
+        typeof session.quiz_score === 'number' && 
+        session.quiz_score >= 0 && 
+        session.quiz_score <= 100) {
       existing.scores.push(session.quiz_score);
     }
     if (new Date(session.started_at) > new Date(existing.lastPracticed)) {
@@ -450,7 +512,7 @@ async function fetchTopicProgress(
     grouped.set(topic, existing);
   });
 
-  return Array.from(grouped.entries())
+  const topicResults = Array.from(grouped.entries())
     .map(([topicName, data]) => ({
       topicName,
       sessionsCount: data.sessions,
@@ -459,7 +521,11 @@ async function fetchTopicProgress(
         ? Math.round(data.scores.reduce((a, b) => a + b, 0) / data.scores.length)
         : 0,
       lastPracticed: data.lastPracticed,
-    }))
+    }));
+  
+  console.log('[Dashboard] Topic progress calculated:', topicResults.length, 'topics');
+  
+  return topicResults
     .sort((a, b) => new Date(b.lastPracticed).getTime() - new Date(a.lastPracticed).getTime())
     .slice(0, 5); // Top 5 topics
 }

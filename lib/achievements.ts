@@ -199,7 +199,7 @@ export async function getUserAchievements(userId?: string): Promise<Achievement[
       const { data, error } = await supabase
         .from('user_achievements')
         .select('achievement_id, unlocked_at, progress')
-        .eq('user_id', userId);
+        .eq('clerk_user_id', userId);
 
       if (!error && data) {
         const unlockedIds = new Set(data.map(a => a.achievement_id));
@@ -291,10 +291,12 @@ export async function unlockAchievement(userId: string, achievementId: string): 
     try {
       const { error } = await supabase
         .from('user_achievements')
-        .insert({
-          user_id: userId,
+        .upsert({
+          clerk_user_id: userId,
           achievement_id: achievementId,
           progress: 100,
+        }, {
+          onConflict: 'clerk_user_id,achievement_id',
         });
 
       if (error && error.code !== '23505') { // Ignore duplicate key errors

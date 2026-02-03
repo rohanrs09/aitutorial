@@ -17,6 +17,7 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import UserLearningInsights from '@/components/UserLearningInsights';
 import QuizAnalytics from '@/components/dashboard/QuizAnalytics';
+import CreditsDisplay from '@/components/dashboard/CreditsDisplay';
 import { fetchDashboardData, subscribeToDashboardUpdates, type DashboardData } from '@/lib/dashboard-service';
 import { useRouter } from 'next/navigation';
 
@@ -100,8 +101,31 @@ export default function ProductionDashboard() {
       <DashboardHeader userName={userName} greeting={getGreeting()} onRefresh={handleRefresh} isRefreshing={isRefreshing} userButton={<UserButton />} />
       <PageContainer maxWidth="2xl">
         {dashboardData.error && <PageSection><Card variant="elevated" padding="md"><CardContent><div className="flex items-center gap-3 text-yellow-400"><AlertCircle size={20} /><div><p className="font-medium">Unable to load dashboard data</p><p className="text-sm text-gray-400 mt-1">{dashboardData.error}</p></div></div></CardContent></Card></PageSection>}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8"><StatsCards stats={dashboardData.stats} isLoading={dashboardData.isLoading} /></motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8"><QuickActions /></motion.div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            className="lg:col-span-2 h-full"
+          >
+            <StatsCards stats={dashboardData.stats} isLoading={dashboardData.isLoading} />
+          </motion.div>
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ delay: 0.1 }}
+            className="h-full"
+          >
+            <CreditsDisplay />
+          </motion.div>
+        </div>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ delay: 0.15 }} 
+          className="mb-8"
+        >
+          <QuickActions />
+        </motion.div>
         <div className="mb-8">
           <Tabs defaultValue="overview" className="w-full">
             <TabsList className="grid w-full grid-cols-4 mb-6">
