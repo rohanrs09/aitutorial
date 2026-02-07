@@ -22,18 +22,47 @@ export async function GET(request: NextRequest) {
 
     console.log('[Credits API] Fetching credits for user:', userId);
 
-    // Ensure user has subscription and credits (creates if not exists)
-    const result = await ensureUserSubscription(userId);
+    let subscription, credits;
     
-    if (!result.success) {
-      console.error('[Credits API] Failed to ensure subscription:', result.error);
-      return NextResponse.json(
-        { error: result.error || 'Failed to fetch credits' },
-        { status: 500 }
-      );
-    }
+    try {
+      // Ensure user has subscription and credits (creates if not exists)
+      const result = await ensureUserSubscription(userId);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to fetch credits');
+      }
 
-    const { subscription, credits } = result;
+      subscription = result.subscription;
+      credits = result.credits;
+    } catch (dbError: any) {
+      console.warn('[Credits API] Database unavailable, using default credits:', dbError.message);
+      
+      // Return default starter subscription when DB is unavailable
+      const now = new Date();
+      subscription = {
+        id: 'default',
+        userId: userId,
+        tier: 'starter' as const,
+        status: 'active' as const,
+        clerkSubscriptionId: null,
+        currentPeriodStart: now,
+        currentPeriodEnd: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+        cancelAtPeriodEnd: false,
+        createdAt: now,
+        updatedAt: now,
+      };
+      
+      credits = {
+        id: 'default',
+        userId: userId,
+        totalCredits: 50,
+        usedCredits: 0,
+        bonusCredits: 0,
+        lastResetAt: now,
+        createdAt: now,
+        updatedAt: now,
+      };
+    }
 
     // Calculate remaining credits
     let remainingCredits: number | 'unlimited' = 0;

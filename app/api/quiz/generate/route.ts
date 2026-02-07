@@ -20,19 +20,19 @@ export async function POST(req: NextRequest) {
     console.log('[Quiz API] 👤 Authenticated User:', userId);
 
     // ═══════════════════════════════════════
-    // STEP 2: Ensure user has subscription & credits
+    // STEP 2: Ensure user has subscription & credits (optional - quiz is free)
     // ═══════════════════════════════════════
-    const subscriptionResult = await ensureUserSubscription(userId);
-    if (!subscriptionResult.success) {
-      console.log('[Quiz API] ❌ Subscription error:', subscriptionResult.error);
-      return NextResponse.json({ 
-        error: 'Failed to verify subscription',
-        details: subscriptionResult.error 
-      }, { status: 500 });
+    try {
+      const subscriptionResult = await ensureUserSubscription(userId);
+      if (subscriptionResult.success) {
+        console.log('[Quiz API] 💳 Subscription:', subscriptionResult.subscription?.tier);
+        console.log('[Quiz API] 💰 Credits:', subscriptionResult.credits?.totalCredits, '- Used:', subscriptionResult.credits?.usedCredits);
+      }
+    } catch (dbError: any) {
+      console.warn('[Quiz API] ⚠️ Database unavailable, continuing without subscription check');
+      console.warn('[Quiz API] Error:', dbError.message);
     }
     
-    console.log('[Quiz API] 💳 Subscription:', subscriptionResult.subscription?.tier);
-    console.log('[Quiz API] 💰 Credits:', subscriptionResult.credits?.totalCredits, '- Used:', subscriptionResult.credits?.usedCredits);
     console.log('[Quiz API] ℹ️ Quiz generation is FREE - no credits deducted');
 
     // ═══════════════════════════════════════

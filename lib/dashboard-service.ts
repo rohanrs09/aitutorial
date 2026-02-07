@@ -610,18 +610,24 @@ export function subscribeToDashboardUpdates(
   userId: string,
   callback: (data: Partial<DashboardData>) => void
 ) {
-  if (!isSupabaseConfigured || !userId) return () => {};
+  // Don't subscribe if Supabase is not configured
+  if (!isSupabaseConfigured || !userId) {
+    console.log('[Dashboard] Realtime updates disabled - Supabase not configured');
+    return () => {};
+  }
 
-  const userIdColumn = userId.startsWith('user_') ? 'clerk_user_id' : 'user_id';
+  // Validate connection before subscribing to prevent WebSocket errors
+  try {
+    const userIdColumn = userId.startsWith('user_') ? 'clerk_user_id' : 'user_id';
 
-  const subscription = supabase
-    .channel('dashboard_updates')
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'learning_sessions',
+    const subscription = supabase
+      .channel('dashboard_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'learning_sessions',
         filter: `${userIdColumn}=eq.${userId}`,
       },
       () => {
@@ -631,7 +637,11 @@ export function subscribeToDashboardUpdates(
     )
     .subscribe();
 
-  return () => {
-    subscription.unsubscribe();
-  };
+    return () => {
+      subscription.unsubscribe();
+    };
+  } catch (error) {
+    console.error('[Dashboard] Failed to setup realtime subscription:', error);
+    return () => {}; // Return no-op cleanup function
+  }
 }

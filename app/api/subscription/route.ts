@@ -25,11 +25,45 @@ export async function GET(request: NextRequest) {
 
     console.log(`[Subscription API] Fetching subscription for user: ${userId}`);
 
-    // Check and reset credits if new billing period
-    await checkAndResetCreditsIfNeeded(userId);
+    let subscription, credits;
+    
+    try {
+      // Check and reset credits if new billing period
+      await checkAndResetCreditsIfNeeded(userId);
 
-    // Get subscription and credits (creates if doesn't exist)
-    const { subscription, credits } = await getOrCreateSubscription(userId);
+      // Get subscription and credits (creates if doesn't exist)
+      const result = await getOrCreateSubscription(userId);
+      subscription = result.subscription;
+      credits = result.credits;
+    } catch (dbError: any) {
+      console.warn('[Subscription API] Database unavailable, using default subscription:', dbError.message);
+      
+      // Return default starter subscription when DB is unavailable
+      const now = new Date();
+      subscription = {
+        id: 'default',
+        userId: userId,
+        tier: 'starter' as const,
+        status: 'active' as const,
+        clerkSubscriptionId: null,
+        currentPeriodStart: now,
+        currentPeriodEnd: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+        cancelAtPeriodEnd: false,
+        createdAt: now,
+        updatedAt: now,
+      };
+      
+      credits = {
+        id: 'default',
+        userId: userId,
+        totalCredits: 50,
+        usedCredits: 0,
+        bonusCredits: 0,
+        lastResetAt: now,
+        createdAt: now,
+        updatedAt: now,
+      };
+    }
     
     console.log(`[Subscription API] Found/Created subscription:`, {
       tier: subscription.tier,

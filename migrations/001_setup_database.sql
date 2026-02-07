@@ -1,8 +1,9 @@
 -- ============================================
--- AI VOICE TUTOR - COMPLETE DATABASE RESET
+-- AI VOICE TUTOR - DATABASE SETUP
 -- ============================================
--- This migration drops ALL existing tables and recreates them from scratch
--- with proper clerk_user_id columns for Clerk authentication
+-- This migration creates all necessary tables for the AI Voice Tutor
+-- Safe to run multiple times - uses IF NOT EXISTS
+-- Compatible with Clerk authentication
 -- Run this in Supabase SQL Editor
 -- ============================================
 
@@ -11,34 +12,18 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ============================================
--- STEP 1: DROP ALL EXISTING TABLES
--- ============================================
-
-DROP TABLE IF EXISTS credit_transactions CASCADE;
-DROP TABLE IF EXISTS user_credits CASCADE;
-DROP TABLE IF EXISTS user_subscriptions CASCADE;
-DROP TABLE IF EXISTS user_achievements CASCADE;
-DROP TABLE IF EXISTS achievement_definitions CASCADE;
-DROP TABLE IF EXISTS user_notes CASCADE;
-DROP TABLE IF EXISTS learning_progress CASCADE;
-DROP TABLE IF EXISTS conversation_messages CASCADE;
-DROP TABLE IF EXISTS learning_sessions CASCADE;
-DROP TABLE IF EXISTS user_preferences CASCADE;
-DROP TABLE IF EXISTS user_profiles CASCADE;
-
--- ============================================
--- STEP 2: CREATE ALL TABLES WITH PROPER SCHEMA
+-- TABLE CREATION
 -- ============================================
 
 -- 1. User Profiles Table (Primary user table linked to Clerk)
-CREATE TABLE user_profiles (
+CREATE TABLE IF NOT EXISTS user_profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   clerk_user_id TEXT UNIQUE NOT NULL,
   email TEXT,
   first_name TEXT,
   last_name TEXT,
   avatar_url TEXT,
-  subscription_tier TEXT DEFAULT 'free',
+  subscription_tier TEXT DEFAULT 'starter',
   subscription_status TEXT DEFAULT 'active',
   sessions_this_month INTEGER DEFAULT 0,
   sessions_limit INTEGER DEFAULT 100,
@@ -49,7 +34,7 @@ CREATE TABLE user_profiles (
 );
 
 -- 2. User Preferences Table
-CREATE TABLE user_preferences (
+CREATE TABLE IF NOT EXISTS user_preferences (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES user_profiles(id) ON DELETE CASCADE,
   clerk_user_id TEXT NOT NULL,
@@ -66,7 +51,7 @@ CREATE TABLE user_preferences (
 );
 
 -- 3. Learning Sessions Table (Main session tracking)
-CREATE TABLE learning_sessions (
+CREATE TABLE IF NOT EXISTS learning_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id TEXT UNIQUE NOT NULL,
   clerk_user_id TEXT NOT NULL,
@@ -84,7 +69,7 @@ CREATE TABLE learning_sessions (
 );
 
 -- 4. Conversation Messages Table (Chat history)
-CREATE TABLE conversation_messages (
+CREATE TABLE IF NOT EXISTS conversation_messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id TEXT NOT NULL,
   clerk_user_id TEXT NOT NULL,
@@ -98,7 +83,7 @@ CREATE TABLE conversation_messages (
 );
 
 -- 5. Learning Progress Table (Tracks progress per session)
-CREATE TABLE learning_progress (
+CREATE TABLE IF NOT EXISTS learning_progress (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   clerk_user_id TEXT NOT NULL,
   user_id UUID REFERENCES user_profiles(id) ON DELETE SET NULL,
@@ -114,7 +99,7 @@ CREATE TABLE learning_progress (
 );
 
 -- 6. User Notes Table (User-created notes during sessions)
-CREATE TABLE user_notes (
+CREATE TABLE IF NOT EXISTS user_notes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id TEXT NOT NULL,
   clerk_user_id TEXT NOT NULL,
@@ -127,7 +112,7 @@ CREATE TABLE user_notes (
 );
 
 -- 7. User Subscriptions Table (Subscription tier and status)
-CREATE TABLE user_subscriptions (
+CREATE TABLE IF NOT EXISTS user_subscriptions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   clerk_user_id TEXT UNIQUE NOT NULL,
   user_id UUID REFERENCES user_profiles(id) ON DELETE SET NULL,
@@ -142,7 +127,7 @@ CREATE TABLE user_subscriptions (
 );
 
 -- 8. User Credits Table (Tracks credits for each user)
-CREATE TABLE user_credits (
+CREATE TABLE IF NOT EXISTS user_credits (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   clerk_user_id TEXT UNIQUE NOT NULL,
   user_id UUID REFERENCES user_profiles(id) ON DELETE SET NULL,
@@ -155,7 +140,7 @@ CREATE TABLE user_credits (
 );
 
 -- 9. Credit Transactions Table (Logs all credit changes)
-CREATE TABLE credit_transactions (
+CREATE TABLE IF NOT EXISTS credit_transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   clerk_user_id TEXT NOT NULL,
   user_id UUID REFERENCES user_profiles(id) ON DELETE SET NULL,
@@ -167,7 +152,7 @@ CREATE TABLE credit_transactions (
 );
 
 -- 10. Achievement Definitions Table (Stores all available achievements)
-CREATE TABLE achievement_definitions (
+CREATE TABLE IF NOT EXISTS achievement_definitions (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT NOT NULL,
@@ -179,7 +164,7 @@ CREATE TABLE achievement_definitions (
 );
 
 -- 11. User Achievements Table (Tracks unlocked achievements per user)
-CREATE TABLE user_achievements (
+CREATE TABLE IF NOT EXISTS user_achievements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   clerk_user_id TEXT NOT NULL,
   user_id UUID REFERENCES user_profiles(id) ON DELETE SET NULL,
@@ -191,68 +176,70 @@ CREATE TABLE user_achievements (
 );
 
 -- ============================================
--- STEP 3: INSERT DEFAULT ACHIEVEMENT DEFINITIONS
+-- INSERT DEFAULT ACHIEVEMENT DEFINITIONS
 -- ============================================
 
-INSERT INTO achievement_definitions (id, name, description, icon, category, points, requirement) VALUES
+INSERT INTO achievement_definitions (id, name, description, icon, category, points, requirement) 
+VALUES
   ('first_session', 'First Steps', 'Complete your first learning session', '🎯', 'learning', 10, '{"type": "sessions", "count": 1}'),
   ('quiz_master', 'Quiz Master', 'Score 100% on any quiz', '🏆', 'quiz', 50, '{"type": "quiz_score", "score": 100}'),
   ('week_streak', 'Week Warrior', 'Maintain a 7-day learning streak', '🔥', 'streak', 30, '{"type": "streak", "days": 7}'),
   ('speed_learner', 'Speed Learner', 'Complete 10 sessions in one day', '⚡', 'learning', 40, '{"type": "daily_sessions", "count": 10}'),
-  ('topic_expert', 'Topic Expert', 'Master 5 different topics', '🎓', 'mastery', 100, '{"type": "topics_mastered", "count": 5}');
+  ('topic_expert', 'Topic Expert', 'Master 5 different topics', '🎓', 'mastery', 100, '{"type": "topics_mastered", "count": 5}')
+ON CONFLICT (id) DO NOTHING;
 
 -- ============================================
--- STEP 4: CREATE INDEXES FOR PERFORMANCE
+-- CREATE INDEXES FOR PERFORMANCE
 -- ============================================
 
 -- User profiles indexes
-CREATE INDEX idx_user_profiles_clerk_user_id ON user_profiles(clerk_user_id);
-CREATE INDEX idx_user_profiles_email ON user_profiles(email);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_clerk_user_id ON user_profiles(clerk_user_id);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_email ON user_profiles(email);
 
 -- Learning sessions indexes
-CREATE INDEX idx_learning_sessions_clerk_user_id ON learning_sessions(clerk_user_id);
-CREATE INDEX idx_learning_sessions_session_id ON learning_sessions(session_id);
-CREATE INDEX idx_learning_sessions_started_at ON learning_sessions(started_at DESC);
-CREATE INDEX idx_learning_sessions_topic_name ON learning_sessions(topic_name);
-CREATE INDEX idx_learning_sessions_quiz_score ON learning_sessions(clerk_user_id, quiz_score) WHERE quiz_score IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_learning_sessions_clerk_user_id ON learning_sessions(clerk_user_id);
+CREATE INDEX IF NOT EXISTS idx_learning_sessions_session_id ON learning_sessions(session_id);
+CREATE INDEX IF NOT EXISTS idx_learning_sessions_started_at ON learning_sessions(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_learning_sessions_topic_name ON learning_sessions(topic_name);
+CREATE INDEX IF NOT EXISTS idx_learning_sessions_quiz_score ON learning_sessions(clerk_user_id, quiz_score) WHERE quiz_score IS NOT NULL;
 
 -- Conversation messages indexes
-CREATE INDEX idx_conversation_messages_session_id ON conversation_messages(session_id);
-CREATE INDEX idx_conversation_messages_clerk_user_id ON conversation_messages(clerk_user_id);
-CREATE INDEX idx_conversation_messages_timestamp ON conversation_messages(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_conversation_messages_session_id ON conversation_messages(session_id);
+CREATE INDEX IF NOT EXISTS idx_conversation_messages_clerk_user_id ON conversation_messages(clerk_user_id);
+CREATE INDEX IF NOT EXISTS idx_conversation_messages_timestamp ON conversation_messages(timestamp DESC);
 
 -- Learning progress indexes
-CREATE INDEX idx_learning_progress_clerk_user_id ON learning_progress(clerk_user_id);
-CREATE INDEX idx_learning_progress_session_id ON learning_progress(session_id);
-CREATE INDEX idx_learning_progress_status ON learning_progress(status);
-CREATE INDEX idx_learning_progress_last_accessed ON learning_progress(last_accessed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_learning_progress_clerk_user_id ON learning_progress(clerk_user_id);
+CREATE INDEX IF NOT EXISTS idx_learning_progress_session_id ON learning_progress(session_id);
+CREATE INDEX IF NOT EXISTS idx_learning_progress_status ON learning_progress(status);
+CREATE INDEX IF NOT EXISTS idx_learning_progress_last_accessed ON learning_progress(last_accessed_at DESC);
 
 -- User notes indexes
-CREATE INDEX idx_user_notes_clerk_user_id ON user_notes(clerk_user_id);
-CREATE INDEX idx_user_notes_session_id ON user_notes(session_id);
+CREATE INDEX IF NOT EXISTS idx_user_notes_clerk_user_id ON user_notes(clerk_user_id);
+CREATE INDEX IF NOT EXISTS idx_user_notes_session_id ON user_notes(session_id);
 
 -- User subscriptions indexes
-CREATE INDEX idx_user_subscriptions_clerk_user_id ON user_subscriptions(clerk_user_id);
-CREATE INDEX idx_user_subscriptions_status ON user_subscriptions(status);
-CREATE INDEX idx_user_subscriptions_clerk_subscription_id ON user_subscriptions(clerk_subscription_id);
+CREATE INDEX IF NOT EXISTS idx_user_subscriptions_clerk_user_id ON user_subscriptions(clerk_user_id);
+CREATE INDEX IF NOT EXISTS idx_user_subscriptions_status ON user_subscriptions(status);
+CREATE INDEX IF NOT EXISTS idx_user_subscriptions_clerk_subscription_id ON user_subscriptions(clerk_subscription_id);
 
 -- User credits indexes
-CREATE INDEX idx_user_credits_clerk_user_id ON user_credits(clerk_user_id);
+CREATE INDEX IF NOT EXISTS idx_user_credits_clerk_user_id ON user_credits(clerk_user_id);
 
 -- Credit transactions indexes
-CREATE INDEX idx_credit_transactions_clerk_user_id ON credit_transactions(clerk_user_id);
-CREATE INDEX idx_credit_transactions_type ON credit_transactions(type);
-CREATE INDEX idx_credit_transactions_created_at ON credit_transactions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_credit_transactions_clerk_user_id ON credit_transactions(clerk_user_id);
+CREATE INDEX IF NOT EXISTS idx_credit_transactions_type ON credit_transactions(type);
+CREATE INDEX IF NOT EXISTS idx_credit_transactions_created_at ON credit_transactions(created_at DESC);
 
 -- Achievement definitions indexes
-CREATE INDEX idx_achievement_definitions_category ON achievement_definitions(category);
+CREATE INDEX IF NOT EXISTS idx_achievement_definitions_category ON achievement_definitions(category);
 
 -- User achievements indexes
-CREATE INDEX idx_user_achievements_clerk_user_id ON user_achievements(clerk_user_id);
-CREATE INDEX idx_user_achievements_achievement_id ON user_achievements(achievement_id);
+CREATE INDEX IF NOT EXISTS idx_user_achievements_clerk_user_id ON user_achievements(clerk_user_id);
+CREATE INDEX IF NOT EXISTS idx_user_achievements_achievement_id ON user_achievements(achievement_id);
 
 -- ============================================
--- STEP 5: ENABLE ROW LEVEL SECURITY (RLS)
+-- ENABLE ROW LEVEL SECURITY (RLS)
 -- ============================================
 
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
@@ -268,79 +255,123 @@ ALTER TABLE achievement_definitions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_achievements ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- STEP 6: CREATE RLS POLICIES
+-- CREATE RLS POLICIES
 -- ============================================
 -- Using permissive policies (true) to avoid CORS issues
 -- Backend handles authorization via Clerk
 
 -- User Profiles policies
+DROP POLICY IF EXISTS "user_profiles_select" ON user_profiles;
+DROP POLICY IF EXISTS "user_profiles_insert" ON user_profiles;
+DROP POLICY IF EXISTS "user_profiles_update" ON user_profiles;
+DROP POLICY IF EXISTS "user_profiles_delete" ON user_profiles;
 CREATE POLICY "user_profiles_select" ON user_profiles FOR SELECT USING (true);
 CREATE POLICY "user_profiles_insert" ON user_profiles FOR INSERT WITH CHECK (true);
 CREATE POLICY "user_profiles_update" ON user_profiles FOR UPDATE USING (true) WITH CHECK (true);
 CREATE POLICY "user_profiles_delete" ON user_profiles FOR DELETE USING (true);
 
 -- User Preferences policies
+DROP POLICY IF EXISTS "user_preferences_select" ON user_preferences;
+DROP POLICY IF EXISTS "user_preferences_insert" ON user_preferences;
+DROP POLICY IF EXISTS "user_preferences_update" ON user_preferences;
+DROP POLICY IF EXISTS "user_preferences_delete" ON user_preferences;
 CREATE POLICY "user_preferences_select" ON user_preferences FOR SELECT USING (true);
 CREATE POLICY "user_preferences_insert" ON user_preferences FOR INSERT WITH CHECK (true);
 CREATE POLICY "user_preferences_update" ON user_preferences FOR UPDATE USING (true) WITH CHECK (true);
 CREATE POLICY "user_preferences_delete" ON user_preferences FOR DELETE USING (true);
 
 -- Learning Sessions policies
+DROP POLICY IF EXISTS "learning_sessions_select" ON learning_sessions;
+DROP POLICY IF EXISTS "learning_sessions_insert" ON learning_sessions;
+DROP POLICY IF EXISTS "learning_sessions_update" ON learning_sessions;
+DROP POLICY IF EXISTS "learning_sessions_delete" ON learning_sessions;
 CREATE POLICY "learning_sessions_select" ON learning_sessions FOR SELECT USING (true);
 CREATE POLICY "learning_sessions_insert" ON learning_sessions FOR INSERT WITH CHECK (true);
 CREATE POLICY "learning_sessions_update" ON learning_sessions FOR UPDATE USING (true) WITH CHECK (true);
 CREATE POLICY "learning_sessions_delete" ON learning_sessions FOR DELETE USING (true);
 
 -- Conversation Messages policies
+DROP POLICY IF EXISTS "conversation_messages_select" ON conversation_messages;
+DROP POLICY IF EXISTS "conversation_messages_insert" ON conversation_messages;
+DROP POLICY IF EXISTS "conversation_messages_update" ON conversation_messages;
+DROP POLICY IF EXISTS "conversation_messages_delete" ON conversation_messages;
 CREATE POLICY "conversation_messages_select" ON conversation_messages FOR SELECT USING (true);
 CREATE POLICY "conversation_messages_insert" ON conversation_messages FOR INSERT WITH CHECK (true);
 CREATE POLICY "conversation_messages_update" ON conversation_messages FOR UPDATE USING (true) WITH CHECK (true);
 CREATE POLICY "conversation_messages_delete" ON conversation_messages FOR DELETE USING (true);
 
 -- Learning Progress policies
+DROP POLICY IF EXISTS "learning_progress_select" ON learning_progress;
+DROP POLICY IF EXISTS "learning_progress_insert" ON learning_progress;
+DROP POLICY IF EXISTS "learning_progress_update" ON learning_progress;
+DROP POLICY IF EXISTS "learning_progress_delete" ON learning_progress;
 CREATE POLICY "learning_progress_select" ON learning_progress FOR SELECT USING (true);
 CREATE POLICY "learning_progress_insert" ON learning_progress FOR INSERT WITH CHECK (true);
 CREATE POLICY "learning_progress_update" ON learning_progress FOR UPDATE USING (true) WITH CHECK (true);
 CREATE POLICY "learning_progress_delete" ON learning_progress FOR DELETE USING (true);
 
 -- User Notes policies
+DROP POLICY IF EXISTS "user_notes_select" ON user_notes;
+DROP POLICY IF EXISTS "user_notes_insert" ON user_notes;
+DROP POLICY IF EXISTS "user_notes_update" ON user_notes;
+DROP POLICY IF EXISTS "user_notes_delete" ON user_notes;
 CREATE POLICY "user_notes_select" ON user_notes FOR SELECT USING (true);
 CREATE POLICY "user_notes_insert" ON user_notes FOR INSERT WITH CHECK (true);
 CREATE POLICY "user_notes_update" ON user_notes FOR UPDATE USING (true) WITH CHECK (true);
 CREATE POLICY "user_notes_delete" ON user_notes FOR DELETE USING (true);
 
 -- User Subscriptions policies
+DROP POLICY IF EXISTS "user_subscriptions_select" ON user_subscriptions;
+DROP POLICY IF EXISTS "user_subscriptions_insert" ON user_subscriptions;
+DROP POLICY IF EXISTS "user_subscriptions_update" ON user_subscriptions;
+DROP POLICY IF EXISTS "user_subscriptions_delete" ON user_subscriptions;
 CREATE POLICY "user_subscriptions_select" ON user_subscriptions FOR SELECT USING (true);
 CREATE POLICY "user_subscriptions_insert" ON user_subscriptions FOR INSERT WITH CHECK (true);
 CREATE POLICY "user_subscriptions_update" ON user_subscriptions FOR UPDATE USING (true) WITH CHECK (true);
 CREATE POLICY "user_subscriptions_delete" ON user_subscriptions FOR DELETE USING (true);
 
 -- User Credits policies
+DROP POLICY IF EXISTS "user_credits_select" ON user_credits;
+DROP POLICY IF EXISTS "user_credits_insert" ON user_credits;
+DROP POLICY IF EXISTS "user_credits_update" ON user_credits;
+DROP POLICY IF EXISTS "user_credits_delete" ON user_credits;
 CREATE POLICY "user_credits_select" ON user_credits FOR SELECT USING (true);
 CREATE POLICY "user_credits_insert" ON user_credits FOR INSERT WITH CHECK (true);
 CREATE POLICY "user_credits_update" ON user_credits FOR UPDATE USING (true) WITH CHECK (true);
 CREATE POLICY "user_credits_delete" ON user_credits FOR DELETE USING (true);
 
 -- Credit Transactions policies
+DROP POLICY IF EXISTS "credit_transactions_select" ON credit_transactions;
+DROP POLICY IF EXISTS "credit_transactions_insert" ON credit_transactions;
+DROP POLICY IF EXISTS "credit_transactions_update" ON credit_transactions;
+DROP POLICY IF EXISTS "credit_transactions_delete" ON credit_transactions;
 CREATE POLICY "credit_transactions_select" ON credit_transactions FOR SELECT USING (true);
 CREATE POLICY "credit_transactions_insert" ON credit_transactions FOR INSERT WITH CHECK (true);
 CREATE POLICY "credit_transactions_update" ON credit_transactions FOR UPDATE USING (true) WITH CHECK (true);
 CREATE POLICY "credit_transactions_delete" ON credit_transactions FOR DELETE USING (true);
 
 -- Achievement Definitions policies (public read)
+DROP POLICY IF EXISTS "achievement_definitions_select" ON achievement_definitions;
+DROP POLICY IF EXISTS "achievement_definitions_insert" ON achievement_definitions;
+DROP POLICY IF EXISTS "achievement_definitions_update" ON achievement_definitions;
+DROP POLICY IF EXISTS "achievement_definitions_delete" ON achievement_definitions;
 CREATE POLICY "achievement_definitions_select" ON achievement_definitions FOR SELECT USING (true);
 CREATE POLICY "achievement_definitions_insert" ON achievement_definitions FOR INSERT WITH CHECK (true);
 CREATE POLICY "achievement_definitions_update" ON achievement_definitions FOR UPDATE USING (true) WITH CHECK (true);
 CREATE POLICY "achievement_definitions_delete" ON achievement_definitions FOR DELETE USING (true);
 
 -- User Achievements policies
+DROP POLICY IF EXISTS "user_achievements_select" ON user_achievements;
+DROP POLICY IF EXISTS "user_achievements_insert" ON user_achievements;
+DROP POLICY IF EXISTS "user_achievements_update" ON user_achievements;
+DROP POLICY IF EXISTS "user_achievements_delete" ON user_achievements;
 CREATE POLICY "user_achievements_select" ON user_achievements FOR SELECT USING (true);
 CREATE POLICY "user_achievements_insert" ON user_achievements FOR INSERT WITH CHECK (true);
 CREATE POLICY "user_achievements_update" ON user_achievements FOR UPDATE USING (true) WITH CHECK (true);
 CREATE POLICY "user_achievements_delete" ON user_achievements FOR DELETE USING (true);
 
 -- ============================================
--- STEP 7: CREATE HELPER FUNCTIONS
+-- CREATE HELPER FUNCTIONS
 -- ============================================
 
 -- Function to update updated_at timestamp
@@ -353,61 +384,47 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Apply update_updated_at trigger to all tables with updated_at column
+DROP TRIGGER IF EXISTS update_user_profiles_updated_at ON user_profiles;
 CREATE TRIGGER update_user_profiles_updated_at
   BEFORE UPDATE ON user_profiles
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_user_preferences_updated_at ON user_preferences;
 CREATE TRIGGER update_user_preferences_updated_at
   BEFORE UPDATE ON user_preferences
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_learning_sessions_updated_at ON learning_sessions;
 CREATE TRIGGER update_learning_sessions_updated_at
   BEFORE UPDATE ON learning_sessions
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_learning_progress_updated_at ON learning_progress;
 CREATE TRIGGER update_learning_progress_updated_at
   BEFORE UPDATE ON learning_progress
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_user_notes_updated_at ON user_notes;
 CREATE TRIGGER update_user_notes_updated_at
   BEFORE UPDATE ON user_notes
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_user_subscriptions_updated_at ON user_subscriptions;
 CREATE TRIGGER update_user_subscriptions_updated_at
   BEFORE UPDATE ON user_subscriptions
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_user_credits_updated_at ON user_credits;
 CREATE TRIGGER update_user_credits_updated_at
   BEFORE UPDATE ON user_credits
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
--- STEP 8: ADD TABLE COMMENTS FOR DOCUMENTATION
--- ============================================
-
-COMMENT ON TABLE user_profiles IS 'Main user table linked to Clerk authentication via clerk_user_id';
-COMMENT ON TABLE user_preferences IS 'User preferences for learning experience customization';
-COMMENT ON TABLE learning_sessions IS 'Tracks all learning sessions with quiz scores and emotions';
-COMMENT ON TABLE conversation_messages IS 'Stores all chat messages between user and AI tutor';
-COMMENT ON TABLE learning_progress IS 'Tracks user progress through learning content';
-COMMENT ON TABLE user_notes IS 'User-created notes during learning sessions';
-COMMENT ON TABLE user_subscriptions IS 'Subscription tier and status for each user';
-COMMENT ON TABLE user_credits IS 'Credit balance tracking for usage-based features';
-COMMENT ON TABLE credit_transactions IS 'Audit log of all credit changes';
-COMMENT ON TABLE achievement_definitions IS 'Defines all available achievements in the system';
-COMMENT ON TABLE user_achievements IS 'Tracks which achievements each user has unlocked';
-
-COMMENT ON COLUMN user_profiles.clerk_user_id IS 'Clerk user ID (format: user_xxx) - primary identifier';
-COMMENT ON COLUMN learning_sessions.quiz_score IS 'Quiz score 0-100, NULL if quiz not taken';
-COMMENT ON COLUMN user_credits.total_credits IS 'Total credits available this billing period';
-COMMENT ON COLUMN user_credits.used_credits IS 'Credits used this billing period';
-COMMENT ON COLUMN user_credits.bonus_credits IS 'Extra credits from promotions or bonuses';
-
--- ============================================
--- MIGRATION COMPLETE
+-- SETUP COMPLETE
 -- ============================================
 -- All tables created with clerk_user_id columns
 -- RLS policies configured for security
 -- Indexes added for performance
+-- Default achievements inserted
 -- Ready to use with Clerk authentication
 -- ============================================

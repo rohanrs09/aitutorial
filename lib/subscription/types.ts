@@ -59,8 +59,8 @@ export const CREDIT_COSTS = {
   AI_RESPONSE: 1, // Basic AI text response
   VOICE_SESSION: 5, // Full voice tutoring session
   EMOTION_DETECTION: 2, // Emotion detection per minute
-  SLIDE_GENERATION: 3, // Generate learning slides
-  QUIZ_GENERATION: 2, // Generate quiz questions
+  SLIDE_GENERATION: 1, // Generate learning slides (Need Help button)
+  QUIZ_GENERATION: 0, // Quiz generation is FREE
 } as const;
 
 // Plan definitions

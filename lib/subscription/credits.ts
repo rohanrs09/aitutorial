@@ -22,15 +22,28 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 // ============================================
 
 export async function getUserSubscription(clerkUserId: string): Promise<UserSubscription | null> {
+  console.log('[Subscription] Fetching subscription for user:', clerkUserId);
+  
   const { data, error } = await supabase
     .from('user_subscriptions')
     .select('*')
     .eq('clerk_user_id', clerkUserId)
-    .single();
+    .maybeSingle(); // Use maybeSingle instead of single to avoid 406 errors
 
-  if (error || !data) {
+  if (error) {
+    console.error('[Subscription] Error fetching subscription:', error);
     return null;
   }
+
+  if (!data) {
+    console.warn('[Subscription] No subscription found for user:', clerkUserId);
+    return null;
+  }
+
+  console.log('[Subscription] Found subscription:', {
+    tier: data.tier,
+    status: data.status
+  });
 
   return {
     id: data.id,
@@ -54,20 +67,26 @@ export async function createUserSubscription(
   const periodEnd = new Date(now);
   periodEnd.setMonth(periodEnd.getMonth() + 1);
 
+  // Use upsert to avoid duplicate key errors
   const { data, error } = await supabase
     .from('user_subscriptions')
-    .insert({
+    .upsert({
       clerk_user_id: clerkUserId,
+      user_id: null, // Will be set later when user_profiles is created
       tier,
       status: 'active',
       current_period_start: now.toISOString(),
       current_period_end: periodEnd.toISOString(),
       cancel_at_period_end: false
+    }, {
+      onConflict: 'clerk_user_id',
+      ignoreDuplicates: false
     })
     .select()
     .single();
 
   if (error) {
+    console.error('[Credits] Failed to create subscription:', error);
     throw new Error(`Failed to create subscription: ${error.message}`);
   }
 
@@ -143,15 +162,29 @@ export async function updateSubscription(
 // ============================================
 
 export async function getUserCredits(clerkUserId: string): Promise<UserCredits | null> {
+  console.log('[Credits] Fetching credits for user:', clerkUserId);
+  
   const { data, error } = await supabase
     .from('user_credits')
     .select('*')
     .eq('clerk_user_id', clerkUserId)
-    .single();
+    .maybeSingle(); // Use maybeSingle instead of single to avoid 406 errors
 
-  if (error || !data) {
+  if (error) {
+    console.error('[Credits] Error fetching credits:', error);
     return null;
   }
+
+  if (!data) {
+    console.warn('[Credits] No credits found for user:', clerkUserId);
+    return null;
+  }
+
+  console.log('[Credits] Found credits:', {
+    total: data.total_credits,
+    used: data.used_credits,
+    bonus: data.bonus_credits
+  });
 
   return {
     id: data.id,
@@ -172,31 +205,35 @@ export async function initializeUserCredits(
   const plan = SUBSCRIPTION_PLANS[tier];
   const now = new Date();
 
-  // Check if credits already exist to avoid duplicate key error
-  const existing = await getUserCredits(clerkUserId);
-  if (existing) {
-    console.log('[Credits] Credits already exist for user:', clerkUserId);
-    return existing;
-  }
-
+  // Use upsert to avoid duplicate key errors
   const { data, error } = await supabase
     .from('user_credits')
-    .insert({
+    .upsert({
       clerk_user_id: clerkUserId,
+      user_id: null, // Will be set later when user_profiles is created
       total_credits: plan.credits,
       used_credits: 0,
       bonus_credits: 0,
       last_reset_at: now.toISOString()
+    }, {
+      onConflict: 'clerk_user_id',
+      ignoreDuplicates: false
     })
     .select()
     .single();
 
   if (error) {
+    console.error('[Credits] Failed to initialize credits:', error);
     throw new Error(`Failed to initialize credits: ${error.message}`);
   }
 
-  // Log the transaction
-  await logCreditTransaction(clerkUserId, plan.credits, 'subscription_reset', 'Initial credits allocation');
+  // Log the transaction (only if this is a new record)
+  try {
+    await logCreditTransaction(clerkUserId, plan.credits, 'subscription_reset', 'Initial credits allocation');
+  } catch (logError) {
+    console.warn('[Credits] Failed to log transaction:', logError);
+    // Don't fail the whole operation if logging fails
+  }
 
   return {
     id: data.id,
@@ -253,55 +290,78 @@ export async function deductCredits(
   amount: number,
   description: string
 ): Promise<{ success: boolean; remainingCredits: number | 'unlimited'; error?: string }> {
+  console.log('[Credits] Deducting', amount, 'credits for user:', clerkUserId);
+  
   // Get user subscription and credits
   const [subscription, credits] = await Promise.all([
     getUserSubscription(clerkUserId),
     getUserCredits(clerkUserId)
   ]);
 
+  console.log('[Credits] Current state:', {
+    hasSubscription: !!subscription,
+    hasCredits: !!credits,
+    tier: subscription?.tier,
+    status: subscription?.status,
+    totalCredits: credits?.totalCredits,
+    usedCredits: credits?.usedCredits
+  });
+
   if (!subscription || !credits) {
-    return { success: false, remainingCredits: 0, error: 'No subscription found' };
+    console.error('[Credits] No subscription or credits found');
+    throw new Error('No subscription found. Please contact support.');
   }
 
   // Check if subscription is active
   if (subscription.status !== 'active' && subscription.status !== 'trialing') {
-    return { success: false, remainingCredits: 0, error: 'Subscription is not active' };
+    console.error('[Credits] Subscription not active:', subscription.status);
+    throw new Error('Subscription is not active');
   }
 
   // Unlimited plan doesn't need to check credits
   if (subscription.tier === 'unlimited') {
+    console.log('[Credits] Unlimited plan - no deduction needed');
     // Still log the usage for analytics
     await logCreditTransaction(clerkUserId, -amount, 'usage', description);
     return { success: true, remainingCredits: 'unlimited' };
   }
 
   // Check if user has enough credits
+  const remaining = getRemainingCredits(credits, subscription);
+  console.log('[Credits] Checking if enough credits. Need:', amount, 'Have:', remaining);
+  
   if (!hasEnoughCredits(credits, subscription, amount)) {
-    const remaining = getRemainingCredits(credits, subscription);
-    return { 
-      success: false, 
-      remainingCredits: remaining, 
-      error: `Insufficient credits. Need ${amount}, have ${remaining}` 
-    };
+    console.error('[Credits] Insufficient credits');
+    throw new Error(`Insufficient credits. You need ${amount} credits but only have ${remaining}.`);
   }
 
+  // Calculate new used credits
+  const newUsedCredits = credits.usedCredits + amount;
+  
   // Deduct credits
   const { error } = await supabase
     .from('user_credits')
     .update({
-      used_credits: credits.usedCredits + amount,
+      used_credits: newUsedCredits,
       updated_at: new Date().toISOString()
     })
     .eq('clerk_user_id', clerkUserId);
 
   if (error) {
+    console.error('[Credits] Failed to deduct credits:', error);
     return { success: false, remainingCredits: 0, error: error.message };
   }
 
   // Log the transaction
-  await logCreditTransaction(clerkUserId, -amount, 'usage', description);
+  try {
+    await logCreditTransaction(clerkUserId, -amount, 'usage', description);
+  } catch (logError) {
+    console.warn('[Credits] Failed to log transaction:', logError);
+    // Don't fail the deduction if logging fails
+  }
 
-  const newRemaining = credits.totalCredits - (credits.usedCredits + amount) + credits.bonusCredits;
+  const newRemaining = credits.totalCredits - newUsedCredits + credits.bonusCredits;
+  console.log('[Credits] Deducted', amount, 'credits. Remaining:', newRemaining);
   return { success: true, remainingCredits: Math.max(0, newRemaining) };
 }
 
@@ -360,6 +420,7 @@ export async function logCreditTransaction(
     .from('credit_transactions')
     .insert({
       clerk_user_id: clerkUserId,
+      user_id: null, // Will be set later when user_profiles is created
       amount,
       type,
       description,
