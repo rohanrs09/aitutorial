@@ -86,6 +86,16 @@ export async function middleware(req: NextRequest) {
 
   const pathname = req.nextUrl.pathname;
 
+  // If OAuth code lands on wrong page (e.g. /?code=xxx), redirect to /auth/callback
+  const code = req.nextUrl.searchParams.get('code');
+  if (code && pathname !== '/auth/callback') {
+    const callbackUrl = new URL('/auth/callback', req.url);
+    callbackUrl.searchParams.set('code', code);
+    const redirectTo = req.nextUrl.searchParams.get('redirectTo');
+    if (redirectTo) callbackUrl.searchParams.set('redirectTo', redirectTo);
+    return NextResponse.redirect(callbackUrl);
+  }
+
   // If route requires auth and user is not authenticated, redirect to login
   if (requiresAuth(pathname) && !session) {
     const redirectUrl = new URL('/auth/login', req.url);
