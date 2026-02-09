@@ -7,6 +7,8 @@ export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
   const redirectTo = requestUrl.searchParams.get('redirectTo') || '/dashboard';
+  
+  console.log('[Auth] Callback route v2 - NEW CODE DEPLOYED');
 
   if (code) {
     const cookieStore = request.cookies;
