@@ -83,7 +83,8 @@ export async function upsertUserProfile(userId: string, userData: {
 // Sign in with OAuth (Google, GitHub, etc.)
 export async function signInWithOAuth(provider: 'google' | 'github') {
   const supabase = createBrowserClient();
-  const redirectUrl = `${window.location.origin}/auth/callback`;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+  const redirectUrl = `${baseUrl}/auth/callback`;
   
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
