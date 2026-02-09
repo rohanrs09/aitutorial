@@ -82,7 +82,7 @@ async function getUserPerformance(userId: string, topic: string): Promise<UserPe
     const { data: analytics, error } = await supabase
       .from('quiz_analytics')
       .select('*')
-      .eq('clerk_user_id', userId)
+      .eq('user_id', userId)
       .eq('topic', topic)
       .single();
     
@@ -92,7 +92,7 @@ async function getUserPerformance(userId: string, topic: string): Promise<UserPe
     const { data: recentResults } = await supabase
       .from('quiz_results')
       .select('question_results, weaknesses, strengths')
-      .eq('clerk_user_id', userId)
+      .eq('user_id', userId)
       .eq('topic', topic)
       .order('completed_at', { ascending: false })
       .limit(5);
@@ -444,20 +444,21 @@ export async function generateQuizRecommendations(userId: string): Promise<{
     const { data: mastery } = await supabase
       .from('topic_mastery')
       .select('topic, mastery_level, last_practiced_at, quiz_sessions_count')
-      .eq('clerk_user_id', userId)
+      .eq('user_id', userId)
       .order('mastery_level', { ascending: true });
     
-    // Get available topics from course
-    const availableTopics = await getAvailableTopicsFromCourse();
+    // Get available DSA topics from question bank
+    const { getAvailableTopics: getQuizTopics } = await import('./quiz-questions');
+    const availableTopicNames = getQuizTopics();
     const userTopics = new Set(mastery?.map(m => m.topic) || []);
     
     const recommendations: { topic: string; reason: string; difficulty: string; priority: number }[] = [];
     
     // 1. Topics not attempted
-    for (const t of availableTopics) {
-      if (!userTopics.has(t.topic)) {
+    for (const topicName of availableTopicNames) {
+      if (!userTopics.has(topicName)) {
         recommendations.push({
-          topic: t.topic,
+          topic: topicName,
           reason: 'not_attempted',
           difficulty: 'easy',
           priority: 7,

@@ -1,6 +1,6 @@
 // Credit Usage API Route
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/auth';
 import { deductCredits, checkAndResetCreditsIfNeeded } from '@/lib/subscription/credits';
 import { CREDIT_COSTS } from '@/lib/subscription/types';
 

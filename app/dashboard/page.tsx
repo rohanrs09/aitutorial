@@ -3,8 +3,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { AlertCircle } from 'lucide-react';
-import dynamic from 'next/dynamic';
-import { useUser } from '@clerk/nextjs';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageContainer, PageSection } from '@/components/layout/PageContainer';
@@ -20,22 +18,12 @@ import QuizAnalytics from '@/components/dashboard/QuizAnalytics';
 import CreditsDisplay from '@/components/dashboard/CreditsDisplay';
 import { fetchDashboardData, subscribeToDashboardUpdates, type DashboardData } from '@/lib/dashboard-service';
 import { useRouter } from 'next/navigation';
-
-const isClerkConfigured = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-
-function FallbackUserButton() {
-  return <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center"><span className="text-orange-400 text-sm">👤</span></div>;
-}
-
-const ClerkUserButton = dynamic(() => import('@clerk/nextjs').then(mod => mod.UserButton).catch(() => FallbackUserButton), { ssr: false, loading: () => <FallbackUserButton /> });
-
-function UserButton() {
-  return isClerkConfigured ? <ClerkUserButton afterSignOutUrl="/" /> : <FallbackUserButton />;
-}
+import { useUser } from '@/contexts/AuthContext';
+import { UserButtonWithLogout } from '@/components/LogoutConfirmModal';
 
 export default function ProductionDashboard() {
-  // Use Clerk's useUser hook for reliable user data
-  const { user: clerkUser, isLoaded: isClerkLoaded } = useUser();
+  // Use Supabase auth hook
+  const { user, isLoaded, isSignedIn } = useUser();
   const router = useRouter();
   
   const [dashboardData, setDashboardData] = useState<DashboardData>({
@@ -44,10 +32,10 @@ export default function ProductionDashboard() {
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
   
-  // Derive user info from Clerk
-  const userId = clerkUser?.id || null;
-  const userName = clerkUser?.firstName || 'Learner';
-  const isUserLoaded = isClerkConfigured ? isClerkLoaded : true;
+  // Derive user info from Supabase auth
+  const userId = user?.id || null;
+  const userName = user?.firstName || 'Learner';
+  const isUserLoaded = isLoaded;
 
   const handleStartQuiz = (topic?: string) => {
     if (topic) {
@@ -60,9 +48,9 @@ export default function ProductionDashboard() {
   // Debug logging for user ID
   useEffect(() => {
     if (isUserLoaded) {
-      console.log('[Dashboard] User loaded:', { userId, userName, isClerkConfigured });
+      console.log('[Dashboard] User loaded:', { userId, userName, isSignedIn });
     }
-  }, [isUserLoaded, userId, userName]);
+  }, [isUserLoaded, userId, userName, isSignedIn]);
 
   useEffect(() => {
     if (!isUserLoaded) return;
@@ -98,7 +86,7 @@ export default function ProductionDashboard() {
 
   return (
     <div className="min-h-screen bg-atmospheric relative overflow-hidden">
-      <DashboardHeader userName={userName} greeting={getGreeting()} onRefresh={handleRefresh} isRefreshing={isRefreshing} userButton={<UserButton />} />
+      <DashboardHeader userName={userName} greeting={getGreeting()} onRefresh={handleRefresh} isRefreshing={isRefreshing} userButton={<UserButtonWithLogout />} />
       <PageContainer maxWidth="2xl">
         {dashboardData.error && <PageSection><Card variant="elevated" padding="md"><CardContent><div className="flex items-center gap-3 text-yellow-400"><AlertCircle size={20} /><div><p className="font-medium">Unable to load dashboard data</p><p className="text-sm text-gray-400 mt-1">{dashboardData.error}</p></div></div></CardContent></Card></PageSection>}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">

@@ -109,9 +109,9 @@ async function getStatsForPeriod(
         .gte('started_at', startDate.toISOString())
         .lte('started_at', endDate.toISOString());
 
-      // Handle both Clerk user IDs and UUIDs
+      // Handle both legacy user IDs and UUIDs
       if (userId.startsWith('user_')) {
-        query = query.eq('clerk_user_id', userId);
+        query = query.eq('user_id', userId);
       } else {
         query = query.eq('user_id', userId);
       }

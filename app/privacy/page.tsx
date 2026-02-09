@@ -88,7 +88,7 @@ export default function PrivacyPage() {
                     <h3 className="text-lg font-semibold text-white mb-2">Account Information</h3>
                     <p className="text-sm leading-relaxed">
                       When you create an account, we collect your email address and name through our authentication 
-                      provider (Clerk). This information is used to personalize your learning experience and 
+                      provider (Supabase Auth). This information is used to personalize your learning experience and 
                       maintain your progress across sessions.
                     </p>
                   </div>
@@ -170,7 +170,7 @@ export default function PrivacyPage() {
                   </li>
                   <li className="flex items-start gap-3">
                     <span className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0" />
-                    <span>Secure authentication through Clerk with optional 2FA</span>
+                    <span>Secure authentication through Supabase Auth with optional 2FA</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <span className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0" />

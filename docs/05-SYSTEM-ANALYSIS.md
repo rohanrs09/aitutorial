@@ -404,7 +404,7 @@ courseContext: {
 
 ```typescript
 // User data
-user: User | null                    // Clerk user object
+user: User | null                    // Supabase auth user object
 stats: UserStats                     // Aggregated stats
 recentSessions: Session[]            // Last N sessions
 
@@ -422,7 +422,7 @@ refreshing: boolean                  // Manual refresh in progress
 **Strategy:** Local state + localStorage + Supabase
 - No global state management library
 - Each component manages its own state
-- Shared data via props or context (Clerk for auth)
+- Shared data via props or context (Supabase Auth context)
 - Persistence via localStorage + Supabase sync
 
 ---

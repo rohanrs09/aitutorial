@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, deductCredits } from '@/lib/auth';
 import OpenAI from 'openai';
 import { EmotionType } from '@/lib/utils';
-import { deductCredits } from '@/lib/subscription/credits';
 import { CREDIT_COSTS } from '@/lib/subscription/types';
 
 const openai = new OpenAI({

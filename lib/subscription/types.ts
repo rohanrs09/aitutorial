@@ -9,7 +9,7 @@ export interface SubscriptionPlan {
   name: string;
   price: number; // in cents
   credits: number; // -1 for unlimited
-  clerkPlanId: string | null;
+  stripePriceId: string | null;
   features: string[];
 }
 
@@ -18,7 +18,7 @@ export interface UserSubscription {
   userId: string;
   tier: SubscriptionTier;
   status: SubscriptionStatus;
-  clerkSubscriptionId: string | null;
+  stripeSubscriptionId: string | null;
   currentPeriodStart: Date;
   currentPeriodEnd: Date;
   cancelAtPeriodEnd: boolean;
@@ -70,7 +70,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     name: 'Starter',
     price: 0,
     credits: 50,
-    clerkPlanId: null,
+    stripePriceId: null,
     features: [
       '50 AI credits per month',
       '~10 voice sessions',
@@ -84,7 +84,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     name: 'Pro',
     price: 1900, // $19.00
     credits: 500,
-    clerkPlanId: 'plan_pro_monthly',
+    stripePriceId: process.env.STRIPE_PRICE_ID_PRO || null,
     features: [
       '500 AI credits per month',
       '~100 voice sessions',
@@ -100,7 +100,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, SubscriptionPlan> = {
     name: 'Unlimited',
     price: 4900, // $49.00
     credits: -1, // Unlimited
-    clerkPlanId: 'plan_unlimited_monthly',
+    stripePriceId: process.env.STRIPE_PRICE_ID_UNLIMITED || null,
     features: [
       'Unlimited AI credits',
       'Unlimited voice sessions',

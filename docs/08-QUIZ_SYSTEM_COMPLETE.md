@@ -98,9 +98,7 @@ GEMINI_MODEL_NAME=gemini-1.5-flash
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
-# Clerk Authentication
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_key
-CLERK_SECRET_KEY=your_clerk_secret
+# Authentication is handled by Supabase (configured above)
 ```
 
 ### 2. Get Gemini API Key

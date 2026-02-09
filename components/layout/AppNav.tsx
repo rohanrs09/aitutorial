@@ -5,26 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, BookOpen, BarChart3, Settings, Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import dynamic from 'next/dynamic';
-
-const isClerkConfigured = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-
-function FallbackUserButton() {
-  return (
-    <div className="w-8 h-8 rounded-full bg-primary-500/20 flex items-center justify-center">
-      <span className="text-primary-400 text-sm">👤</span>
-    </div>
-  );
-}
-
-const ClerkUserButton = dynamic(
-  () => import('@clerk/nextjs').then(mod => mod.UserButton).catch(() => FallbackUserButton),
-  { ssr: false, loading: () => <FallbackUserButton /> }
-);
-
-function UserButton() {
-  return isClerkConfigured ? <ClerkUserButton /> : <FallbackUserButton />;
-}
+import { UserButtonWithLogout as UserButton } from '@/components/LogoutConfirmModal';
 
 const navItems = [
   { href: '/dashboard', label: 'Home', icon: Home },

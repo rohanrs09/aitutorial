@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight, BookOpen, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
-import { useUser } from '@clerk/nextjs';
+import { useUser } from '@/contexts/AuthContext';
 import { resumeSession, getUserLearningHistory } from '@/lib/progress-tracking';
 
 interface SessionToResume {

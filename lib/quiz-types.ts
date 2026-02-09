@@ -36,7 +36,7 @@ export interface QuizAttempt {
 
 export interface QuizSession {
   id: string;
-  clerk_user_id: string;
+  user_id: string;
   topic: string;
   questions: QuizQuestion[];
   attempts: QuizAttempt[];
@@ -100,7 +100,6 @@ export interface QuizAnalytics {
 export interface QuizSessionDB {
   id: string;
   user_id: string;
-  clerk_user_id: string;
   topic: string;
   questions: QuizQuestion[];
   attempts: QuizAttempt[];
@@ -119,7 +118,6 @@ export interface QuizResultDB {
   id: string;
   session_id: string;
   user_id: string;
-  clerk_user_id: string;
   topic: string;
   score: number;
   total_points: number;

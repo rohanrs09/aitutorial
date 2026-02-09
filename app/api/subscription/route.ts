@@ -1,6 +1,6 @@
 // Subscription Management API Route
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/lib/auth';
 import { 
   getOrCreateSubscription, 
   getUserCredits,
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
         userId: userId,
         tier: 'starter' as const,
         status: 'active' as const,
-        clerkSubscriptionId: null,
+        stripeSubscriptionId: null,
         currentPeriodStart: now,
         currentPeriodEnd: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
         cancelAtPeriodEnd: false,

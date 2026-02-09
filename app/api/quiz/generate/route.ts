@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { generateQuizWithGemini } from '@/lib/gemini-quiz-generator';
+import { auth } from '@/lib/auth';
+import { getQuizQuestions, hasQuestionsForTopic } from '@/lib/quiz-questions';
 import { ensureUserSubscription } from '@/lib/subscription/credits';
 import type { DifficultyLevel } from '@/lib/quiz-types';
 
 export async function POST(req: NextRequest) {
   try {
     // ═══════════════════════════════════════
-    // STEP 1: Authenticate user with Clerk
+    // STEP 1: Authenticate user
     // ═══════════════════════════════════════
     const { userId } = await auth();
     
@@ -57,84 +57,56 @@ export async function POST(req: NextRequest) {
     const selectedDifficulty = difficulty && validDifficulties.includes(difficulty) ? difficulty : 'mixed';
 
     // ═══════════════════════════════════════
-    // STEP 5: Check Gemini configuration
+    // STEP 5: Generate quiz using local question bank
     // ═══════════════════════════════════════
-    const geminiKey = process.env.GEMINI_API_KEY;
-    const geminiModel = process.env.GEMINI_MODEL_NAME || 'models/gemini-1.0-pro';
-    
-    console.log('[Quiz API] 🔑 Gemini API Key:', geminiKey ? `Present (${geminiKey.slice(0, 8)}...)` : '❌ MISSING');
-    console.log('[Quiz API] 🤖 Gemini Model:', geminiModel);
     console.log('[Quiz API] 📚 Topic:', topic);
     console.log('[Quiz API] 📊 Difficulty:', selectedDifficulty);
     console.log('[Quiz API] 🔢 Question Count:', questionCount);
     console.log('[Quiz API] ═══════════════════════════════════════');
     
-    // Validate model configuration
-    if (geminiModel !== 'models/gemini-1.0-pro') {
-      console.warn('[Quiz API] ⚠️ WARNING: Using non-standard model:', geminiModel);
-      console.warn('[Quiz API] ⚠️ Recommended: models/gemini-1.0-pro (v1 stable API)');
+    // Get questions from local bank
+    const rawQuestions = getQuizQuestions(topic.trim(), questionCount);
+    
+    // Filter by difficulty if not mixed
+    let filteredRaw = rawQuestions;
+    if (selectedDifficulty !== 'mixed') {
+      filteredRaw = rawQuestions.filter(q => q.difficulty === selectedDifficulty);
+      if (filteredRaw.length < 1) {
+        filteredRaw = rawQuestions;
+      }
     }
 
-    // ═══════════════════════════════════════
-    // STEP 6: Generate quiz using Gemini
-    // ═══════════════════════════════════════
-    try {
-      const result = await generateQuizWithGemini({
+    // Transform to full quiz format
+    const questions = filteredRaw.map((q, idx) => ({
+      id: `q_${Date.now()}_${idx}`,
+      topic: topic.trim(),
+      subtopic: topic.trim(),
+      question: q.question,
+      type: 'multiple-choice' as const,
+      difficulty: q.difficulty,
+      options: q.options,
+      correctAnswer: q.correctAnswer,
+      explanation: q.explanation,
+      points: q.difficulty === 'easy' ? 5 : q.difficulty === 'medium' ? 10 : 15,
+    }));
+
+    console.log(`[Quiz API] ✅ Generated ${questions.length} questions for "${topic}"`);
+
+    return NextResponse.json({
+      questions,
+      metadata: {
         topic: topic.trim(),
-        questionCount,
-        difficulty: selectedDifficulty as DifficultyLevel | 'mixed',
-        subtopics: focusSubtopics,
-        userContext: userContext || undefined,
-      });
-
-      console.log(`[Quiz API] Successfully generated ${result.questions.length} questions`);
-
-      return NextResponse.json({
-        questions: result.questions,
-        metadata: {
-          topic: result.metadata.topic,
-          difficulty: selectedDifficulty,
-          count: result.metadata.generatedCount,
-          generatedAt: new Date().toISOString(),
-          difficultyDistribution: result.metadata.difficultyDistribution,
-          subtopicsCovered: result.metadata.subtopicsCovered,
-          generator: 'gemini',
+        difficulty: selectedDifficulty,
+        count: questions.length,
+        generatedAt: new Date().toISOString(),
+        difficultyDistribution: {
+          easy: questions.filter(q => q.difficulty === 'easy').length,
+          medium: questions.filter(q => q.difficulty === 'medium').length,
+          hard: questions.filter(q => q.difficulty === 'hard').length,
         },
-      });
-    } catch (generationError: any) {
-      console.error('[Quiz API] ❌ Gemini generation FAILED');
-      console.error('[Quiz API] Error type:', generationError.name);
-      console.error('[Quiz API] Error message:', generationError.message);
-      console.error('[Quiz API] Full error:', generationError);
-      
-      // Use fallback questions
-      const { generateFallbackQuestions } = await import('@/lib/gemini-quiz-generator');
-      const fallbackQuestions = generateFallbackQuestions(
-        topic.trim(),
-        questionCount,
-        selectedDifficulty as DifficultyLevel | 'mixed'
-      );
-
-      console.log(`[Quiz API] ⚠️ Using ${fallbackQuestions.length} FALLBACK questions (not dynamic)`);
-
-      return NextResponse.json({
-        questions: fallbackQuestions,
-        metadata: {
-          topic: topic.trim(),
-          difficulty: selectedDifficulty,
-          count: fallbackQuestions.length,
-          generatedAt: new Date().toISOString(),
-          difficultyDistribution: {
-            easy: fallbackQuestions.filter(q => q.difficulty === 'easy').length,
-            medium: fallbackQuestions.filter(q => q.difficulty === 'medium').length,
-            hard: fallbackQuestions.filter(q => q.difficulty === 'hard').length,
-          },
-          subtopicsCovered: [...new Set(fallbackQuestions.map(q => q.subtopic).filter(Boolean))],
-          generator: 'fallback',
-          warning: 'Using fallback questions. Gemini API unavailable.',
-        },
-      });
-    }
+        generator: 'local-bank',
+      },
+    });
 
   } catch (error: any) {
     console.error('[Quiz API] Unexpected error:', error);

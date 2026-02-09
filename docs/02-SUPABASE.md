@@ -104,7 +104,7 @@ npm run dev
 ```
 user_profiles
 ├── id (UUID, PK)
-├── clerk_user_id (TEXT)
+├── user_id (UUID, FK → auth.users)
 ├── email (TEXT)
 ├── display_name (TEXT)
 ├── preferences (JSONB)
@@ -212,15 +212,12 @@ CREATE POLICY "Users update own data" ON learning_sessions
   FOR UPDATE USING (auth.uid() = user_id);
 ```
 
-### Clerk Integration
+### Authentication Integration
 
 ```sql
--- Support both Supabase auth and Clerk user IDs
-CREATE POLICY "Clerk user access" ON learning_sessions
-  FOR ALL USING (
-    auth.uid() = user_id 
-    OR clerk_user_id = current_setting('request.jwt.claims')::json->>'sub'
-  );
+-- Supabase Auth RLS policy
+CREATE POLICY "User access own sessions" ON learning_sessions
+  FOR ALL USING (auth.uid() = user_id);
 ```
 
 ---
@@ -333,7 +330,7 @@ DROP POLICY IF EXISTS "policy_name" ON table_name CASCADE;
 
 ### Security
 - [ ] Change RLS from `USING (true)` to `USING (auth.uid() = user_id)`
-- [ ] Enable Clerk authentication integration
+- [ ] Verify Supabase authentication integration
 - [ ] Add user_id checks to all policies
 - [ ] Restrict cross-user data access
 

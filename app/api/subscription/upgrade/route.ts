@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { auth } from '@/lib/auth';
 import { getUserSubscription, updateSubscription } from '@/lib/subscription/credits';
 
 export async function POST(request: NextRequest) {
@@ -30,9 +30,8 @@ export async function POST(request: NextRequest) {
     
     const newTier = tierMap[planId];
     
-    // For now, since Clerk Billing may not be fully configured,
-    // we'll update the subscription directly in the database
-    // In production, this should be triggered by Clerk webhook after payment
+    // Update the subscription directly in the database
+    // In production, this should be triggered by Stripe webhook after payment
     
     console.log('[Upgrade API] Updating subscription to:', newTier);
     
@@ -40,7 +39,7 @@ export async function POST(request: NextRequest) {
       await updateSubscription(userId, {
         tier: newTier,
         status: 'active',
-        clerkSubscriptionId: `temp_${planId}_${Date.now()}`,
+        stripeSubscriptionId: `temp_${planId}_${Date.now()}`,
         currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       });
       

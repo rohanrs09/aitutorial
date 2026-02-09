@@ -79,8 +79,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 # ============================================================
 # AUTHENTICATION (Optional)
 # ============================================================
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxx
-CLERK_SECRET_KEY=sk_test_xxx
+# Auth is handled by Supabase (no separate auth keys needed)
 ```
 
 ---
@@ -109,7 +108,7 @@ CLERK_SECRET_KEY=sk_test_xxx
 | **ElevenLabs** | https://elevenlabs.io/app/settings/api-keys | Text-to-Speech |
 | **Deepgram** | https://console.deepgram.com/signup | Speech-to-Text |
 | **Supabase** | https://supabase.com/dashboard | Database |
-| **Clerk** | https://clerk.dev | Authentication |
+| **Supabase** | https://supabase.com/dashboard | Auth & Database |
 
 ### Minimum Requirements
 

@@ -12,7 +12,7 @@
  */
 
 import { Suspense, useState, useEffect, useCallback } from 'react';
-import { useUser } from '@clerk/nextjs';
+import { useUser } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import QuizStarter from '@/components/QuizStarter';
 import QuizSession from '@/components/QuizSession';

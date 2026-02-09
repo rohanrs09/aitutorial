@@ -1,4 +1,5 @@
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { isSupabaseConfigured } from '@/lib/supabase';
+import { auth, getAdminClient } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -7,15 +8,17 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.nextUrl.searchParams.get('userId');
-    const topicName = request.nextUrl.searchParams.get('topic');
-
+    // Get authenticated user
+    const { userId } = await auth();
+    
     if (!userId) {
       return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       );
     }
+
+    const topicName = request.nextUrl.searchParams.get('topic');
 
     if (!isSupabaseConfigured) {
       return NextResponse.json({
@@ -29,31 +32,17 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Check if userId is a UUID or Clerk user ID format
-    let query;
-    if (userId.startsWith('user_')) {
-      // Clerk user ID format - use clerk_user_id column
-      query = supabase
-        .from('learning_progress')
-        .select('*')
-        .eq('clerk_user_id', userId)
-        .neq('status', 'completed')
-        .order('last_accessed_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-    } else {
-      // UUID format - use user_id column
-      query = supabase
-        .from('learning_progress')
-        .select('*')
-        .eq('user_id', userId)
-        .neq('status', 'completed')
-        .order('last_accessed_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-    }
-    
-    const { data, error } = await query;
+    const supabase = getAdminClient();
+
+    // Use Supabase user ID (UUID format)
+    const { data, error } = await supabase
+      .from('learning_progress')
+      .select('*')
+      .eq('user_id', userId)
+      .neq('status', 'completed')
+      .order('last_accessed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (data) {
       // Update last accessed
@@ -62,9 +51,9 @@ export async function GET(request: NextRequest) {
         .upsert(
           {
             session_id: data.session_id,
+            user_id: userId,
             topic_name: data.topic_name,
             last_accessed_at: new Date().toISOString(),
-            ...(userId.startsWith('user_') ? { clerk_user_id: userId } : { user_id: userId }),
           },
           { onConflict: 'session_id' }
         );
@@ -79,23 +68,16 @@ export async function GET(request: NextRequest) {
     // No active session - create new one
     const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    const insertData: Record<string, any> = {
-      session_id: newSessionId,
-      topic_name: topicName || 'default',
-      status: 'started',
-      progress_percentage: 0,
-      last_accessed_at: new Date().toISOString(),
-    };
-
-    if (userId.startsWith('user_')) {
-      insertData.clerk_user_id = userId;
-    } else {
-      insertData.user_id = userId;
-    }
-
     const { data: newSession, error: createError } = await supabase
       .from('learning_progress')
-      .insert(insertData)
+      .insert({
+        session_id: newSessionId,
+        user_id: userId,
+        topic_name: topicName || 'default',
+        status: 'started',
+        progress_percentage: 0,
+        last_accessed_at: new Date().toISOString(),
+      })
       .select()
       .maybeSingle();
 

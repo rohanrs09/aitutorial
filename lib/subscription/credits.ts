@@ -1,5 +1,4 @@
 // Credits Management System
-import { createClient } from '@supabase/supabase-js';
 import { 
   UserCredits, 
   UserSubscription, 
@@ -10,25 +9,21 @@ import {
   hasEnoughCredits,
   getRemainingCredits
 } from './types';
-
-// Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { createAdminClient } from '@/lib/supabase-auth';
 
 // ============================================
 // User Subscription Management
 // ============================================
 
-export async function getUserSubscription(clerkUserId: string): Promise<UserSubscription | null> {
-  console.log('[Subscription] Fetching subscription for user:', clerkUserId);
+export async function getUserSubscription(userId: string): Promise<UserSubscription | null> {
+  console.log('[Subscription] Fetching subscription for user:', userId);
   
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('user_subscriptions')
     .select('*')
-    .eq('clerk_user_id', clerkUserId)
-    .maybeSingle(); // Use maybeSingle instead of single to avoid 406 errors
+    .eq('id', userId)
+    .maybeSingle();
 
   if (error) {
     console.error('[Subscription] Error fetching subscription:', error);
@@ -36,7 +31,7 @@ export async function getUserSubscription(clerkUserId: string): Promise<UserSubs
   }
 
   if (!data) {
-    console.warn('[Subscription] No subscription found for user:', clerkUserId);
+    console.warn('[Subscription] No subscription found for user:', userId);
     return null;
   }
 
@@ -47,10 +42,10 @@ export async function getUserSubscription(clerkUserId: string): Promise<UserSubs
 
   return {
     id: data.id,
-    userId: data.user_id,
+    userId: data.id,
     tier: data.tier,
     status: data.status,
-    clerkSubscriptionId: data.clerk_subscription_id,
+    stripeSubscriptionId: data.stripe_subscription_id,
     currentPeriodStart: new Date(data.current_period_start),
     currentPeriodEnd: new Date(data.current_period_end),
     cancelAtPeriodEnd: data.cancel_at_period_end,
@@ -60,27 +55,48 @@ export async function getUserSubscription(clerkUserId: string): Promise<UserSubs
 }
 
 export async function createUserSubscription(
-  clerkUserId: string,
+  userId: string,
   tier: 'starter' | 'pro' | 'unlimited' = 'starter'
 ): Promise<UserSubscription> {
   const now = new Date();
   const periodEnd = new Date(now);
   periodEnd.setMonth(periodEnd.getMonth() + 1);
 
-  // Use upsert to avoid duplicate key errors
+  const supabase = createAdminClient();
+
+  // First check if subscription already exists - never overwrite
+  const { data: existing } = await supabase
+    .from('user_subscriptions')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (existing) {
+    console.log('[Credits] Subscription already exists, preserving existing data');
+    return {
+      id: existing.id,
+      userId: existing.id,
+      tier: existing.tier,
+      status: existing.status,
+      stripeSubscriptionId: existing.stripe_subscription_id,
+      currentPeriodStart: new Date(existing.current_period_start),
+      currentPeriodEnd: new Date(existing.current_period_end),
+      cancelAtPeriodEnd: existing.cancel_at_period_end,
+      createdAt: new Date(existing.created_at),
+      updatedAt: new Date(existing.updated_at)
+    };
+  }
+
+  // Only insert if no subscription exists
   const { data, error } = await supabase
     .from('user_subscriptions')
-    .upsert({
-      clerk_user_id: clerkUserId,
-      user_id: null, // Will be set later when user_profiles is created
+    .insert({
+      id: userId,
       tier,
       status: 'active',
       current_period_start: now.toISOString(),
       current_period_end: periodEnd.toISOString(),
       cancel_at_period_end: false
-    }, {
-      onConflict: 'clerk_user_id',
-      ignoreDuplicates: false
     })
     .select()
     .single();
@@ -90,15 +106,12 @@ export async function createUserSubscription(
     throw new Error(`Failed to create subscription: ${error.message}`);
   }
 
-  // Note: Credits should be initialized separately to avoid duplicate key errors
-  // The calling function should handle credit initialization
-
   return {
     id: data.id,
-    userId: data.user_id,
+    userId: data.id,
     tier: data.tier,
     status: data.status,
-    clerkSubscriptionId: data.clerk_subscription_id,
+    stripeSubscriptionId: data.stripe_subscription_id,
     currentPeriodStart: new Date(data.current_period_start),
     currentPeriodEnd: new Date(data.current_period_end),
     cancelAtPeriodEnd: data.cancel_at_period_end,
@@ -108,11 +121,11 @@ export async function createUserSubscription(
 }
 
 export async function updateSubscription(
-  clerkUserId: string,
+  userId: string,
   updates: Partial<{
     tier: 'starter' | 'pro' | 'unlimited';
     status: string;
-    clerkSubscriptionId: string;
+    stripeSubscriptionId: string;
     currentPeriodStart: Date;
     currentPeriodEnd: Date;
     cancelAtPeriodEnd: boolean;
@@ -122,15 +135,16 @@ export async function updateSubscription(
   
   if (updates.tier) updateData.tier = updates.tier;
   if (updates.status) updateData.status = updates.status;
-  if (updates.clerkSubscriptionId) updateData.clerk_subscription_id = updates.clerkSubscriptionId;
+  if (updates.stripeSubscriptionId) updateData.stripe_subscription_id = updates.stripeSubscriptionId;
   if (updates.currentPeriodStart) updateData.current_period_start = updates.currentPeriodStart.toISOString();
   if (updates.currentPeriodEnd) updateData.current_period_end = updates.currentPeriodEnd.toISOString();
   if (typeof updates.cancelAtPeriodEnd === 'boolean') updateData.cancel_at_period_end = updates.cancelAtPeriodEnd;
 
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('user_subscriptions')
     .update(updateData)
-    .eq('clerk_user_id', clerkUserId)
+    .eq('id', userId)
     .select()
     .single();
 
@@ -140,7 +154,7 @@ export async function updateSubscription(
 
   // If tier changed, update credits
   if (updates.tier) {
-    await resetUserCredits(clerkUserId, updates.tier);
+    await resetUserCredits(userId, updates.tier);
   }
 
   return {
@@ -148,7 +162,7 @@ export async function updateSubscription(
     userId: data.user_id,
     tier: data.tier,
     status: data.status,
-    clerkSubscriptionId: data.clerk_subscription_id,
+    stripeSubscriptionId: data.stripe_subscription_id,
     currentPeriodStart: new Date(data.current_period_start),
     currentPeriodEnd: new Date(data.current_period_end),
     cancelAtPeriodEnd: data.cancel_at_period_end,
@@ -161,13 +175,14 @@ export async function updateSubscription(
 // Credits Management
 // ============================================
 
-export async function getUserCredits(clerkUserId: string): Promise<UserCredits | null> {
-  console.log('[Credits] Fetching credits for user:', clerkUserId);
+export async function getUserCredits(userId: string): Promise<UserCredits | null> {
+  console.log('[Credits] Fetching credits for user:', userId);
   
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('user_credits')
     .select('*')
-    .eq('clerk_user_id', clerkUserId)
+    .eq('id', userId)
     .maybeSingle(); // Use maybeSingle instead of single to avoid 406 errors
 
   if (error) {
@@ -176,7 +191,7 @@ export async function getUserCredits(clerkUserId: string): Promise<UserCredits |
   }
 
   if (!data) {
-    console.warn('[Credits] No credits found for user:', clerkUserId);
+    console.warn('[Credits] No credits found for user:', userId);
     return null;
   }
 
@@ -199,25 +214,44 @@ export async function getUserCredits(clerkUserId: string): Promise<UserCredits |
 }
 
 export async function initializeUserCredits(
-  clerkUserId: string,
+  userId: string,
   tier: 'starter' | 'pro' | 'unlimited'
 ): Promise<UserCredits> {
   const plan = SUBSCRIPTION_PLANS[tier];
   const now = new Date();
 
-  // Use upsert to avoid duplicate key errors
+  const supabase = createAdminClient();
+
+  // First check if credits already exist - never overwrite existing credits
+  const { data: existing } = await supabase
+    .from('user_credits')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (existing) {
+    console.log('[Credits] Credits already exist for user, preserving existing data');
+    return {
+      id: existing.id,
+      userId: existing.id,
+      totalCredits: existing.total_credits,
+      usedCredits: existing.used_credits,
+      bonusCredits: existing.bonus_credits,
+      lastResetAt: new Date(existing.last_reset_at),
+      createdAt: new Date(existing.created_at),
+      updatedAt: new Date(existing.updated_at)
+    };
+  }
+
+  // Only insert if no credits exist
   const { data, error } = await supabase
     .from('user_credits')
-    .upsert({
-      clerk_user_id: clerkUserId,
-      user_id: null, // Will be set later when user_profiles is created
+    .insert({
+      id: userId,
       total_credits: plan.credits,
       used_credits: 0,
       bonus_credits: 0,
       last_reset_at: now.toISOString()
-    }, {
-      onConflict: 'clerk_user_id',
-      ignoreDuplicates: false
     })
     .select()
     .single();
@@ -229,7 +263,7 @@ export async function initializeUserCredits(
 
   // Log the transaction (only if this is a new record)
   try {
-    await logCreditTransaction(clerkUserId, plan.credits, 'subscription_reset', 'Initial credits allocation');
+    await logCreditTransaction(userId, plan.credits, 'subscription_reset', 'Initial credits allocation');
   } catch (logError) {
     console.warn('[Credits] Failed to log transaction:', logError);
     // Don't fail the whole operation if logging fails
@@ -248,12 +282,13 @@ export async function initializeUserCredits(
 }
 
 export async function resetUserCredits(
-  clerkUserId: string,
+  userId: string,
   tier: 'starter' | 'pro' | 'unlimited'
 ): Promise<UserCredits> {
   const plan = SUBSCRIPTION_PLANS[tier];
   const now = new Date();
 
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('user_credits')
     .update({
@@ -262,7 +297,7 @@ export async function resetUserCredits(
       last_reset_at: now.toISOString(),
       updated_at: now.toISOString()
     })
-    .eq('clerk_user_id', clerkUserId)
+    .eq('id', userId)
     .select()
     .single();
 
@@ -271,7 +306,7 @@ export async function resetUserCredits(
   }
 
   // Log the transaction
-  await logCreditTransaction(clerkUserId, plan.credits, 'subscription_reset', 'Monthly credits reset');
+  await logCreditTransaction(userId, plan.credits, 'subscription_reset', 'Monthly credits reset');
 
   return {
     id: data.id,
@@ -286,16 +321,16 @@ export async function resetUserCredits(
 }
 
 export async function deductCredits(
-  clerkUserId: string,
+  userId: string,
   amount: number,
   description: string
 ): Promise<{ success: boolean; remainingCredits: number | 'unlimited'; error?: string }> {
-  console.log('[Credits] Deducting', amount, 'credits for user:', clerkUserId);
+  console.log('[Credits] Deducting', amount, 'credits for user:', userId);
   
   // Get user subscription and credits
   const [subscription, credits] = await Promise.all([
-    getUserSubscription(clerkUserId),
-    getUserCredits(clerkUserId)
+    getUserSubscription(userId),
+    getUserCredits(userId)
   ]);
 
   console.log('[Credits] Current state:', {
@@ -322,7 +357,7 @@ export async function deductCredits(
   if (subscription.tier === 'unlimited') {
     console.log('[Credits] Unlimited plan - no deduction needed');
     // Still log the usage for analytics
-    await logCreditTransaction(clerkUserId, -amount, 'usage', description);
+    await logCreditTransaction(userId, -amount, 'usage', description);
     return { success: true, remainingCredits: 'unlimited' };
   }
 
@@ -338,6 +373,7 @@ export async function deductCredits(
   // Calculate new used credits
   const newUsedCredits = credits.usedCredits + amount;
   
+  const supabase = createAdminClient();
   // Deduct credits
   const { error } = await supabase
     .from('user_credits')
@@ -345,7 +381,7 @@ export async function deductCredits(
       used_credits: newUsedCredits,
       updated_at: new Date().toISOString()
     })
-    .eq('clerk_user_id', clerkUserId);
+    .eq('id', userId);
 
   if (error) {
     console.error('[Credits] Failed to deduct credits:', error);
@@ -354,7 +390,7 @@ export async function deductCredits(
 
   // Log the transaction
   try {
-    await logCreditTransaction(clerkUserId, -amount, 'usage', description);
+    await logCreditTransaction(userId, -amount, 'usage', description);
   } catch (logError) {
     console.warn('[Credits] Failed to log transaction:', logError);
     // Don't fail the deduction if logging fails
@@ -366,23 +402,24 @@ export async function deductCredits(
 }
 
 export async function addBonusCredits(
-  clerkUserId: string,
+  userId: string,
   amount: number,
   description: string
 ): Promise<UserCredits> {
-  const credits = await getUserCredits(clerkUserId);
+  const credits = await getUserCredits(userId);
   
   if (!credits) {
     throw new Error('User credits not found');
   }
 
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('user_credits')
     .update({
       bonus_credits: credits.bonusCredits + amount,
       updated_at: new Date().toISOString()
     })
-    .eq('clerk_user_id', clerkUserId)
+    .eq('id', userId)
     .select()
     .single();
 
@@ -391,7 +428,7 @@ export async function addBonusCredits(
   }
 
   // Log the transaction
-  await logCreditTransaction(clerkUserId, amount, 'bonus', description);
+  await logCreditTransaction(userId, amount, 'bonus', description);
 
   return {
     id: data.id,
@@ -410,17 +447,17 @@ export async function addBonusCredits(
 // ============================================
 
 export async function logCreditTransaction(
-  clerkUserId: string,
+  userId: string,
   amount: number,
   type: CreditTransactionType,
   description: string,
   metadata?: Record<string, unknown>
 ): Promise<CreditTransaction> {
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('credit_transactions')
     .insert({
-      clerk_user_id: clerkUserId,
-      user_id: null, // Will be set later when user_profiles is created
+      user_id: userId,
       amount,
       type,
       description,
@@ -434,7 +471,7 @@ export async function logCreditTransaction(
     // Don't throw - logging failure shouldn't block operations
     return {
       id: 'error',
-      userId: clerkUserId,
+      userId: userId,
       amount,
       type,
       description,
@@ -455,13 +492,14 @@ export async function logCreditTransaction(
 }
 
 export async function getCreditTransactions(
-  clerkUserId: string,
+  userId: string,
   limit: number = 50
 ): Promise<CreditTransaction[]> {
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from('credit_transactions')
     .select('*')
-    .eq('clerk_user_id', clerkUserId)
+    .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -525,29 +563,29 @@ export async function checkAndResetCreditsIfNeeded(userId: string): Promise<void
  * Ensure user has subscription and credits initialized
  * Creates them if they don't exist (for new users)
  */
-export async function ensureUserSubscription(clerkUserId: string): Promise<{
+export async function ensureUserSubscription(userId: string): Promise<{
   success: boolean;
   subscription: UserSubscription | null;
   credits: UserCredits | null;
   error?: string;
 }> {
   try {
-    console.log('[Credits] Ensuring subscription for:', clerkUserId);
+    console.log('[Credits] Ensuring subscription for:', userId);
     
     // Try to get existing subscription
-    let subscription = await getUserSubscription(clerkUserId);
-    let credits = await getUserCredits(clerkUserId);
+    let subscription = await getUserSubscription(userId);
+    let credits = await getUserCredits(userId);
     
     // If no subscription exists, create one with starter tier
     if (!subscription) {
       console.log('[Credits] No subscription found, creating starter subscription');
-      subscription = await createUserSubscription(clerkUserId, 'starter');
+      subscription = await createUserSubscription(userId, 'starter');
     }
     
     // If no credits exist, initialize them
     if (!credits) {
       console.log('[Credits] No credits found, initializing');
-      credits = await initializeUserCredits(clerkUserId, subscription.tier);
+      credits = await initializeUserCredits(userId, subscription.tier);
     }
     
     return {
@@ -570,14 +608,14 @@ export async function ensureUserSubscription(clerkUserId: string): Promise<{
  * Deduct credits specifically for quiz generation
  * Deducts QUIZ_GENERATION cost from user's credits
  */
-export async function deductCreditsForQuiz(clerkUserId: string): Promise<{
+export async function deductCreditsForQuiz(userId: string): Promise<{
   success: boolean;
   remainingCredits: number | 'unlimited';
   error?: string;
 }> {
   try {
     const result = await deductCredits(
-      clerkUserId,
+      userId,
       CREDIT_COSTS.QUIZ_GENERATION,
       'Quiz generation'
     );

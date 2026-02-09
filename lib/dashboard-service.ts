@@ -120,8 +120,8 @@ export async function fetchDashboardData(
   }
 
   try {
-    // Always use clerk_user_id for Clerk authentication
-    const userIdColumn = 'clerk_user_id';
+    // Use user_id column which references auth.users(id)
+    const userIdColumn = 'user_id';
     console.log('[Dashboard] Using column:', userIdColumn, 'for user:', userId);
 
     // Fetch all data in parallel for performance
@@ -169,8 +169,22 @@ export async function fetchDashboardData(
       isLoading: false,
       error: null,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('[Dashboard Service] Error fetching data:', error);
+    
+    // Check if it's a database schema error
+    if (error?.code === 'PGRST116' || error?.message?.includes('relation') || error?.message?.includes('column')) {
+      console.error('[Dashboard] Database schema error - tables may not exist');
+      return {
+        stats: { totalSessions: 0, totalMinutes: 0, currentStreak: 0, averageScore: 0, weeklyProgress: 0, monthlyProgress: 0 },
+        activityChart: [],
+        emotionDistribution: [],
+        recentSessions: [],
+        topicProgress: [],
+        isLoading: false,
+        error: 'Database not initialized. Please run the migration script.',
+      };
+    }
     
     // Check if it's a Supabase connection issue
     const errorMessage = error instanceof Error ? error.message : 'Failed to fetch dashboard data';
@@ -221,8 +235,13 @@ async function fetchUserStats(
       .order('started_at', { ascending: false });
 
     if (error) {
-      console.error('[Dashboard] ❌ Error fetching user stats:', error);
-      throw error;
+      console.log('[Dashboard] Stats not available (table may not exist)');
+      return {
+        totalSessions: 0,
+        totalMinutes: 0,
+        currentStreak: 0,
+        averageScore: 0,
+      };
     }
 
   console.log(`[Dashboard] Fetched ${sessions?.length || 0} completed sessions`);
@@ -241,14 +260,33 @@ async function fetchUserStats(
   // Calculate current streak (consecutive days with sessions)
   const currentStreak = calculateStreak(sessions || []);
   
-  // Filter valid quiz scores (0-100 range) and calculate average
-  const scores = sessions?.filter(s => 
+  // Filter valid quiz scores (0-100 range) from learning_sessions
+  const sessionScores = sessions?.filter(s => 
     s.quiz_score !== null && 
     s.quiz_score !== undefined &&
     typeof s.quiz_score === 'number' && 
     s.quiz_score >= 0 && 
     s.quiz_score <= 100
   ).map(s => s.quiz_score!) || [];
+
+  // Also fetch scores from quiz_results table for comprehensive average
+  let quizResultScores: number[] = [];
+  try {
+    const { data: quizResults } = await supabase
+      .from('quiz_results')
+      .select('accuracy')
+      .eq('user_id', userId);
+    if (quizResults && quizResults.length > 0) {
+      quizResultScores = quizResults
+        .filter(q => q.accuracy !== null && typeof q.accuracy === 'number' && q.accuracy >= 0 && q.accuracy <= 100)
+        .map(q => Math.round(q.accuracy));
+    }
+  } catch {
+    // quiz_results table may not exist yet
+  }
+
+  // Combine all scores, deduplicate by using the larger set
+  const scores = quizResultScores.length > sessionScores.length ? quizResultScores : sessionScores;
   
   const averageScore = scores.length > 0 
     ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) 
@@ -269,8 +307,7 @@ async function fetchUserStats(
     averageScore,
   };
   } catch (error) {
-    console.error('[Dashboard] Error in fetchUserStats:', error);
-    // Return default values on error
+    console.log('[Dashboard] Using default stats (database not available)');
     return {
       totalSessions: 0,
       totalMinutes: 0,
@@ -348,8 +385,13 @@ async function fetchActivityChart(
       .not('ended_at', 'is', null)
       .order('started_at', { ascending: true });
 
-    if (error || !data) {
-      console.error('[Dashboard] Error fetching activity chart:', error);
+    if (error) {
+      console.log('[Dashboard] Activity chart not available');
+      return [];
+    }
+
+    if (!data || data.length === 0) {
+      console.log('[Dashboard] No activity data found');
       return [];
     }
 
@@ -408,7 +450,13 @@ async function fetchEmotionDistribution(
       .not('ended_at', 'is', null)
       .not('primary_emotion', 'is', null);
 
-    if (error || !data) {
+    if (error) {
+      console.log('[Dashboard] Emotion data not available');
+      return [];
+    }
+
+    if (!data || data.length === 0) {
+      console.log('[Dashboard] No emotion data found');
       return [];
     }
 
@@ -452,7 +500,7 @@ async function fetchRecentSessions(
       .limit(limit);
 
     if (error) {
-      console.error('[Dashboard] Error fetching recent sessions:', error);
+      console.log('[Dashboard] Recent sessions not available');
       return [];
     }
 
@@ -618,7 +666,7 @@ export function subscribeToDashboardUpdates(
 
   // Validate connection before subscribing to prevent WebSocket errors
   try {
-    const userIdColumn = userId.startsWith('user_') ? 'clerk_user_id' : 'user_id';
+    const userIdColumn = 'user_id';
 
     const subscription = supabase
       .channel('dashboard_updates')

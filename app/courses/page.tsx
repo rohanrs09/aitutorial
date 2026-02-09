@@ -20,7 +20,6 @@ import {
   BookOpen, Clock, Users, Star, Search, X, Filter, SortAsc, SortDesc,
   TrendingUp, Code, Brain, Database, Palette, Globe, Calculator, Network, Server
 } from 'lucide-react';
-import dynamic from 'next/dynamic';
 
 // Layout Components
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -34,25 +33,8 @@ import { Input } from '@/components/ui/Input';
 
 // Data (NO CHANGES)
 import { getAllCourses, type Course } from '@/lib/course-data';
-
-const isClerkConfigured = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-
-function FallbackUserButton() {
-  return (
-    <div className="w-8 h-8 rounded-full bg-primary-500/20 flex items-center justify-center">
-      <span className="text-primary-400 text-sm">👤</span>
-    </div>
-  );
-}
-
-const ClerkUserButton = dynamic(
-  () => import('@clerk/nextjs').then(mod => mod.UserButton).catch(() => FallbackUserButton),
-  { ssr: false, loading: () => <FallbackUserButton /> }
-);
-
-function UserButton() {
-  return isClerkConfigured ? <ClerkUserButton /> : <FallbackUserButton />;
-}
+import { useUser } from '@/contexts/AuthContext';
+import { UserButtonWithLogout as UserButton } from '@/components/LogoutConfirmModal';
 
 const categoryIcons: Record<string, any> = {
   'Programming': Code,

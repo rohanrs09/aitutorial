@@ -64,10 +64,11 @@ OPENAI_API_KEY=sk-your-key
 GEMINI_API_KEY=your-key
 ```
 
-### Optional (Authentication):
+### Optional (Payments):
 ```
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_xxx
-CLERK_SECRET_KEY=sk_xxx
+STRIPE_SECRET_KEY=sk_xxx
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
 ```
 
 ---
@@ -132,8 +133,8 @@ Vercel Dashboard → Deployments → Click deployment → View Function Logs
 | `NEXT_PUBLIC_SUPABASE_URL` | ✅ Yes | Database |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ Yes | Database |
 | `GEMINI_API_KEY` | ⚪ Optional | AI Fallback |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | ⚪ Optional | Auth |
-| `CLERK_SECRET_KEY` | ⚪ Optional | Auth |
+| `STRIPE_SECRET_KEY` | ⚪ Optional | Payments |
+| `STRIPE_WEBHOOK_SECRET` | ⚪ Optional | Payments |
 
 ---
 

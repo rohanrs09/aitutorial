@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { ClerkProvider } from '@clerk/nextjs';
-import { dark } from '@clerk/themes';
 import "./globals.css";
-import { UserSyncProvider } from '@/components/providers/UserSyncProvider';
+import { AuthProvider } from '@/contexts/AuthContext';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -39,51 +37,18 @@ export const metadata: Metadata = {
   },
 };
 
-// Check if Clerk keys are configured
-const clerkPubKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // If Clerk is not configured, render without authentication
-  if (!clerkPubKey) {
-    return (
-      <html lang="en" className="dark" suppressHydrationWarning>
-        <head />
-        <body className="antialiased bg-surface min-h-screen">
-          {children}
-        </body>
-      </html>
-    );
-  }
-
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <head />
       <body className="antialiased bg-surface min-h-screen">
-        <ClerkProvider
-          appearance={{
-            baseTheme: dark,
-            variables: {
-              colorPrimary: '#f97316',
-              colorBackground: '#0a0e27',
-              colorInputBackground: '#1a1a2e',
-              colorInputText: '#ffffff',
-            },
-            elements: {
-              formButtonPrimary: 'bg-orange-500 hover:bg-orange-600',
-              card: 'bg-surface-light border border-white/10',
-              headerTitle: 'text-white',
-              headerSubtitle: 'text-gray-400',
-            }
-          }}
-        >
-          <UserSyncProvider>
-            {children}
-          </UserSyncProvider>
-        </ClerkProvider>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

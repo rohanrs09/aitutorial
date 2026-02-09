@@ -49,27 +49,24 @@ import { getAllCourses } from "@/lib/course-data";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { useUser } from "@/contexts/AuthContext";
+import { UserButtonWithLogout as UserButton } from "@/components/LogoutConfirmModal";
 
-// Dynamically import Clerk components to avoid build errors when keys aren't configured
-const SignedIn = dynamic(
-  () => import("@clerk/nextjs").then((mod) => mod.SignedIn),
-  { ssr: false },
-);
-const SignedOut = dynamic(
-  () => import("@clerk/nextjs").then((mod) => mod.SignedOut),
-  { ssr: false },
-);
-const SignInButton = dynamic(
-  () => import("@clerk/nextjs").then((mod) => mod.SignInButton),
-  { ssr: false },
-);
-const UserButton = dynamic(
-  () => import("@clerk/nextjs").then((mod) => mod.UserButton),
-  { ssr: false },
-);
+// Auth-aware components using Supabase
+function SignedIn({ children }: { children: React.ReactNode }) {
+  const { isSignedIn, isLoaded } = useUser();
+  if (!isLoaded || !isSignedIn) return null;
+  return <>{children}</>;
+}
 
-// Check if Clerk is configured
-const isClerkConfigured = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+function SignedOut({ children }: { children: React.ReactNode }) {
+  const { isSignedIn, isLoaded } = useUser();
+  if (!isLoaded || isSignedIn) return null;
+  return <>{children}</>;
+}
+
+// Auth is always available with Supabase
+const hasAuth = true;
 
 // Stats data
 const stats = [
@@ -273,7 +270,7 @@ const testimonials = [
   },
 ];
 
-// Credit-based pricing plans for SaaS model with Clerk
+// Credit-based pricing plans for SaaS model
 const pricingPlans = [
   {
     name: "Starter",
@@ -309,7 +306,7 @@ const pricingPlans = [
     ],
     cta: "Get Pro",
     highlighted: true,
-    planId: "plan_pro_monthly", // Clerk plan ID
+    planId: "plan_pro_monthly", // Stripe plan ID
   },
   {
     name: "Unlimited",
@@ -328,7 +325,7 @@ const pricingPlans = [
     ],
     cta: "Go Unlimited",
     highlighted: false,
-    planId: "plan_unlimited_monthly", // Clerk plan ID
+    planId: "plan_unlimited_monthly", // Stripe plan ID
   },
 ];
 
@@ -568,14 +565,8 @@ function TestimonialSlider({ testimonials }: { testimonials: Testimonial[] }) {
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [hasClerk, setHasClerk] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const courses = getAllCourses();
-
-  useEffect(() => {
-    // Check if Clerk is configured (client-side only)
-    setHasClerk(isClerkConfigured);
-  }, []);
 
   // Handle scroll for header background
   useEffect(() => {
@@ -665,7 +656,7 @@ export default function LandingPage() {
 
             {/* Auth Buttons */}
             <div className="flex items-center gap-4">
-              {hasClerk ? (
+              {hasAuth ? (
                 <>
                   <SignedOut>
                     {/* <a 
@@ -674,13 +665,14 @@ export default function LandingPage() {
                     >
                       Courses
                     </a> */}
-                    <SignInButton mode="modal">
-                      <button className="text-gray-400 hover:text-orange-400 transition-all duration-200 hidden sm:block font-medium">
-                        Sign In
-                      </button>
-                    </SignInButton>
                     <Link
-                      href="/sign-up"
+                      href="/auth/login"
+                      className="text-gray-400 hover:text-orange-400 transition-all duration-200 hidden sm:block font-medium"
+                    >
+                      Sign In
+                    </Link>
+                    <Link
+                      href="/auth/signup"
                       className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-semibold rounded-lg shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-105 transition-all duration-300 text-sm"
                     >
                       Get Started Free
@@ -699,7 +691,7 @@ export default function LandingPage() {
                     >
                       Dashboard
                     </Link>
-                    <UserButton afterSignOutUrl="/" />
+                    <UserButton />
                   </SignedIn>
                 </>
               ) : (
@@ -835,7 +827,7 @@ export default function LandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
             >
-              {hasClerk ? (
+              {hasAuth ? (
                 <>
                   <SignedOut>
                     <button
@@ -885,7 +877,7 @@ export default function LandingPage() {
 
             {/* Resume Session Component */}
             <div className="max-w-2xl mx-auto mb-12">
-              {hasClerk && (
+              {hasAuth && (
                 <SignedIn>
                   <ResumeSession />
                 </SignedIn>
@@ -1506,7 +1498,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing Section - Credit-Based SaaS */}
+      {/* Pricing CTA Section */}
       <section
         id="pricing"
         className="py-24 sm:py-32 px-4 sm:px-6 lg:px-8 bg-surface-light/30 relative overflow-hidden"
@@ -1515,225 +1507,73 @@ export default function LandingPage() {
         <div className="absolute top-1/3 right-0 w-96 h-96 bg-orange-500/10 rounded-full blur-[120px]" />
         <div className="absolute bottom-1/3 left-0 w-72 h-72 bg-amber-500/10 rounded-full blur-[100px]" />
 
-        <div className="max-w-6xl mx-auto relative">
-          <div className="text-center mb-16">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-            >
-              <Badge
-                variant="outline"
-                className="mb-4 px-4 py-2 text-sm border-orange-500/40 bg-orange-500/10 text-orange-400"
-              >
-                <Zap size={14} className="mr-2" />
-                Credit-Based Pricing
-              </Badge>
-
-              <h2 className="text-3xl sm:text-5xl font-bold text-white mb-6 tracking-tight">
-                Choose Your{" "}
-                <span className="bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent">
-                  Learning Plan
-                </span>
-              </h2>
-
-              <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-                Pay only for what you use. Credits refresh monthly. Start free
-                and scale as you learn.
-              </p>
-
-              {/* Credit explanation */}
-              <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 bg-gray-900/50 rounded-full border border-orange-500/20">
-                <Sparkles size={16} className="text-orange-400" />
-                <span className="text-sm text-gray-300">
-                  1 credit ≈ 1 AI response • 5 credits ≈ 1 voice session
-                </span>
-              </div>
-            </motion.div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-            {pricingPlans.map((plan, index) => (
-              <motion.div
-                key={plan.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ y: -5 }}
-                className="relative group"
-              >
-                <Card
-                  className={`h-full transition-all duration-500 ${
-                    plan.highlighted
-                      ? "bg-gradient-to-b from-orange-500/10 to-amber-500/5 border-2 border-orange-500/50 shadow-2xl shadow-orange-500/20"
-                      : "bg-gray-900/80 border-orange-500/20 hover:border-orange-500/40"
-                  }`}
-                >
-                  {plan.highlighted && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                      <span className="px-4 py-1.5 bg-gradient-to-r from-orange-500 to-amber-500 text-gray-900 text-xs font-bold rounded-full shadow-lg">
-                        Most Popular
-                      </span>
-                    </div>
-                  )}
-
-                  <CardContent className="p-6 lg:p-8">
-                    {/* Plan header */}
-                    <div className="mb-6">
-                      <h3 className="text-xl font-bold text-white mb-2">
-                        {plan.name}
-                      </h3>
-                      <div className="flex items-baseline gap-1 mb-2">
-                        <span className="text-4xl font-bold text-white">
-                          {plan.price}
-                        </span>
-                        <span className="text-gray-500">{plan.period}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Zap size={16} className="text-orange-400" />
-                        <span className="text-orange-400 font-semibold">
-                          {plan.creditsLabel}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Credit meter visualization */}
-                    <div className="mb-6 p-3 bg-gray-800/50 rounded-xl border border-orange-500/10">
-                      <div className="flex justify-between text-xs text-gray-400 mb-2">
-                        <span>Credits</span>
-                        <span>{plan.credits === -1 ? "∞" : plan.credits}</span>
-                      </div>
-                      <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full bg-gradient-to-r from-orange-500 to-amber-500 rounded-full ${plan.credits === -1 ? "w-full" : ""}`}
-                          style={{
-                            width:
-                              plan.credits === -1
-                                ? "100%"
-                                : `${Math.min(plan.credits / 5, 100)}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Features list */}
-                    <ul className="space-y-3 mb-8">
-                      {plan.features.map((feature, i) => (
-                        <li key={i} className="flex items-start gap-3">
-                          <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                          <span className="text-gray-300 text-sm">
-                            {feature}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    {/* CTA Button */}
-                    {hasClerk ? (
-                      <>
-                        <SignedOut>
-                          <Button
-                            className={`w-full py-3 font-semibold transition-all duration-300 ${
-                              plan.highlighted
-                                ? "bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-gray-900 shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50"
-                                : "bg-gray-800 hover:bg-gray-700 text-white border border-orange-500/20 hover:border-orange-500/40"
-                            }`}
-                            onClick={() => {
-                              if (plan.planId) {
-                                window.location.href = `/sign-up?plan=${plan.planId}`;
-                              } else {
-                                window.location.href = "/sign-up";
-                              }
-                            }}
-                          >
-                            {plan.cta}
-                            <ArrowRight size={16} className="ml-2" />
-                          </Button>
-                        </SignedOut>
-                        <SignedIn>
-                          <Button
-                            className={`w-full py-3 font-semibold transition-all duration-300 ${
-                              plan.highlighted
-                                ? "bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-gray-900 shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50"
-                                : "bg-gray-800 hover:bg-gray-700 text-white border border-orange-500/20 hover:border-orange-500/40"
-                            }`}
-                            onClick={async () => {
-                              if (plan.planId) {
-                                try {
-                                  // Call upgrade API to get Clerk checkout URL
-                                  const response = await fetch('/api/subscription/upgrade', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ planId: plan.planId }),
-                                  });
-                                  
-                                  if (response.ok) {
-                                    const data = await response.json();
-                                    // Redirect to Clerk checkout or dashboard
-                                    window.location.href = data.checkoutUrl || '/dashboard';
-                                  } else {
-                                    console.error('Upgrade failed');
-                                    window.location.href = '/dashboard';
-                                  }
-                                } catch (error) {
-                                  console.error('Upgrade error:', error);
-                                  window.location.href = '/dashboard';
-                                }
-                              } else {
-                                window.location.href = "/dashboard";
-                              }
-                            }}
-                          >
-                            {plan.name === 'Starter' ? 'Current Plan' : 'Upgrade Now'}
-                            <ArrowRight size={16} className="ml-2" />
-                          </Button>
-                        </SignedIn>
-                      </>
-                    ) : (
-                      <Button
-                        className={`w-full py-3 font-semibold transition-all duration-300 ${
-                          plan.highlighted
-                            ? "bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-gray-900 shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50"
-                            : "bg-gray-800 hover:bg-gray-700 text-white border border-orange-500/20 hover:border-orange-500/40"
-                        }`}
-                        onClick={() => {
-                          if (plan.planId) {
-                            window.location.href = `/sign-up?plan=${plan.planId}`;
-                          } else {
-                            window.location.href = "/sign-up";
-                          }
-                        }}
-                      >
-                        {plan.cta}
-                        <ArrowRight size={16} className="ml-2" />
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Trust badges */}
+        <div className="max-w-4xl mx-auto relative">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="mt-12 text-center"
+            className="text-center"
           >
-            <div className="flex flex-wrap justify-center items-center gap-6 text-sm text-gray-400">
-              <div className="flex items-center gap-2">
-                <Shield size={18} className="text-green-400" />
-                <span>Secure payments via Clerk</span>
+            <Badge
+              variant="outline"
+              className="mb-6 px-4 py-2 text-sm border-orange-500/40 bg-orange-500/10 text-orange-400"
+            >
+              <Zap size={14} className="mr-2" />
+              Flexible Pricing
+            </Badge>
+
+            <h2 className="text-3xl sm:text-5xl font-bold text-white mb-6 tracking-tight">
+              Ready to Start{" "}
+              <span className="bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent">
+                Learning?
+              </span>
+            </h2>
+
+            <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-8">
+              Choose from our flexible credit-based plans. Start free with 50 credits,
+              or upgrade for unlimited learning.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+              <Link
+                href="/pricing"
+                className="px-8 py-4 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-semibold rounded-xl shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-105 transition-all duration-300 flex items-center gap-2"
+              >
+                View Pricing Plans
+                <ArrowRight size={20} />
+              </Link>
+              
+              <SignedOut>
+                <Link
+                  href="/auth/signup"
+                  className="px-8 py-4 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-xl border border-orange-500/20 hover:border-orange-500/40 transition-all duration-300"
+                >
+                  Start Free Trial
+                </Link>
+              </SignedOut>
+            </div>
+
+            {/* Quick pricing overview */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-12 max-w-3xl mx-auto">
+              <div className="p-6 bg-gray-900/50 backdrop-blur-sm rounded-xl border border-orange-500/20">
+                <div className="text-2xl font-bold text-white mb-2">$0</div>
+                <div className="text-orange-400 font-semibold mb-1">Starter</div>
+                <div className="text-sm text-gray-400">50 credits/month</div>
               </div>
-              <div className="flex items-center gap-2">
-                <Clock size={18} className="text-blue-400" />
-                <span>Cancel anytime</span>
+              <div className="p-6 bg-gradient-to-b from-orange-500/10 to-amber-500/5 backdrop-blur-sm rounded-xl border-2 border-orange-500/50 relative">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="px-3 py-1 bg-gradient-to-r from-orange-500 to-amber-500 text-xs font-bold rounded-full text-gray-900">
+                    Popular
+                  </span>
+                </div>
+                <div className="text-2xl font-bold text-white mb-2">$19</div>
+                <div className="text-orange-400 font-semibold mb-1">Pro</div>
+                <div className="text-sm text-gray-400">500 credits/month</div>
               </div>
-              <div className="flex items-center gap-2">
-                <Award size={18} className="text-orange-400" />
-                <span>30-day money-back guarantee</span>
+              <div className="p-6 bg-gray-900/50 backdrop-blur-sm rounded-xl border border-orange-500/20">
+                <div className="text-2xl font-bold text-white mb-2">$49</div>
+                <div className="text-orange-400 font-semibold mb-1">Unlimited</div>
+                <div className="text-sm text-gray-400">Unlimited credits</div>
               </div>
             </div>
           </motion.div>

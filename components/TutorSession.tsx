@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Square, Subtitles, FileText, Settings, Send, Mic, X, HelpCircle, RefreshCw, Sparkles, Pause, Play, Download, Video, VideoOff, LogOut, ArrowLeft, BookOpen, Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@clerk/nextjs';
+import { useUser } from '@/contexts/AuthContext';
 
 // Components
 import AnimatedTutorOrb from '@/components/AnimatedTutorOrb';
@@ -17,9 +17,9 @@ import LearningSlidePanel, { LearningSlide } from '@/components/LearningSlidePan
 import LearningProgressTracker from '@/components/LearningProgressTracker';
 
 // Utils & Data
-import { EmotionType } from '@/lib/utils';
 import { createSession, endSession, updateSession, generateSessionId, saveMessage, type SessionMessage } from '@/lib/user-data';
 import { useProgressTracking } from '@/lib/useProgressTracking';
+import { invalidateCreditsCache } from '@/lib/credits-events';
 
 interface Note {
   id: string;
@@ -262,6 +262,26 @@ export default function TutorSession() {
         : 'AI Learning Session';
       const newSessionId = await createSession(sessionName, user?.id);
       setSessionId(newSessionId);
+
+      // Deduct 1 credit per learning session (not per message)
+      if (user?.id) {
+        try {
+          const response = await fetch('/api/credits/use', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ customAmount: 1, description: 'Learning session started' }),
+          });
+          
+          if (response.ok) {
+            console.log('[TutorSession] ✅ Credit deducted, invalidating cache');
+            invalidateCreditsCache(); // Notify all components to refresh credits
+          } else {
+            console.warn('[TutorSession] Credit deduction failed:', await response.text());
+          }
+        } catch (err) {
+          console.warn('[TutorSession] Credit deduction failed:', err);
+        }
+      }
     };
     initSession();
   }, [isLoaded, courseContext, user?.id, sessionId]);

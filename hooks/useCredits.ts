@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { creditsEvents } from '@/lib/credits-events';
 
 export interface CreditsData {
   total: number;
@@ -89,6 +90,15 @@ export function useCredits(): UseCreditsReturn {
 
   useEffect(() => {
     fetchCredits();
+  }, [fetchCredits]);
+
+  // Listen for credit change events and force refresh
+  useEffect(() => {
+    const unsubscribe = creditsEvents.subscribe(() => {
+      console.log('[useCredits] Credit change event received, forcing refresh');
+      fetchCredits(true); // Force refresh, bypass cache
+    });
+    return unsubscribe;
   }, [fetchCredits]);
 
   const checkCredits = useCallback((required: number): boolean => {

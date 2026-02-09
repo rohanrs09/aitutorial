@@ -10,14 +10,8 @@ import dynamic from 'next/dynamic';
 import CoursePlayer from '@/components/CoursePlayer';
 import AITutorPanel from '@/components/AITutorPanel';
 import { getCourseById, type Course, type Lecture, type CourseSection } from '@/lib/course-data';
-
-// Dynamically import Clerk components
-const SignedIn = dynamic(() => import('@clerk/nextjs').then(mod => mod.SignedIn), { ssr: false });
-const SignedOut = dynamic(() => import('@clerk/nextjs').then(mod => mod.SignedOut), { ssr: false });
-const UserButton = dynamic(() => import('@clerk/nextjs').then(mod => mod.UserButton), { ssr: false });
-const SignInButton = dynamic(() => import('@clerk/nextjs').then(mod => mod.SignInButton), { ssr: false });
-
-const isClerkConfigured = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+import { useUser } from '@/contexts/AuthContext';
+import { UserButtonWithLogout as UserButton } from '@/components/LogoutConfirmModal';
 
 /**
  * Course Page - Main Learning Interface
@@ -49,12 +43,6 @@ export default function CoursePage() {
   // Progress tracking
   const [completedLectures, setCompletedLectures] = useState<string[]>([]);
   const [lastLectureId, setLastLectureId] = useState<string | undefined>();
-  const [hasClerk, setHasClerk] = useState(false);
-
-  // Check Clerk configuration
-  useEffect(() => {
-    setHasClerk(isClerkConfigured);
-  }, []);
 
   // Load course data
   useEffect(() => {
@@ -239,20 +227,7 @@ export default function CoursePage() {
               </div>
 
               {/* User Button */}
-              {hasClerk && (
-                <>
-                  <SignedIn>
-                    <UserButton afterSignOutUrl="/" />
-                  </SignedIn>
-                  <SignedOut>
-                    <SignInButton mode="modal">
-                      <button className="text-sm text-gray-400 hover:text-white transition-colors">
-                        Sign In
-                      </button>
-                    </SignInButton>
-                  </SignedOut>
-                </>
-              )}
+              <UserButton />
             </div>
           </div>
         </div>

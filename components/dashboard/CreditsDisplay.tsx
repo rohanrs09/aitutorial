@@ -2,17 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Zap, 
-  TrendingUp, 
-  Crown, 
-  Sparkles,
-  ChevronRight,
-  Infinity,
-  AlertCircle
-} from 'lucide-react';
+import { Zap, TrendingUp, AlertCircle, Crown, Loader2, RefreshCw, Sparkles, ChevronRight, Infinity } from 'lucide-react';
 import Link from 'next/link';
-import { useUser } from '@clerk/nextjs';
+import { useUser } from '@/contexts/AuthContext';
+import { creditsEvents } from '@/lib/credits-events';
 
 interface CreditsData {
   subscription: {
@@ -69,7 +62,7 @@ export function CreditsDisplay() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Only fetch when Clerk is loaded and user is signed in
+    // Only fetch when auth is loaded and user is signed in
     if (isLoaded && isSignedIn) {
       fetchCredits();
     } else if (isLoaded && !isSignedIn) {
@@ -77,6 +70,15 @@ export function CreditsDisplay() {
       setError('Please sign in to view credits');
     }
   }, [isLoaded, isSignedIn]);
+
+  // Listen for credit change events and refresh
+  useEffect(() => {
+    const unsubscribe = creditsEvents.subscribe(() => {
+      console.log('[CreditsDisplay] Credit change event received, refreshing');
+      fetchCredits();
+    });
+    return unsubscribe;
+  }, []);
 
   const fetchCredits = async () => {
     try {

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { supabase } from '@/lib/supabase';
+import { auth, getAdminClient } from '@/lib/auth';
 
 /**
  * GET /api/quiz/history
@@ -16,11 +15,13 @@ export async function GET(request: NextRequest) {
 
     console.log('[Quiz History API] Fetching history for user:', userId);
 
-    // Fetch quiz sessions from database
+    const supabase = getAdminClient();
+
+    // Fetch quiz sessions from learning_sessions (has quiz_score)
     const { data: sessions, error } = await supabase
       .from('learning_sessions')
       .select('*')
-      .eq('clerk_user_id', userId)
+      .eq('user_id', userId)
       .not('quiz_score', 'is', null)
       .order('created_at', { ascending: false })
       .limit(50);

@@ -8,7 +8,7 @@ import { supabase, isSupabaseConfigured, validateSupabaseConnection } from './su
 
 export interface UserSession {
   id: string;
-  clerkUserId: string | null;
+  userId: string | null;
   sessionId: string;
   topicName: string;
   startedAt: Date;
@@ -80,14 +80,14 @@ function getLocalSessionTopicName(sessionId: string): string | null {
 
 export async function createSession(
   topicName: string,
-  clerkUserId?: string
+  userId?: string
 ): Promise<string> {
   const sessionId = generateSessionId();
   
   const sessionData = {
     sessionId,
     topicName,
-    clerkUserId: clerkUserId || null,
+    userId: userId || null,
     startedAt: new Date(),
     endedAt: null,
     messages: [] as SessionMessage[],
@@ -98,11 +98,11 @@ export async function createSession(
   // Store in localStorage for immediate access
   if (typeof window !== 'undefined') {
     localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(sessionData));
-    console.log('[Session] Created session:', { sessionId, topicName, clerkUserId });
+    console.log('[Session] Created session:', { sessionId, topicName, userId });
   }
   
   // Try to save to Supabase if configured
-  if (isSupabaseConfigured && clerkUserId) {
+  if (isSupabaseConfigured && userId) {
     try {
       // Validate connection and tables
       const validation = await validateSupabaseConnection();
@@ -118,18 +118,19 @@ export async function createSession(
         return sessionId;
       }
 
-      console.log('[Supabase] Saving session to database for user:', clerkUserId);
+      console.log('[Supabase] Saving session to database for user:', userId);
 
       // Always upsert user profile first to ensure user exists
+      // user_profiles PK is 'id' which references auth.users(id)
       const profileUpsert = await supabase
         .from('user_profiles')
         .upsert(
           {
-            clerk_user_id: clerkUserId,
+            id: userId,
             last_active_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           },
-          { onConflict: 'clerk_user_id' }
+          { onConflict: 'id' }
         );
 
       if (profileUpsert.error) {
@@ -138,11 +139,11 @@ export async function createSession(
         console.log('[Supabase] ✅ User profile upserted');
       }
       
-      // Insert session with clerk_user_id (required field)
+      // Insert session with user_id (required field)
       const insertData = {
         session_id: sessionId,
         topic_name: topicName,
-        clerk_user_id: clerkUserId,
+        user_id: userId,
         started_at: new Date().toISOString(),
         total_messages: 0,
       };
@@ -163,8 +164,8 @@ export async function createSession(
     } catch (error) {
       console.error('[Supabase] Error saving session:', error instanceof Error ? error.message : String(error));
     }
-  } else if (!clerkUserId) {
-    console.warn('[Session] No clerkUserId provided - session will only be saved locally');
+  } else if (!userId) {
+    console.warn('[Session] No userId provided - session will only be saved locally');
   }
   
   return sessionId;
@@ -177,7 +178,7 @@ export async function updateSession(
     emotionsDetected?: string[];
     quizScore?: number;
   },
-  clerkUserId?: string
+  userId?: string
 ): Promise<void> {
   // Update localStorage
   if (typeof window !== 'undefined') {
@@ -195,9 +196,9 @@ export async function updateSession(
   }
   
   // Try to update Supabase (skip if not configured or no user)
-  if (!isSupabaseConfigured || !clerkUserId) {
-    if (!clerkUserId) {
-      console.warn('[Session] No clerkUserId - skipping Supabase update');
+  if (!isSupabaseConfigured || !userId) {
+    if (!userId) {
+      console.warn('[Session] No userId - skipping Supabase update');
     }
     return;
   }
@@ -219,15 +220,15 @@ export async function updateSession(
     
     const topicName = getLocalSessionTopicName(sessionId) || 'General Learning';
 
-    console.log('[Supabase] Updating session:', { sessionId, clerkUserId, updates: Object.keys(updateData) });
+    console.log('[Supabase] Updating session:', { sessionId, userId, updates: Object.keys(updateData) });
     
-    // Use upsert with clerk_user_id to ensure proper user association
+    // Use upsert with user_id to ensure proper user association
     const response = await supabase
       .from('learning_sessions')
       .upsert(
         {
           session_id: sessionId,
-          clerk_user_id: clerkUserId,
+          user_id: userId,
           topic_name: topicName,
           ...updateData,
           updated_at: new Date().toISOString(),
@@ -352,11 +353,11 @@ export async function endSession(sessionId: string, userId?: string): Promise<vo
 
     console.log('[Supabase] Ending session:', { sessionId, userId, durationMinutes, topicName });
 
-    // Build upsert data with clerk_user_id
+    // Build upsert data with user_id
     const upsertData: Record<string, unknown> = {
       session_id: sessionId,
       topic_name: topicName,
-      clerk_user_id: userId,
+      user_id: userId,
       ended_at: endTime.toISOString(),
       duration_minutes: durationMinutes ?? null,
       total_messages: totalMessages,
@@ -375,7 +376,7 @@ export async function endSession(sessionId: string, userId?: string): Promise<vo
       .upsert(upsertData, { onConflict: 'session_id' });
 
     if (response.error) {
-      console.error('[Supabase] Error ending session:', response.error.message);
+      console.log('[Supabase] Session end not saved (using local cache)');
     } else {
       console.log('[Supabase] ✅ Session ended successfully');
     }
@@ -442,27 +443,15 @@ function updateLocalStats(session: {
 // Data Retrieval
 // =============================================
 
-export async function getUserStats(clerkUserId?: string): Promise<UserStats> {
+export async function getUserStats(userId?: string): Promise<UserStats> {
   // Try Supabase first if configured
   try {
-    if (isSupabaseConfigured && clerkUserId) {
-      // Check if clerkUserId is a UUID or Clerk user ID format
-      let query;
-      if (clerkUserId.startsWith('user_')) {
-        // Clerk user ID format - use clerk_user_id column
-        query = supabase
-          .from('learning_sessions')
-          .select('duration_minutes, quiz_score, emotions_detected, primary_emotion')
-          .eq('clerk_user_id', clerkUserId)
-          .not('ended_at', 'is', null);
-      } else {
-        // UUID format - use user_id column
-        query = supabase
-          .from('learning_sessions')
-          .select('duration_minutes, quiz_score, emotions_detected, primary_emotion')
-          .eq('user_id', clerkUserId)
-          .not('ended_at', 'is', null);
-      }
+    if (isSupabaseConfigured && userId) {
+      const query = supabase
+        .from('learning_sessions')
+        .select('duration_minutes, quiz_score, emotions_detected, primary_emotion')
+        .eq('user_id', userId)
+        .not('ended_at', 'is', null);
       
       const { data: sessions } = await query;
       
@@ -521,7 +510,7 @@ export async function getUserStats(clerkUserId?: string): Promise<UserStats> {
 }
 
 export async function getRecentSessions(
-  clerkUserId?: string,
+  userId?: string,
   limit: number = 10
 ): Promise<Array<{
   id: string;
@@ -533,28 +522,14 @@ export async function getRecentSessions(
 }>> {
   // Try Supabase first if configured
   try {
-    if (isSupabaseConfigured && clerkUserId) {
-      // Check if clerkUserId is a UUID or Clerk user ID format
-      let query;
-      if (clerkUserId.startsWith('user_')) {
-        // Clerk user ID format - use clerk_user_id column
-        query = supabase
-          .from('learning_sessions')
-          .select('session_id, topic_name, started_at, duration_minutes, quiz_score, primary_emotion')
-          .eq('clerk_user_id', clerkUserId)
-          .not('ended_at', 'is', null)
-          .order('started_at', { ascending: false })
-          .limit(limit);
-      } else {
-        // UUID format - use user_id column
-        query = supabase
-          .from('learning_sessions')
-          .select('session_id, topic_name, started_at, duration_minutes, quiz_score, primary_emotion')
-          .eq('user_id', clerkUserId)
-          .not('ended_at', 'is', null)
-          .order('started_at', { ascending: false })
-          .limit(limit);
-      }
+    if (isSupabaseConfigured && userId) {
+      const query = supabase
+        .from('learning_sessions')
+        .select('session_id, topic_name, started_at, duration_minutes, quiz_score, primary_emotion')
+        .eq('user_id', userId)
+        .not('ended_at', 'is', null)
+        .order('started_at', { ascending: false })
+        .limit(limit);
       
       const { data: sessions } = await query;
       
@@ -595,11 +570,11 @@ export async function getRecentSessions(
 export async function saveMessage(
   sessionId: string,
   message: { role: 'user' | 'assistant'; content: string; emotion?: string },
-  clerkUserId?: string
+  userId?: string
 ): Promise<void> {
   // Skip if no user ID
-  if (!clerkUserId) {
-    console.warn('[Message] No clerkUserId - skipping Supabase save');
+  if (!userId) {
+    console.warn('[Message] No userId - skipping Supabase save');
     return;
   }
   
@@ -611,7 +586,7 @@ export async function saveMessage(
         role: message.role,
         content: message.content,
         emotion: message.emotion || null,
-        clerk_user_id: clerkUserId,
+        user_id: userId,
         timestamp: new Date().toISOString(),
       };
       

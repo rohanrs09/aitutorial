@@ -1,4 +1,5 @@
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { isSupabaseConfigured } from '@/lib/supabase';
+import { auth, getAdminClient } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -7,8 +8,18 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(request: NextRequest) {
   try {
+    // Get authenticated user
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
-    const { sessionId, userId } = body;
+    const { sessionId } = body;
 
     if (!sessionId) {
       return NextResponse.json(
@@ -24,8 +35,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // If userId is provided, use it to ensure we're updating the right user's session
-    let updateQuery = supabase
+    const supabase = getAdminClient();
+
+    // Update session using Supabase user ID
+    const { error } = await supabase
       .from('learning_progress')
       .update({
         status: 'completed',
@@ -33,20 +46,8 @@ export async function POST(request: NextRequest) {
         last_accessed_at: new Date().toISOString(),
         progress_percentage: 100,
       })
-      .eq('session_id', sessionId);
-      
-    if (userId) {
-      // Check if userId is a UUID or Clerk user ID format
-      if (userId.startsWith('user_')) {
-        // Clerk user ID format - use clerk_user_id column
-        updateQuery = updateQuery.eq('clerk_user_id', userId);
-      } else {
-        // UUID format - use user_id column
-        updateQuery = updateQuery.eq('user_id', userId);
-      }
-    }
-    
-    const { error } = await updateQuery;
+      .eq('session_id', sessionId)
+      .eq('user_id', userId);
 
     if (error) {
       console.error('[API] Complete session error:', error);

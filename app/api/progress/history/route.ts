@@ -1,4 +1,5 @@
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { isSupabaseConfigured } from '@/lib/supabase';
+import { auth, getAdminClient } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -7,12 +8,13 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.nextUrl.searchParams.get('userId');
-
+    // Get authenticated user
+    const { userId } = await auth();
+    
     if (!userId) {
       return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       );
     }
 
@@ -23,25 +25,14 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Check if userId is a UUID or Clerk user ID format
-    let query;
-    if (userId.startsWith('user_')) {
-      // Clerk user ID format - use clerk_user_id column
-      query = supabase
-        .from('learning_progress')
-        .select('*')
-        .eq('clerk_user_id', userId)
-        .order('last_accessed_at', { ascending: false });
-    } else {
-      // UUID format - use user_id column
-      query = supabase
-        .from('learning_progress')
-        .select('*')
-        .eq('user_id', userId)
-        .order('last_accessed_at', { ascending: false });
-    }
-    
-    const { data, error } = await query;
+    const supabase = getAdminClient();
+
+    // Use Supabase user ID (UUID format)
+    const { data, error } = await supabase
+      .from('learning_progress')
+      .select('*')
+      .eq('user_id', userId)
+      .order('last_accessed_at', { ascending: false });
 
     if (error) {
       console.error('[API] History fetch error:', error);

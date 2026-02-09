@@ -6,7 +6,7 @@ import {
   BookOpen, TrendingUp, Clock, CheckCircle2, 
   AlertCircle, Loader, Calendar, Target 
 } from 'lucide-react';
-import { useUser } from '@clerk/nextjs';
+import { useUser } from '@/contexts/AuthContext';
 import { getProgressSummary, getUserLearningHistory } from '@/lib/progress-tracking';
 
 interface ProgressSummary {

@@ -51,7 +51,7 @@
 | **AI** | SLM (Hugging Face), OpenAI, Gemini |
 | **Voice** | ElevenLabs (TTS), Deepgram (STT) |
 | **Database** | Supabase (PostgreSQL) |
-| **Auth** | Clerk |
+| **Auth** | Supabase Auth |
 | **Deployment** | Vercel |
 
 ---
@@ -67,7 +67,7 @@
 
 1. LANDING PAGE (/)
    │
-   ├─→ Sign Up/Sign In (Clerk)
+   ├─→ Sign Up/Sign In (Supabase Auth)
    │
    ▼
 2. DASHBOARD (/dashboard)
@@ -321,7 +321,7 @@ learning_sessions (1) ──< (N) session_messages
 
 | Table | Key Fields |
 |-------|------------|
-| `user_profiles` | id, clerk_user_id, email, preferences |
+| `user_profiles` | id, user_id, email, preferences |
 | `learning_sessions` | id, user_id, topic, status, duration, score |
 | `session_messages` | id, session_id, role, content, emotion |
 | `emotion_events` | id, session_id, emotion, confidence, context |

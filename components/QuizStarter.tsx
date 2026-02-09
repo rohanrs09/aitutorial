@@ -16,8 +16,9 @@ import { Brain, ChevronRight, Sparkles, Loader2, TrendingUp, Target, Award, Book
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import type { TopicQuizConfig, DifficultyLevel } from '@/lib/quiz-types';
-import { getAvailableTopicsFromCourse, generateQuizRecommendations } from '@/lib/quiz-generator';
+import { generateQuizRecommendations } from '@/lib/quiz-generator';
 import { getUserLearningTopics } from '@/lib/quiz-service';
+import { getAvailableTopics, getQuestionCountForTopic } from '@/lib/quiz-questions';
 
 interface QuizStarterProps {
   userId: string;
@@ -59,12 +60,20 @@ export default function QuizStarter({
   useEffect(() => {
     async function loadData() {
       try {
-        const [topics, recs, learned] = await Promise.all([
-          getAvailableTopicsFromCourse(),
+        // Get all available topics from question bank
+        const availableTopics = getAvailableTopics();
+        const topicsInfo: CourseTopicInfo[] = availableTopics.map(topic => ({
+          topic,
+          moduleId: topic.toLowerCase().replace(/\s+/g, '-'),
+          subtopics: [] // Will be populated from question bank
+        }));
+        
+        const [recs, learned] = await Promise.all([
           generateQuizRecommendations(userId),
           getUserLearningTopics(userId)
         ]);
-        setCourseTopics(topics);
+        
+        setCourseTopics(topicsInfo);
         setRecommendations(recs.recommended);
         setLearningTopics(learned);
       } catch (error) {
@@ -332,7 +341,7 @@ export default function QuizStarter({
                             <div className="font-semibold mb-2">{topicInfo.topic}</div>
                             <div className="text-xs opacity-60 flex items-center gap-1">
                               <BookOpen className="w-3 h-3" />
-                              {topicInfo.subtopics.length} subtopics
+                              {getQuestionCountForTopic(topicInfo.topic)} questions
                             </div>
                           </motion.button>
                         );

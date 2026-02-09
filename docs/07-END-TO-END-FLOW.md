@@ -27,9 +27,9 @@
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                  AUTHENTICATION (Clerk)                          │
-│  - Email/password or OAuth                                       │
-│  - Create user profile in Supabase                               │
+│                  AUTHENTICATION (Supabase Auth)                  │
+│  - Email/password authentication                                 │
+│  - Auto-provision user profile via trigger                       │
 └─────────────────────────────────────────────────────────────────┘
                           │
                           ▼
@@ -192,9 +192,9 @@
 1. User lands on /dashboard
    │
    ▼
-2. Check authentication (Clerk)
+2. Check authentication (Supabase Auth)
    │
-   ├─→ NOT LOGGED IN → Redirect to /sign-in
+   ├─→ NOT LOGGED IN → Redirect to /auth/login
    │
    └─→ LOGGED IN → Continue
    │

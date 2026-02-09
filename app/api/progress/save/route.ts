@@ -1,4 +1,5 @@
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { isSupabaseConfigured } from '@/lib/supabase';
+import { auth, getAdminClient } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -7,12 +8,22 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { userId, sessionId, topicName, progressData } = body;
-
-    if (!userId || !sessionId) {
+    // Get authenticated user
+    const { userId } = await auth();
+    
+    if (!userId) {
       return NextResponse.json(
-        { error: 'userId and sessionId are required' },
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { sessionId, topicName, progressData } = body;
+
+    if (!sessionId) {
+      return NextResponse.json(
+        { error: 'sessionId is required' },
         { status: 400 }
       );
     }
@@ -24,22 +35,16 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Determine if userId is a UUID or Clerk user ID format
+    const supabase = getAdminClient();
+
+    // Use Supabase user ID (UUID format)
     const upsertData = {
       session_id: sessionId,
+      user_id: userId,
       topic_name: topicName,
       ...progressData,
       last_accessed_at: new Date().toISOString(),
     };
-    
-    // Add the appropriate user ID field based on format
-    if (userId.startsWith('user_')) {
-      // Clerk user ID format
-      upsertData.clerk_user_id = userId;
-    } else {
-      // UUID format
-      upsertData.user_id = userId;
-    }
     
     const { data, error } = await supabase
       .from('learning_progress')

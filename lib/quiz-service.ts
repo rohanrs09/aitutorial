@@ -14,170 +14,69 @@ import type {
 // In-memory session cache to avoid database lookup issues
 const sessionCache = new Map<string, QuizSession>();
 
-// Enhanced question bank with more questions
+// Fallback question bank aligned with striver.json DSA modules
+// Primary questions come from lib/quiz-questions.ts via API
 const QUESTION_BANK: Record<string, QuizQuestion[]> = {
-  'Arrays & Strings': [
-    {
-      id: 'arr-1',
-      topic: 'Arrays & Strings',
-      subtopic: 'Array Basics',
-      question: 'What is the time complexity of accessing an element in an array by index?',
-      type: 'multiple-choice',
-      difficulty: 'easy',
-      options: ['O(1)', 'O(n)', 'O(log n)', 'O(n²)'],
-      correctAnswer: 0,
-      explanation: 'Array access by index is O(1) because arrays store elements in contiguous memory locations.',
-      points: 5,
-    },
-    {
-      id: 'arr-2',
-      topic: 'Arrays & Strings',
-      subtopic: 'Two Pointers',
-      question: 'Which approach is most efficient for reversing an array in-place?',
-      type: 'multiple-choice',
-      difficulty: 'medium',
-      options: ['Create new array', 'Two pointers from both ends', 'Recursion', 'Stack'],
-      correctAnswer: 1,
-      explanation: 'Two pointers approach is O(n) time and O(1) space, making it most efficient for in-place reversal.',
-      points: 10,
-    },
-    {
-      id: 'arr-3',
-      topic: 'Arrays & Strings',
-      subtopic: 'String Manipulation',
-      question: 'What is the time complexity of string concatenation in most languages?',
-      type: 'multiple-choice',
-      difficulty: 'medium',
-      options: ['O(1)', 'O(n)', 'O(log n)', 'O(n²)'],
-      correctAnswer: 1,
-      explanation: 'String concatenation typically requires creating a new string and copying all characters, resulting in O(n) complexity.',
-      points: 10,
-    },
+  'Arrays (1D & 2D)': [
+    { id: 'arr-1', topic: 'Arrays (1D & 2D)', subtopic: 'Array Basics', question: 'What is the time complexity of accessing an array element by index?', type: 'multiple-choice', difficulty: 'easy', options: ['O(1)', 'O(n)', 'O(log n)', 'O(n²)'], correctAnswer: 0, explanation: 'Array access by index is O(1) due to contiguous memory.', points: 5 },
+    { id: 'arr-2', topic: 'Arrays (1D & 2D)', subtopic: 'Two Pointers', question: 'What technique optimizes Subarray Sum Equals K to O(n)?', type: 'multiple-choice', difficulty: 'medium', options: ['Sorting', 'Prefix sum with hashing', 'Binary search', 'Two pointers'], correctAnswer: 1, explanation: 'Prefix sum + hash map gives O(n) solution.', points: 10 },
   ],
-  'Linked Lists': [
-    {
-      id: 'll-1',
-      topic: 'Linked Lists',
-      subtopic: 'Basics',
-      question: 'What is the main advantage of a linked list over an array?',
-      type: 'multiple-choice',
-      difficulty: 'easy',
-      options: ['Faster access', 'Dynamic size', 'Less memory', 'Better cache locality'],
-      correctAnswer: 1,
-      explanation: 'Linked lists can grow/shrink dynamically without reallocation, unlike fixed-size arrays.',
-      points: 5,
-    },
-    {
-      id: 'll-2',
-      topic: 'Linked Lists',
-      subtopic: 'Cycle Detection',
-      question: 'To detect a cycle in a linked list, which algorithm is most commonly used?',
-      type: 'multiple-choice',
-      difficulty: 'medium',
-      options: ['Binary Search', 'Floyd\'s Cycle Detection (Tortoise and Hare)', 'DFS', 'BFS'],
-      correctAnswer: 1,
-      explanation: 'Floyd\'s algorithm uses two pointers moving at different speeds to detect cycles efficiently.',
-      points: 10,
-    },
-  ],
-  'Stacks & Queues': [
-    {
-      id: 'sq-1',
-      topic: 'Stacks & Queues',
-      subtopic: 'Stack Basics',
-      question: 'Which data structure follows LIFO (Last In First Out) principle?',
-      type: 'multiple-choice',
-      difficulty: 'easy',
-      options: ['Queue', 'Stack', 'Array', 'Tree'],
-      correctAnswer: 1,
-      explanation: 'Stack follows LIFO - the last element added is the first one to be removed.',
-      points: 5,
-    },
-    {
-      id: 'sq-2',
-      topic: 'Stacks & Queues',
-      subtopic: 'Applications',
-      question: 'What is the time complexity of push and pop operations in a stack?',
-      type: 'multiple-choice',
-      difficulty: 'easy',
-      options: ['O(1)', 'O(n)', 'O(log n)', 'O(n²)'],
-      correctAnswer: 0,
-      explanation: 'Both push and pop are O(1) operations as they only modify the top of the stack.',
-      points: 5,
-    },
+  'Strings': [
+    { id: 'str-1', topic: 'Strings', subtopic: 'Palindrome', question: 'What is a palindrome?', type: 'multiple-choice', difficulty: 'easy', options: ['Sorted string', 'Reads same forward and backward', 'Unique chars', 'Empty string'], correctAnswer: 1, explanation: 'A palindrome reads the same forward and backward.', points: 5 },
   ],
   'Binary Search': [
-    {
-      id: 'bs-1',
-      topic: 'Binary Search',
-      subtopic: 'Basics',
-      question: 'What is the time complexity of binary search?',
-      type: 'multiple-choice',
-      difficulty: 'easy',
-      options: ['O(1)', 'O(n)', 'O(log n)', 'O(n log n)'],
-      correctAnswer: 2,
-      explanation: 'Binary search divides the search space in half each iteration, resulting in O(log n) complexity.',
-      points: 5,
-    },
-    {
-      id: 'bs-2',
-      topic: 'Binary Search',
-      subtopic: 'Prerequisites',
-      question: 'Binary search requires the array to be:',
-      type: 'multiple-choice',
-      difficulty: 'easy',
-      options: ['Sorted', 'Unsorted', 'Circular', 'Empty'],
-      correctAnswer: 0,
-      explanation: 'Binary search only works on sorted arrays to efficiently eliminate half the search space.',
-      points: 5,
-    },
+    { id: 'bs-1', topic: 'Binary Search', subtopic: 'Basics', question: 'What is the time complexity of binary search?', type: 'multiple-choice', difficulty: 'easy', options: ['O(1)', 'O(n)', 'O(log n)', 'O(n log n)'], correctAnswer: 2, explanation: 'Binary search halves search space each step: O(log n).', points: 5 },
   ],
-  'Recursion': [
-    {
-      id: 'rec-1',
-      topic: 'Recursion',
-      subtopic: 'Basics',
-      question: 'What is the base case in recursion?',
-      type: 'multiple-choice',
-      difficulty: 'easy',
-      options: ['The first recursive call', 'The condition that stops recursion', 'The largest input', 'The return statement'],
-      correctAnswer: 1,
-      explanation: 'Base case is the condition that stops recursion to prevent infinite loops.',
-      points: 5,
-    },
-    {
-      id: 'rec-2',
-      topic: 'Recursion',
-      subtopic: 'Stack',
-      question: 'What happens if a recursive function has no base case?',
-      type: 'multiple-choice',
-      difficulty: 'medium',
-      options: ['It runs once', 'Stack overflow error', 'Compilation error', 'Nothing'],
-      correctAnswer: 1,
-      explanation: 'Without a base case, recursion continues indefinitely until the call stack overflows.',
-      points: 10,
-    },
+  'Recursion & Backtracking': [
+    { id: 'rec-1', topic: 'Recursion & Backtracking', subtopic: 'Basics', question: 'What is the base case in recursion?', type: 'multiple-choice', difficulty: 'easy', options: ['First call', 'Condition that stops recursion', 'Largest input', 'Return type'], correctAnswer: 1, explanation: 'Base case terminates recursion to prevent stack overflow.', points: 5 },
+  ],
+  'Stack': [
+    { id: 'stk-1', topic: 'Stack', subtopic: 'Basics', question: 'Which principle does a Stack follow?', type: 'multiple-choice', difficulty: 'easy', options: ['FIFO', 'LIFO', 'Random', 'Priority'], correctAnswer: 1, explanation: 'Stack follows LIFO (Last In First Out).', points: 5 },
+  ],
+  'Queue': [
+    { id: 'que-1', topic: 'Queue', subtopic: 'Basics', question: 'Which principle does a Queue follow?', type: 'multiple-choice', difficulty: 'easy', options: ['LIFO', 'FIFO', 'Random', 'Priority'], correctAnswer: 1, explanation: 'Queue follows FIFO (First In First Out).', points: 5 },
+  ],
+  'Linked List': [
+    { id: 'll-1', topic: 'Linked List', subtopic: 'Basics', question: 'Main advantage of linked list over array?', type: 'multiple-choice', difficulty: 'easy', options: ['Faster access', 'Dynamic size and O(1) insertion at head', 'Less memory', 'Cache locality'], correctAnswer: 1, explanation: 'Linked lists grow/shrink dynamically.', points: 5 },
+  ],
+  'Trees (Binary Tree)': [
+    { id: 'tree-1', topic: 'Trees (Binary Tree)', subtopic: 'Traversal', question: 'What is Inorder traversal order?', type: 'multiple-choice', difficulty: 'easy', options: ['Root→Left→Right', 'Left→Root→Right', 'Left→Right→Root', 'Right→Root→Left'], correctAnswer: 1, explanation: 'Inorder: Left, Root, Right.', points: 5 },
+  ],
+  'Binary Search Tree (BST)': [
+    { id: 'bst-1', topic: 'Binary Search Tree (BST)', subtopic: 'Property', question: 'Key property of a BST?', type: 'multiple-choice', difficulty: 'easy', options: ['All equal', 'Left < Root < Right', 'Right < Root < Left', 'Parent > All'], correctAnswer: 1, explanation: 'In BST, left < root < right.', points: 5 },
+  ],
+  'Graphs': [
+    { id: 'graph-1', topic: 'Graphs', subtopic: 'BFS', question: 'Which data structure does BFS use?', type: 'multiple-choice', difficulty: 'easy', options: ['Stack', 'Queue', 'Heap', 'List'], correctAnswer: 1, explanation: 'BFS uses queue for level-by-level traversal.', points: 5 },
+  ],
+  'Dynamic Programming (DP)': [
+    { id: 'dp-1', topic: 'Dynamic Programming (DP)', subtopic: 'Basics', question: 'Two key properties for DP?', type: 'multiple-choice', difficulty: 'easy', options: ['Sorting+searching', 'Optimal substructure + overlapping subproblems', 'Greedy+sorting', 'Divide and conquer'], correctAnswer: 1, explanation: 'DP needs optimal substructure and overlapping subproblems.', points: 5 },
+  ],
+  'Sorting Algorithms': [
+    { id: 'sort-1', topic: 'Sorting Algorithms', subtopic: 'Merge Sort', question: 'Time complexity of Merge Sort?', type: 'multiple-choice', difficulty: 'easy', options: ['O(n)', 'O(n log n)', 'O(n²)', 'O(log n)'], correctAnswer: 1, explanation: 'Merge Sort always O(n log n).', points: 5 },
   ],
 };
 
 // Fetch user's learning topics from their session history
 export async function getUserLearningTopics(userId: string): Promise<string[]> {
-  if (!isSupabaseConfigured) return [];
-  
+  if (!isSupabaseConfigured || !userId) {
+    console.log('[Quiz] Supabase not configured or no userId, returning empty topics');
+    return [];
+  }
+
   try {
     const { data, error } = await supabase
       .from('learning_sessions')
-      .select('topic_name')
-      .eq('clerk_user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(20);
+      .select('topic')
+      .eq('user_id', userId)
+      .not('topic', 'is', null);
     
     if (error) {
-      console.error('[Quiz] Error fetching user topics:', error);
+      // Silently handle error - table might not exist yet
+      console.log('[Quiz] Could not fetch user topics (table may not exist), returning empty array');
       return [];
     }
     
-    const topics = [...new Set(data?.map(s => s.topic_name).filter(Boolean) || [])];
+    const topics = [...new Set(data?.map(s => s.topic).filter(Boolean) || [])];
     console.log('[Quiz] User learning topics:', topics);
     return topics;
   } catch (error) {
@@ -302,7 +201,7 @@ export async function createQuizSession(
   
   const session: QuizSession = {
     id: sessionId,
-    clerk_user_id: userId,
+    user_id: userId,
     topic: config.topic.trim(),
     questions,
     attempts: [],
@@ -326,7 +225,7 @@ export async function createQuizSession(
         .from('quiz_sessions')
         .insert({
           id: session.id,
-          clerk_user_id: session.clerk_user_id,
+          user_id: session.user_id,
           topic: session.topic,
           questions: session.questions,
           attempts: session.attempts,
@@ -340,7 +239,8 @@ export async function createQuizSession(
         });
       
       if (error) {
-        console.error('[Quiz] Error storing session in Supabase:', error);
+        // Silently handle - table might not exist, session is cached in memory
+        console.log('[Quiz] Session not stored in Supabase (using memory cache only)');
       } else {
         console.log('[Quiz] Session stored in Supabase');
       }
@@ -587,7 +487,7 @@ export async function completeQuizSession(sessionId: string): Promise<QuizResult
 
   const result: QuizResult = {
     sessionId,
-    userId: session.clerk_user_id,
+    userId: session.user_id,
     topic: session.topic,
     score: session.score,
     totalPoints: session.total_points,
@@ -611,7 +511,7 @@ export async function completeQuizSession(sessionId: string): Promise<QuizResult
         .from('quiz_sessions')
         .upsert({
           id: sessionId,
-          clerk_user_id: session.clerk_user_id,
+          user_id: session.user_id,
           topic: session.topic,
           questions: session.questions,
           attempts: session.attempts,
@@ -638,7 +538,7 @@ export async function completeQuizSession(sessionId: string): Promise<QuizResult
       const { data: allSessions, error: fetchError } = await supabase
         .from('learning_sessions')
         .select('id, session_id, topic_name, quiz_score, started_at')
-        .eq('clerk_user_id', session.clerk_user_id)
+        .eq('user_id', session.user_id)
         .ilike('topic_name', `%${session.topic}%`)
         .order('started_at', { ascending: false })
         .limit(5);
@@ -667,7 +567,7 @@ export async function completeQuizSession(sessionId: string): Promise<QuizResult
           .upsert({
             id: learningSession.id,
             session_id: learningSession.session_id,
-            clerk_user_id: session.clerk_user_id,
+            user_id: session.user_id,
             topic_name: learningSession.topic_name,
             quiz_score: percentageScore,
           }, {
@@ -697,7 +597,7 @@ export async function completeQuizSession(sessionId: string): Promise<QuizResult
         .insert({
           id: resultId,
           session_id: sessionId,
-          clerk_user_id: session.clerk_user_id,
+          user_id: session.user_id,
           topic: result.topic,
           difficulty: sessionDifficulty,
           score: result.score,
@@ -736,11 +636,12 @@ export async function getQuizAnalytics(userId: string): Promise<QuizAnalytics | 
     const { data: results, error } = await supabase
       .from('quiz_results')
       .select('*')
-      .eq('clerk_user_id', userId)
+      .eq('user_id', userId)
       .order('completed_at', { ascending: false });
     
     if (error) {
-      console.error('[Quiz] Error fetching analytics:', error);
+      // Return null if table doesn't exist - graceful degradation
+      console.log('[Quiz] Analytics not available (table may not exist)');
       return null;
     }
     
@@ -811,7 +712,7 @@ export async function getQuizAnalytics(userId: string): Promise<QuizAnalytics | 
       topicPerformance,
       recentQuizzes: results.slice(0, 5).map(r => ({
         sessionId: r.session_id,
-        userId: r.clerk_user_id,
+        userId: r.user_id,
         topic: r.topic,
         score: r.score,
         totalPoints: r.total_points,
@@ -833,27 +734,37 @@ export async function getQuizAnalytics(userId: string): Promise<QuizAnalytics | 
   }
 }
 
-// List of supported topics for the quiz system
-// These align with the modules in dsa_course.json
+// Supported topics aligned with striver.json modules
 const SUPPORTED_TOPICS = [
-  'Arrays & Strings',
-  'Linked Lists', 
-  'Stacks & Queues',
+  'Time & Space Complexity',
+  'Arrays (1D & 2D)',
+  'Strings',
   'Binary Search',
-  'Recursion',
-  'Trees & BST',
+  'Recursion & Backtracking',
+  'Stack',
+  'Queue',
+  'Linked List',
+  'Trees (Binary Tree)',
+  'Binary Search Tree (BST)',
+  'Heap & Priority Queue',
+  'Hashing',
   'Graphs',
-  'Dynamic Programming',
-  'Sorting & Searching',
-  'Hash Maps & Sets',
-  'Heaps & Priority Queues',
+  'Dynamic Programming (DP)',
+  'Greedy Algorithms',
   'Bit Manipulation',
-  'Trie',
-  'Segment Trees'
+  'Sorting Algorithms',
+  'Advanced Graph Algorithms',
+  'Trie (Prefix Tree)',
+  'Segment Tree & Fenwick Tree',
+  'Disjoint Set Union (Union Find)',
+  'Interview Patterns',
+  'Advanced Dynamic Programming',
+  'String Algorithms (Advanced)',
 ];
 
+export { SUPPORTED_TOPICS };
+
 export function getAvailableTopics(): string[] {
-  // Combine static bank keys with supported topics
   const staticTopics = Object.keys(QUESTION_BANK);
   return Array.from(new Set([...staticTopics, ...SUPPORTED_TOPICS]));
 }

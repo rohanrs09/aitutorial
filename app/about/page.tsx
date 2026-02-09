@@ -85,7 +85,7 @@ const techStack = [
   { name: 'Gemini Vision', category: 'Emotion AI', icon: '👁️' },
   { name: 'ElevenLabs', category: 'Voice Synthesis', icon: '🎙️' },
   { name: 'Supabase', category: 'Database', icon: '🗄️' },
-  { name: 'Clerk', category: 'Authentication', icon: '🔐' },
+  { name: 'Supabase Auth', category: 'Authentication', icon: '🔐' },
   { name: 'Framer Motion', category: 'Animations', icon: '✨' },
 ];
 

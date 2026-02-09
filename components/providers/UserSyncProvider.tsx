@@ -3,8 +3,8 @@
 /**
  * USER SYNC PROVIDER
  * 
- * Wraps the app to ensure Clerk users are synced to Supabase
- * Must be placed inside ClerkProvider in the component tree
+ * Wraps the app to ensure user data is synced to Supabase
+ * Must be placed inside AuthProvider in the component tree
  */
 
 import React, { createContext, useContext, ReactNode } from 'react';
@@ -15,8 +15,8 @@ interface UserSyncContextType {
   isSyncing: boolean;
   error: string | null;
   userId: string | null;
-  clerkUser: ReturnType<typeof useUserSync>['clerkUser'];
-  isClerkLoaded: boolean;
+  currentUser: ReturnType<typeof useUserSync>['currentUser'];
+  isAuthLoaded: boolean;
   retry: () => void;
 }
 

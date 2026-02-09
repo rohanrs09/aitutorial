@@ -34,6 +34,7 @@ import { aiAdapter, type AIMessage } from '@/lib/ai-adapter';
 import { getTutorSystemPrompt } from '@/lib/tutor-prompts';
 import { EmotionType } from '@/lib/utils';
 import { analyzeEmotionAndAdapt, enhancePromptForEmotion } from '@/lib/adaptive-response';
+import { auth } from '@/lib/auth';
 
 interface GeneratedSlide {
   id: string;
@@ -116,6 +117,32 @@ export async function POST(request: NextRequest) {
         { error: 'No message provided' },
         { status: 400 }
       );
+    }
+
+    // Credit deduction happens once at session start (in /api/credits/use),
+    // not per message. Here we only check if user has credits remaining.
+    try {
+      const { userId } = await auth();
+      if (userId) {
+        const { getUserCredits, getUserSubscription } = await import('@/lib/subscription/credits');
+        const [credits, subscription] = await Promise.all([
+          getUserCredits(userId),
+          getUserSubscription(userId),
+        ]);
+        // Unlimited plan always has credits
+        const isUnlimited = subscription?.tier === 'unlimited' && subscription?.status === 'active';
+        if (!isUnlimited && credits) {
+          const remaining = credits.totalCredits - credits.usedCredits + credits.bonusCredits;
+          if (remaining <= 0) {
+            return NextResponse.json(
+              { error: 'Insufficient credits. Please upgrade your plan.', code: 'INSUFFICIENT_CREDITS' },
+              { status: 402 }
+            );
+          }
+        }
+      }
+    } catch (creditError: any) {
+      console.warn('[Tutor] Credit check failed:', creditError.message);
     }
 
     // Detect user's slide content preference

@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -16,8 +16,9 @@ if (typeof window !== 'undefined') {
   });
 }
 
-// Create client only if configured (avoids errors when not set up)
-export const supabase = createClient(
+// Create SSR-compatible browser client that shares auth session cookies
+// This ensures auth.uid() works correctly with RLS policies
+export const supabase = createBrowserClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseAnonKey || 'placeholder-key'
 );
@@ -43,11 +44,7 @@ export async function validateSupabaseConnection(): Promise<{
       .limit(1);
     
     if (sessionError) {
-      console.error('[Supabase] Connection error:', {
-        code: (sessionError as any).code,
-        message: sessionError.message,
-        status: (sessionError as any).status,
-      });
+      console.log('[Supabase] Connection check:', sessionError.message?.substring(0, 50));
       
       // 404 or "not found" means table doesn't exist
       if (
@@ -180,13 +177,12 @@ export async function checkSupabaseHealth(): Promise<{
 
 export interface UserProfile {
   id: string;
-  clerk_user_id: string;
   email: string | null;
   first_name: string | null;
   last_name: string | null;
   avatar_url: string | null;
-  subscription_tier: 'free' | 'pro' | 'team';
-  subscription_status: 'active' | 'cancelled' | 'past_due';
+  subscription_tier: 'starter' | 'pro' | 'unlimited';
+  subscription_status: 'active' | 'canceled' | 'past_due' | 'trialing' | 'inactive';
   sessions_this_month: number;
   sessions_limit: number;
   streak_days: number;
@@ -198,14 +194,12 @@ export interface UserProfile {
 export interface UserPreferences {
   id: string;
   user_id: string;
-  adaptive_learning: boolean;
-  emotion_detection: boolean;
-  notifications: boolean;
-  sound_effects: boolean;
-  dark_mode: boolean;
-  preferred_voice: string;
+  voice_enabled: boolean;
+  emotion_detection_enabled: boolean;
+  auto_generate_notes: boolean;
+  difficulty_level: 'beginner' | 'intermediate' | 'advanced';
   preferred_language: string;
-  voice_speed: number;
+  theme: 'light' | 'dark' | 'auto';
   created_at: string;
   updated_at: string;
 }
@@ -303,17 +297,17 @@ export interface AnalyticsEvent {
 // User Service Functions
 // =============================================
 
-export async function getOrCreateUserProfile(clerkUserId: string, userData?: {
+export async function getOrCreateUserProfile(userId: string, userData?: {
   email?: string;
   firstName?: string;
   lastName?: string;
   avatarUrl?: string;
 }): Promise<UserProfile | null> {
-  // Try to get existing profile
+  // Try to get existing profile (user_profiles PK is 'id' = auth.users.id)
   const { data: existing, error: existingError } = await supabase
     .from('user_profiles')
     .select('*')
-    .eq('clerk_user_id', clerkUserId)
+    .eq('id', userId)
     .maybeSingle();
 
   if (existingError) {
@@ -330,14 +324,14 @@ export async function getOrCreateUserProfile(clerkUserId: string, userData?: {
     .from('user_profiles')
     .upsert(
       {
-        clerk_user_id: clerkUserId,
+        id: userId,
         email: userData?.email,
         first_name: userData?.firstName,
         last_name: userData?.lastName,
         avatar_url: userData?.avatarUrl,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: 'clerk_user_id' }
+      { onConflict: 'id' }
     )
     .select()
     .maybeSingle();
@@ -423,7 +417,7 @@ export async function getUserAchievements(userId: string): Promise<UserAchieveme
   const { data, error } = await supabase
     .from('user_achievements')
     .select('*')
-    .eq('clerk_user_id', userId)
+    .eq('user_id', userId)
     .order('unlocked_at', { ascending: false });
 
   if (error) {

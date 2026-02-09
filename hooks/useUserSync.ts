@@ -3,16 +3,14 @@
 /**
  * USER SYNC HOOK
  * 
- * Purpose: Ensures Clerk user is synced to Supabase on every page load
- * - Creates user_profile if it doesn't exist
- * - Initializes subscription and credits for new users
+ * Purpose: Syncs user data with Supabase
+ * - Fetches latest credits from database
  * - Updates last_active_at on each visit
- * - Fetches latest credits from database (NOT localStorage)
- * - Handles the critical user-to-database sync issue
+ * - Works with Supabase Auth (no Clerk dependency)
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useUser } from '@clerk/nextjs';
+import { useUser } from '@/contexts/AuthContext';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 interface SyncStatus {
@@ -75,20 +73,14 @@ export function useUserSync() {
       const { data: upsertedUser, error: upsertError } = await supabase
         .from('user_profiles')
         .upsert({
-          clerk_user_id: user.id,
-          email: user.emailAddresses?.[0]?.emailAddress || null,
+          id: user.id,
+          email: user.primaryEmailAddress?.emailAddress || null,
           first_name: user.firstName || null,
           last_name: user.lastName || null,
           avatar_url: user.imageUrl || null,
           last_active_at: new Date().toISOString(),
-          // Only set these on initial creation
-          subscription_tier: 'free',
-          subscription_status: 'active',
-          sessions_this_month: 0,
-          sessions_limit: 100,
-          streak_days: 0,
         }, {
-          onConflict: 'clerk_user_id',
+          onConflict: 'id',
           ignoreDuplicates: false,
         })
         .select()
@@ -121,18 +113,15 @@ export function useUserSync() {
       if (newUser) {
         const { error: prefError } = await supabase
           .from('user_preferences')
-          .insert({
+          .upsert({
             user_id: newUser.id,
-            clerk_user_id: user.id,
-            adaptive_learning: true,
-            emotion_detection: true,
-            notifications: true,
-            sound_effects: true,
-            dark_mode: false,
-            preferred_voice: 'alloy',
+            voice_enabled: true,
+            emotion_detection_enabled: true,
+            auto_generate_notes: true,
+            difficulty_level: 'intermediate',
             preferred_language: 'en',
-            voice_speed: 1.0,
-          });
+            theme: 'dark',
+          }, { onConflict: 'user_id' });
 
         if (prefError && prefError.code !== '23505') {
           console.warn('[UserSync] Failed to create preferences:', prefError);
@@ -146,14 +135,14 @@ export function useUserSync() {
       const { data: subscriptionData } = await supabase
         .from('user_subscriptions')
         .select('tier, status')
-        .eq('clerk_user_id', user.id)
+        .eq('id', user.id)
         .single();
       
       // Fetch credits
       const { data: creditsData } = await supabase
         .from('user_credits')
         .select('total_credits, used_credits, bonus_credits')
-        .eq('clerk_user_id', user.id)
+        .eq('id', user.id)
         .single();
       
       // If no subscription exists, create one via API
@@ -225,8 +214,8 @@ export function useUserSync() {
 
   return {
     ...syncStatus,
-    clerkUser: user,
-    isClerkLoaded: isLoaded,
+    currentUser: user,
+    isAuthLoaded: isLoaded,
     retry: () => {
       syncAttemptedRef.current = false;
       syncUserToSupabase();

@@ -194,7 +194,7 @@ export default function QuizAnalytics({ userId, onStartQuiz }: QuizAnalyticsProp
           <p className="text-gray-400 mb-4">Test your knowledge and track your progress</p>
           {onStartQuiz && (
             <button
-              onClick={() => onStartQuiz('Arrays & Strings')}
+              onClick={() => onStartQuiz('Arrays (1D & 2D)')}
               className="px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-gray-900 font-bold rounded-xl hover:from-orange-400 hover:to-amber-400 transition-all"
             >
               Take a Quiz
