@@ -1,4 +1,5 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { NextRequest } from 'next/server';
 
@@ -43,8 +44,20 @@ export async function GET(request: NextRequest) {
     if (!error && data.user) {
       console.log('[Auth] User authenticated:', data.user.email);
 
+      // Use service role client for database operations (bypasses RLS)
+      const adminClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      );
+
       // Create or update user profile
-      const { error: profileError } = await supabase
+      const { error: profileError } = await adminClient
         .from('user_profiles')
         .upsert({
           id: data.user.id,
@@ -60,7 +73,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Initialize subscription and credits
-      const { error: subError } = await supabase
+      const { error: subError } = await adminClient
         .from('user_subscriptions')
         .upsert({
           id: data.user.id,
@@ -71,7 +84,7 @@ export async function GET(request: NextRequest) {
           cancel_at_period_end: false
         }, { onConflict: 'id' });
 
-      const { error: creditsError } = await supabase
+      const { error: creditsError } = await adminClient
         .from('user_credits')
         .upsert({
           id: data.user.id,
