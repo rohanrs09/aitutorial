@@ -95,8 +95,8 @@ export default function CreditsDisplay({
           <span className="text-xs text-gray-500">credits</span>
         </div>
         
-        {subscription.tier !== 'unlimited' && showUpgrade && (
-          <Link href="/#pricing">
+        {/* subscription.tier !== 'unlimited' && showUpgrade && (
+          <Link href="#pricing">
             <Badge 
               variant="outline" 
               className="text-xs border-orange-500/30 text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 cursor-pointer transition-colors"
@@ -105,7 +105,7 @@ export default function CreditsDisplay({
               Upgrade
             </Badge>
           </Link>
-        )}
+        ) */}
       </div>
     );
   }
@@ -141,14 +141,14 @@ export default function CreditsDisplay({
           </div>
         </div>
         
-        {subscription.tier !== 'unlimited' && showUpgrade && (
-          <Link href="/#pricing">
+        {/* subscription.tier !== 'unlimited' && showUpgrade && (
+          <Link href="#pricing">
             <Button size="sm" variant="outline" className="text-xs border-orange-500/30 text-orange-400 hover:bg-orange-500/10">
               <TrendingUp className="w-3 h-3 mr-1" />
               Upgrade
             </Button>
           </Link>
-        )}
+        ) */}
       </div>
 
       {/* Credits Display */}
@@ -185,7 +185,8 @@ export default function CreditsDisplay({
           <div className="flex items-center gap-2 p-2 bg-red-500/10 rounded-lg border border-red-500/20">
             <AlertCircle className="w-4 h-4 text-red-400" />
             <span className="text-xs text-red-400">
-              Running low on credits! Consider upgrading.
+              {/* Running low on credits! Consider upgrading. */}
+              Running low on credits!
             </span>
           </div>
         )}

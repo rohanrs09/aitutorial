@@ -179,15 +179,15 @@ export function CreditsDisplay() {
           </div>
         </div>
         
-        {subscription.tier !== 'unlimited' && (
+        {/* subscription.tier !== 'unlimited' && (
           <Link 
-            href="/#pricing"
+            href="#pricing"
             className="flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300 transition-colors group"
           >
             Upgrade
             <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
           </Link>
-        )}
+        ) */}
       </div>
 
       {/* Credits Display */}
@@ -253,7 +253,8 @@ export function CreditsDisplay() {
           <div className="flex items-center gap-2">
             <TrendingUp className="text-yellow-400" size={16} />
             <span className="text-sm text-yellow-300">
-              Low on credits! <Link href="/#pricing" className="underline hover:text-yellow-200">Upgrade now</Link>
+              {/* Low on credits! <Link href="#pricing" className="underline hover:text-yellow-200">Upgrade now</Link> */}
+              Low on credits!
             </span>
           </div>
         </motion.div>

@@ -52,7 +52,7 @@ interface UserLearningInsightsProps {
   };
   topicProgress?: TopicPerformance[];
   isPremium?: boolean;
-  onUpgrade?: () => void;
+  // onUpgrade?: () => void;
 }
 
 export default function UserLearningInsights({
@@ -60,7 +60,7 @@ export default function UserLearningInsights({
   stats,
   topicProgress = [],
   isPremium = false,
-  onUpgrade
+  // onUpgrade
 }: UserLearningInsightsProps) {
   const [insights, setInsights] = useState<LearningInsight[]>([]);
   const [activeTab, setActiveTab] = useState<'insights' | 'topics' | 'quiz'>('insights');
@@ -166,7 +166,7 @@ export default function UserLearningInsights({
         title: 'Advanced Analytics',
         description: 'Get detailed learning patterns, emotion insights, and personalized study plans.',
         isPremium: true,
-        action: 'Upgrade to Pro',
+        // action: 'Upgrade to Pro',
       });
     }
 
@@ -274,7 +274,7 @@ export default function UserLearningInsights({
                           <p className="text-xs text-gray-400 mt-1">{insight.description}</p>
                           {insight.action && (
                             <button
-                              onClick={insight.isPremium ? onUpgrade : undefined}
+                              // onClick={insight.isPremium ? onUpgrade : undefined}
                               className="text-xs text-orange-400 hover:text-orange-300 mt-2 font-medium flex items-center gap-1"
                             >
                               {insight.action}

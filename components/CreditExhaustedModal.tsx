@@ -34,10 +34,10 @@ export function CreditExhaustedModal({
     };
   }, [isOpen]);
 
-  const handleUpgrade = () => {
-    onClose();
-    router.push('/pricing');
-  };
+  // const handleUpgrade = () => {
+  //   onClose();
+  //   router.push('/pricing');
+  // };
 
   return (
     <AnimatePresence>
@@ -104,19 +104,22 @@ export function CreditExhaustedModal({
                 </div>
 
                 <p className="text-sm text-gray-500">
-                  Upgrade your plan to get more credits and continue learning without interruptions.
+                  {/* Upgrade your plan to get more credits and continue learning without interruptions. */}
+                  Credits reset monthly. Check back later for upgrade options.
                 </p>
               </div>
 
               {/* Action Buttons */}
               <div className="flex flex-col gap-3">
                 <button
-                  onClick={handleUpgrade}
+                  // onClick={handleUpgrade}
+                  onClick={onClose}
                   className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white rounded-xl font-semibold transition-all hover:scale-[1.02] shadow-lg shadow-orange-500/30"
                 >
-                  <Zap className="w-5 h-5" />
-                  Upgrade Now
-                  <ArrowRight className="w-5 h-5" />
+                  {/* <Zap className="w-5 h-5" /> */}
+                  {/* Upgrade Now */}
+                  {/* <ArrowRight className="w-5 h-5" /> */}
+                  Got it
                 </button>
 
                 <button
@@ -128,9 +131,9 @@ export function CreditExhaustedModal({
               </div>
 
               {/* Footer Note */}
-              <p className="text-xs text-center text-gray-500 mt-4">
+              {/* <p className="text-xs text-center text-gray-500 mt-4">
                 💡 Pro tip: Unlimited plan gives you unlimited credits!
-              </p>
+              </p> */}
             </motion.div>
           </div>
         </>

@@ -67,16 +67,16 @@ export function useCreditCheck() {
     setCreditError(null);
   }, []);
 
-  const goToUpgrade = useCallback(() => {
-    closeCreditModal();
-    router.push('/pricing');
-  }, [router, closeCreditModal]);
+  // const goToUpgrade = useCallback(() => {
+  //   closeCreditModal();
+  //   router.push('/pricing');
+  // }, [router, closeCreditModal]);
 
   return {
     checkAndExecute,
     showCreditModal,
     creditError,
     closeCreditModal,
-    goToUpgrade
+    // goToUpgrade
   };
 }

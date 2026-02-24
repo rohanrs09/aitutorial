@@ -24,17 +24,17 @@ export default function CreditWarningModal({
 
   if (!isOpen) return null;
 
-  const handleUpgrade = async () => {
-    setIsUpgrading(true);
-    try {
-      // Redirect to pricing page
-      router.push('/#pricing');
-      onClose();
-    } catch (error) {
-      console.error('Error navigating to upgrade:', error);
-      setIsUpgrading(false);
-    }
-  };
+    // const handleUpgrade = async () => {
+    //   setIsUpgrading(true);
+    //   try {
+    //     // Redirect to pricing page
+    //     router.push('/#pricing');
+    //     onClose();
+    //   } catch (error) {
+    //     console.error('Error navigating to upgrade:', error);
+    //     setIsUpgrading(false);
+    //   }
+    // };
 
   const isOutOfCredits = typeof remainingCredits === 'number' && remainingCredits < requiredCredits;
 
@@ -95,8 +95,8 @@ export default function CreditWarningModal({
             </div>
           </div>
 
-          {/* Upgrade Options */}
-          {currentTier === 'starter' && (
+          {/* Upgrade Options - COMMENTED OUT */}
+          {/* {currentTier === 'starter' && (
             <div className="space-y-3 mb-6">
               <div className="border border-blue-200 dark:border-blue-800 rounded-lg p-4 bg-blue-50 dark:bg-blue-900/20">
                 <div className="flex items-start gap-3">
@@ -124,7 +124,7 @@ export default function CreditWarningModal({
                 </div>
               </div>
             </div>
-          )}
+          )} */}
 
           {/* Actions */}
           <div className="flex gap-3">
@@ -135,11 +135,13 @@ export default function CreditWarningModal({
               Cancel
             </button>
             <button
-              onClick={handleUpgrade}
-              disabled={isUpgrading}
+              // onClick={handleUpgrade}
+              onClick={onClose}
+              // disabled={isUpgrading}
               className="flex-1 px-4 py-3 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isUpgrading ? 'Loading...' : 'Upgrade Now'}
+              {/* {isUpgrading ? 'Loading...' : 'Upgrade Now'} */}
+              Got it
             </button>
           </div>
 

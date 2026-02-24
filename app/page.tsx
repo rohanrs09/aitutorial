@@ -270,7 +270,8 @@ const testimonials = [
   },
 ];
 
-// Credit-based pricing plans for SaaS model
+// Credit-based pricing plans for SaaS model - COMMENTED OUT
+/*
 const pricingPlans = [
   {
     name: "Starter",
@@ -328,6 +329,7 @@ const pricingPlans = [
     planId: "plan_unlimited_monthly", // Stripe plan ID
   },
 ];
+*/
 
 // FAQ Accordion Item Component
 function FAQItem({ question, answer }: { question: string; answer: string }) {
@@ -645,13 +647,13 @@ export default function LandingPage() {
                 FAQ
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-orange-500 to-amber-500 group-hover:w-full transition-all duration-300"></span>
               </button>
-              <button
+              {/* <button
                 onClick={() => scrollToSection("pricing")}
                 className="text-gray-400 hover:text-orange-400 transition-all duration-200 text-sm font-medium relative group"
               >
                 Pricing
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-orange-500 to-amber-500 group-hover:w-full transition-all duration-300"></span>
-              </button>
+              </button> */}
             </div>
 
             {/* Auth Buttons */}
@@ -748,12 +750,12 @@ export default function LandingPage() {
               FAQ
             </button>
 
-            <button
+            {/* <button
               onClick={() => scrollToSection("pricing")}
               className="block w-full text-left text-gray-300 hover:text-orange-400 hover:bg-orange-500/10 py-3 px-4 rounded-lg transition-all duration-200"
             >
               Pricing
-            </button>
+            </button> */}
           </motion.div>
         )}
       </nav>
@@ -1158,7 +1160,7 @@ export default function LandingPage() {
             transition={{ delay: 0.6, duration: 0.5 }}
             className="text-center mt-16"
           >
-            <a
+            {/* <a
               href="#pricing"
               className="btn-primary inline-flex items-center gap-2 text-lg px-8 py-4 group"
             >
@@ -1171,7 +1173,7 @@ export default function LandingPage() {
                 size={18}
                 className="group-hover:translate-x-1 transition-transform"
               />
-            </a>
+            </a> */}
           </motion.div>
         </div>
       </section>
@@ -1498,7 +1500,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing CTA Section */}
+      {/* Pricing CTA Section - COMMENTED OUT */}
+      {/*
       <section
         id="pricing"
         className="py-24 sm:py-32 px-4 sm:px-6 lg:px-8 bg-surface-light/30 relative overflow-hidden"
@@ -1553,7 +1556,6 @@ export default function LandingPage() {
               </SignedOut>
             </div>
 
-            {/* Quick pricing overview */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-12 max-w-3xl mx-auto">
               <div className="p-6 bg-gray-900/50 backdrop-blur-sm rounded-xl border border-orange-500/20">
                 <div className="text-2xl font-bold text-white mb-2">$0</div>
@@ -1579,6 +1581,7 @@ export default function LandingPage() {
           </motion.div>
         </div>
       </section>
+      */}
 
       {/* CTA Section */}
       <section className="py-20 sm:py-24 px-4 sm:px-6 lg:px-8 border-t border-orange-500/10 relative">
